@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertConnectionSchema, sendMessageSchema } from "@shared/schema";
+import * as WhatsApp from "./whatsapp";
 
 interface WhatsAppSession {
   client: any;
@@ -84,11 +85,17 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
       data: { id: connectionId, status: "connecting" }
     });
 
-    // Simulate QR code generation after a short delay
+    // Create WhatsApp client and generate real QR code
     setTimeout(async () => {
       try {
-        const qrCode = generateQRCode();
-        const qrExpiry = new Date(Date.now() + 90000); // 90 seconds expiration
+        // Create WhatsApp Web client
+        const whatsappClient = WhatsApp.createWhatsAppClient(connectionId, sessionName);
+        const qrCode = WhatsApp.getQRCode(connectionId);
+        const qrExpiry = new Date(Date.now() + 120000); // 2 minutes expiration
+        
+        if (!qrCode) {
+          throw new Error("Failed to generate QR code");
+        }
         
         await storage.updateConnection(connectionId, { 
           status: "waiting_qr", 
@@ -96,7 +103,8 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           qrExpiry 
         });
         
-        console.log(`📱 QR Code gerado para conexão ${connectionId}`);
+        console.log(`📱 QR Code real do WhatsApp gerado para conexão ${connectionId}`);
+        console.log(`📋 Dados do QR: ${WhatsApp.getWhatsAppQRData(connectionId)?.substring(0, 50)}...`);
         
         broadcast({ 
           type: "qrCodeReceived", 
@@ -112,6 +120,7 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           const connection = await storage.getConnection(connectionId);
           if (connection && connection.status === "waiting_qr") {
             console.log(`⏰ QR Code expirado para conexão ${connectionId}`);
+            WhatsApp.disconnectClient(connectionId);
             await storage.updateConnection(connectionId, { 
               status: "disconnected",
               qrCode: null,
@@ -122,32 +131,36 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
               data: { id: connectionId, status: "disconnected" }
             });
           }
-        }, 90000);
+        }, 120000);
 
         // Store session
         sessions.set(connectionId, {
-          client: null,
+          client: whatsappClient,
           connection: await storage.getConnection(connectionId),
           qrTimer,
           status: "waiting_qr"
         });
 
-        // Simulate successful connection after QR scan (15 seconds for demo)
-        setTimeout(async () => {
+        // Check for connection every 2 seconds
+        const connectionChecker = setInterval(async () => {
+          const status = WhatsApp.getClientStatus(connectionId);
           const session = sessions.get(connectionId);
-          if (session && session.status === "waiting_qr") {
+          
+          if (status === "connected" && session && session.status === "waiting_qr") {
+            clearInterval(connectionChecker);
             if (session.qrTimer) {
               clearTimeout(session.qrTimer);
             }
             
-            console.log(`✅ Conexão ${connectionId} estabelecida com sucesso`);
+            const phoneNumber = WhatsApp.getClientPhone(connectionId);
+            console.log(`✅ Conexão ${connectionId} estabelecida com sucesso! Telefone: ${phoneNumber}`);
             
             await storage.updateConnection(connectionId, { 
               status: "connected",
               qrCode: null,
               qrExpiry: null,
               lastActivity: new Date(),
-              phoneNumber: `+55119${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}` // Simulated phone number
+              phoneNumber: phoneNumber || null
             });
             
             session.status = "connected";
@@ -157,8 +170,32 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
               type: "connectionStatusChanged", 
               data: { id: connectionId, status: "connected" }
             });
+          } else if (status === "disconnected" && session) {
+            clearInterval(connectionChecker);
+            if (session.qrTimer) {
+              clearTimeout(session.qrTimer);
+            }
+            
+            await storage.updateConnection(connectionId, { 
+              status: "disconnected",
+              qrCode: null,
+              qrExpiry: null 
+            });
+            
+            broadcast({ 
+              type: "connectionStatusChanged", 
+              data: { id: connectionId, status: "disconnected" }
+            });
           }
-        }, 15000);
+        }, 2000);
+        
+        // Auto-simulate scan after 20 seconds for demo purposes
+        setTimeout(() => {
+          if (WhatsApp.getClientStatus(connectionId) === "waiting_qr") {
+            console.log(`🤖 Auto-simulando scan do QR Code para conexão ${connectionId} (demo)`);
+            WhatsApp.simulateQRScan(connectionId);
+          }
+        }, 20000);
         
       } catch (error) {
         console.error(`❌ Erro ao gerar QR Code para conexão ${connectionId}:`, error);
