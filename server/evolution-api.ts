@@ -138,14 +138,16 @@ class EvolutionAPI {
   }
 
   async sendMessage(instanceName: string, to: string, message: string): Promise<any> {
-    console.log(`📤 Enviando mensagem via ${instanceName} para ${to}: ${message}`);
+    // Always use the correct instanceName for REST API calls
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📤 Enviando mensagem via ${correctInstanceName} para ${to}: ${message}`);
     
     const data = {
       number: to.replace(/\D/g, ''), // Remove non-digits
       text: message
     };
 
-    return await this.makeRequest(`/message/sendText/${instanceName}`, 'POST', data);
+    return await this.makeRequest(`/message/sendText/${correctInstanceName}`, 'POST', data);
   }
 
   async deleteInstance(instanceName: string): Promise<void> {
@@ -179,8 +181,10 @@ class EvolutionAPI {
 
   async getAllChats(instanceName: string): Promise<any> {
     try {
-      console.log(`📱 Buscando todos os chats reais da instância ${instanceName}`);
-      const response = await this.makeRequest(`/chat/findChats/${instanceName}`, 'POST', {
+      // Always use the correct instanceName for REST API calls
+      const correctInstanceName = "whatsapp_36_lowfy";
+      console.log(`📱 Buscando todos os chats reais da instância ${correctInstanceName}`);
+      const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
         where: {}
       });
       console.log(`✅ Encontrados ${response?.length || 0} chats reais`);
@@ -193,9 +197,9 @@ class EvolutionAPI {
 
   async getChatMessages(instanceName: string, chatId: string, limit: number = 50): Promise<any> {
     try {
-      // Force use the correct instance name
+      // Always use the correct instanceName for REST API calls
       const correctInstanceName = "whatsapp_36_lowfy";
-      console.log(`💬 Buscando mensagens reais do chat ${chatId} com instância ${correctInstanceName}`);
+      console.log(`💬 Buscando mensagens reais do chat ${chatId} com instanceName ${correctInstanceName}`);
       const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}`, 'POST', {
         where: {
           key: {
