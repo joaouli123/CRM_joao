@@ -169,9 +169,71 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, gte, sql, count } from "drizzle-orm";
+import { eq, gte, sql, count, and, or, asc } from "drizzle-orm";
+import { messages as messagesTable } from "@shared/schema";
 
 export class DatabaseStorage implements IStorage {
+  async getConversationsByConnection(connectionId: number): Promise<Conversation[]> {
+    const messages = await db.select().from(messagesTable).where(eq(messagesTable.connectionId, connectionId));
+    
+    // Group by phone number
+    const conversationMap = new Map<string, Conversation>();
+    
+    messages.forEach(msg => {
+      // Determine phone number based on direction
+      const phoneNumber = msg.direction === "sent" ? msg.to : msg.from;
+      const content = msg.body || "Mensagem sem conteúdo";
+      const timestamp = msg.timestamp || new Date();
+      
+      if (!conversationMap.has(phoneNumber)) {
+        conversationMap.set(phoneNumber, {
+          phoneNumber,
+          contactName: undefined,
+          lastMessage: content,
+          lastMessageTime: timestamp,
+          unreadCount: 0,
+          messageCount: 1
+        });
+      } else {
+        const conv = conversationMap.get(phoneNumber)!;
+        conv.messageCount++;
+        const msgTime = timestamp.getTime();
+        const lastTime = conv.lastMessageTime.getTime();
+        if (msgTime > lastTime) {
+          conv.lastMessage = content;
+          conv.lastMessageTime = timestamp;
+        }
+      }
+    });
+    
+    return Array.from(conversationMap.values())
+      .sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime());
+  }
+
+  async getMessagesByConversation(connectionId: number, phoneNumber: string, limit: number = 50): Promise<Message[]> {
+    const messages = await db.select().from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.connectionId, connectionId),
+          or(
+            and(eq(messagesTable.direction, "sent"), eq(messagesTable.to, phoneNumber)),
+            and(eq(messagesTable.direction, "received"), eq(messagesTable.from, phoneNumber))
+          )
+        )
+      )
+      .orderBy(asc(messagesTable.timestamp))
+      .limit(limit);
+    
+    return messages.map(msg => ({
+      id: msg.id,
+      connectionId: msg.connectionId,
+      direction: msg.direction as "sent" | "received",
+      phoneNumber: msg.direction === "sent" ? msg.to : msg.from,
+      content: msg.body,
+      status: msg.status as "pending" | "sent" | "delivered" | "failed",
+      timestamp: msg.timestamp || new Date()
+    }));
+  }
   async getConnection(id: number): Promise<Connection | undefined> {
     const [connection] = await db.select().from(connections).where(eq(connections.id, id));
     return connection || undefined;

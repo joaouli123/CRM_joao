@@ -206,6 +206,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get conversations for a connection
+  app.get("/api/connections/:id/conversations", async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.id);
+      const conversations = await storage.getConversationsByConnection(connectionId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("❌ Erro ao buscar conversas:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Get messages for a specific conversation
+  app.get("/api/connections/:id/conversations/:phoneNumber/messages", async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.id);
+      const phoneNumber = req.params.phoneNumber;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const messages = await storage.getMessagesByConversation(connectionId, phoneNumber, limit);
+      res.json(messages);
+    } catch (error) {
+      console.error("❌ Erro ao buscar mensagens da conversa:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   app.post("/api/connections", async (req, res) => {
     try {
       const result = insertConnectionSchema.safeParse(req.body);

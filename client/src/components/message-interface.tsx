@@ -43,11 +43,18 @@ export default function MessageInterface({
   });
 
   // Filter conversations based on search
-  const filteredConversations = conversations.filter(conv => 
-    conv.contactName?.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    conv.phoneNumber.includes(searchFilter) ||
-    conv.lastMessage.toLowerCase().includes(searchFilter.toLowerCase())
-  );
+  const filteredConversations = conversations.filter(conv => {
+    if (!conv) return false;
+    
+    const searchLower = searchFilter.toLowerCase();
+    const contactName = conv.contactName || "";
+    const phoneNumber = conv.phoneNumber || "";
+    const lastMessage = conv.lastMessage || "";
+    
+    return contactName.toLowerCase().includes(searchLower) ||
+           phoneNumber.includes(searchFilter) ||
+           lastMessage.toLowerCase().includes(searchLower);
+  });
 
   const formatTime = (date: Date | string) => {
     try {
@@ -194,9 +201,9 @@ export default function MessageInterface({
               </div>
             ) : (
               <div className="space-y-0">
-                {filteredConversations.map((conversation) => (
+                {filteredConversations.map((conversation, index) => (
                   <button
-                    key={conversation.phoneNumber}
+                    key={conversation.phoneNumber || `conversation-${index}`}
                     onClick={() => setSelectedConversation(conversation.phoneNumber)}
                     className={`w-full p-4 text-left hover:bg-gray-50 border-b border-gray-100 transition-colors ${
                       selectedConversation === conversation.phoneNumber ? 'bg-green-50 border-r-4 border-r-green-500' : ''
