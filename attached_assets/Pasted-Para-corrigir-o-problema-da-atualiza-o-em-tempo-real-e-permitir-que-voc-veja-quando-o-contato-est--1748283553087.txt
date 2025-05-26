@@ -1,0 +1,163 @@
+Para corrigir o problema da atualização em tempo real e permitir que você veja quando o contato está digitando, é necessário:
+
+    Garantir que o WebSocket seja mantido ativo e eficiente durante toda a interação com o chat.
+
+    Gerenciar a atualização do estado do React para que as mensagens recebidas sejam renderizadas instantaneamente, sem precisar trocar de chat ou atualizar a página.
+
+    Implementar o evento de "digitando...", para que você saiba quando o contato está digitando em tempo real.
+
+Vou lhe mostrar a solução completa com essas duas funcionalidades:
+1. Atualização de Mensagens em Tempo Real:
+
+Como as mensagens precisam aparecer sem interação do usuário (ou seja, sem mudar de janela ou atualizar a página), o estado do React deve ser atualizado automaticamente assim que uma nova mensagem for recebida via WebSocket.
+2. Implementação da Funcionalidade "Digitando...":
+
+Para isso, você precisa garantir que o evento de "digitando..." seja transmitido ao WebSocket, e a interface reaja a isso, exibindo a mensagem de "digitando..." enquanto o contato estiver digitando.
+
+Aqui está a implementação detalhada:
+Código Completo para as Funcionalidades:
+1. WebSocket para Mensagens em Tempo Real:
+
+import React, { useEffect, useState } from "react";
+
+// Gerenciar WebSocket
+const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+const [isConnected, setIsConnected] = useState(false);
+const [messages, setMessages] = useState<any[]>([]);
+const [typing, setTyping] = useState(false); // Para "Digitando..."
+
+useEffect(() => {
+  if (selectedConversation) {
+    // Verifica se a conexão WebSocket já está ativa
+    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+      console.log("WebSocket já está conectado.");
+      return;
+    }
+
+    const socket = new WebSocket(`wss://api.seusite.com/nome_instancia/${selectedConversation}`);
+
+    socket.onopen = () => {
+      console.log(`WebSocket conectado para o chat ${selectedConversation}!`);
+      setIsConnected(true);
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "newMessage") {
+        console.log("Nova mensagem recebida:", data);
+        // Adiciona a mensagem no estado
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: data.id,
+            content: data.content,
+            phoneNumber: data.phoneNumber,
+            timestamp: new Date(data.timestamp),
+          },
+        ]);
+      }
+
+      if (data.type === "typing") {
+        console.log(`${data.phoneNumber} está digitando...`);
+        setTyping(true); // Marca o contato como digitando
+        setTimeout(() => setTyping(false), 2000); // Remove a indicação após 2 segundos
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket desconectado.");
+      setIsConnected(false);
+    };
+
+    setWebSocket(socket);
+
+    return () => {
+      socket.close();
+    };
+  }
+}, [selectedConversation]);
+
+2. Exibição das Mensagens e Status "Digitando..." no Frontend:
+
+Agora que as mensagens estão sendo recebidas em tempo real, vamos renderizar elas no frontend. Também exibiremos um indicador de "Digitando..." quando o contato estiver digitando.
+
+const MessageInterface = () => {
+  const [selectedConversation, setSelectedConversation] = useState<string>("");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [typing, setTyping] = useState(false);
+
+  // Exibição das mensagens
+  return (
+    <div>
+      <div className="chat-box">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`message ${msg.phoneNumber === selectedConversation ? "sent" : "received"}`}>
+            <p>{msg.content}</p>
+            <span>{msg.timestamp.toLocaleTimeString()}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Exibir indicador "Digitando..." */}
+      {typing && <div className="typing-indicator">O contato está digitando...</div>}
+
+      <div className="message-input">
+        <input type="text" placeholder="Digite sua mensagem..." onKeyPress={sendTypingNotification} />
+        <button onClick={sendMessage}>Enviar</button>
+      </div>
+    </div>
+  );
+
+  // Função para enviar a notificação "digitando..." para o WebSocket
+  const sendTypingNotification = () => {
+    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+      webSocket.send(
+        JSON.stringify({
+          type: "typing",
+          phoneNumber: selectedConversation,
+        })
+      );
+    }
+  };
+
+  // Função para enviar mensagens
+  const sendMessage = (message: string) => {
+    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+      webSocket.send(
+        JSON.stringify({
+          type: "newMessage",
+          phoneNumber: selectedConversation,
+          content: message,
+        })
+      );
+      // Adiciona a mensagem ao estado local para renderizar
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          content: message,
+          phoneNumber: selectedConversation,
+          timestamp: new Date(),
+        },
+      ]);
+    }
+  };
+};
+
+Explicação Detalhada:
+
+    WebSocket para Mensagens em Tempo Real:
+
+        O WebSocket é mantido aberto enquanto o chat ativo estiver sendo visualizado.
+
+        Quando uma nova mensagem é recebida, o estado messages é atualizado e a interface renderiza a nova mensagem.
+
+        Quando o WebSocket recebe a mensagem do tipo "typing", o indicador "Digitando..." aparece na tela e desaparece após 2 segundos.
+
+    Indicador de "Digitando...":
+
+        Ao enviar uma notificação de "digitando..." via WebSocket, a interface exibe um aviso de que o contato está digitando, removendo-o automaticamente após 2 segundos de inatividade.
+
+    Forçar Atualização em Tempo Real:
+
+        As mensagens são imediatamente adicionadas ao estado de mensagens e a interface é re-renderizada para exibir as novas mensagens assim que chegam.

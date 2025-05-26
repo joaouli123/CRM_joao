@@ -67,9 +67,11 @@ export default function MessageInterface({
           if (messageData.type === 'newMessage' && messageData.data) {
             const data = messageData.data;
             console.log(`🔥 Mensagem WebSocket recebida:`, data);
+            console.log(`🔍 Verificando connectionId: ${data.connectionId} === ${selectedConnectionId}`);
             
             // Atualiza TODAS as mensagens para o chat correto, independente de estar ativo
             if (data.connectionId === selectedConnectionId) {
+              console.log(`✅ PROCESSANDO MENSAGEM PARA CONEXÃO CORRETA!`);
               
               setMessagesByInstance(prev => {
                 const targetChat = data.phoneNumber;
