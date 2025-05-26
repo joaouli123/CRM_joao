@@ -83,7 +83,7 @@ export default function MessageInterface({
                   return prev;
                 }
 
-                // Nova mensagem em tempo real
+                // Nova mensagem em tempo real COM TODOS OS CAMPOS
                 const newMessage = {
                   id: data.id,
                   connectionId: data.connectionId,
