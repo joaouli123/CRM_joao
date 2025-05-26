@@ -38,55 +38,57 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket for real-time messages
+  // WebSocket for real-time messages - FIXED!
   useWebSocket({
     onMessageReceived: (messageData) => {
-      console.log("🟢 MENSAGEM RECEBIDA EM TEMPO REAL:", messageData);
+      console.log("🔥 WEBSOCKET RECEBEU:", messageData);
       
-      // Check if this message belongs to current connection
+      // ONLY process messages for current connection
       if (messageData.connectionId === selectedConnectionId && instanceKey) {
         const phoneNumber = messageData.phoneNumber;
         
-        // CRITICAL: Only add RECEIVED messages to avoid duplicates
-        if (messageData.direction === 'received') {
-          console.log("📥 MENSAGEM RECEBIDA - ADICIONANDO AO CHAT ATIVO");
+        // Add ALL messages (sent and received) but check for duplicates
+        if (selectedConversation === phoneNumber) {
+          console.log("🎯 CHAT ATIVO - ADICIONANDO MENSAGEM:", messageData);
           
-          // Add message to current chat if it's open
-          if (selectedConversation === phoneNumber) {
-            setMessagesByInstance(prev => {
-              const currentMessages = prev[instanceKey]?.[phoneNumber] || [];
-              
-              // Check if message already exists to avoid duplicates
-              const messageExists = currentMessages.some(msg => msg.id === messageData.id);
-              if (messageExists) {
-                console.log("⚠️ Mensagem já existe, ignorando duplicata");
-                return prev;
+          setMessagesByInstance(prev => {
+            const currentMessages = prev[instanceKey]?.[phoneNumber] || [];
+            
+            // Prevent duplicates by checking ID and timestamp
+            const isDuplicate = currentMessages.some(msg => 
+              msg.id === messageData.id || 
+              (msg.content === messageData.content && 
+               Math.abs(new Date(msg.timestamp).getTime() - new Date(messageData.timestamp).getTime()) < 2000)
+            );
+            
+            if (isDuplicate) {
+              console.log("🛑 DUPLICATA DETECTADA - IGNORANDO");
+              return prev;
+            }
+            
+            const newMessage = {
+              id: messageData.id,
+              connectionId: messageData.connectionId,
+              direction: messageData.direction,
+              phoneNumber: messageData.phoneNumber,
+              content: messageData.content,
+              status: messageData.status || (messageData.direction === 'sent' ? 'sent' : 'delivered'),
+              timestamp: new Date(messageData.timestamp)
+            };
+            
+            console.log("✅ MENSAGEM ADICIONADA AO CHAT ATIVO:", newMessage);
+            
+            return {
+              ...prev,
+              [instanceKey]: {
+                ...prev[instanceKey],
+                [phoneNumber]: [...currentMessages, newMessage]
               }
-              
-              const newMessage = {
-                id: messageData.id,
-                connectionId: messageData.connectionId,
-                direction: messageData.direction,
-                phoneNumber: messageData.phoneNumber,
-                content: messageData.content,
-                status: messageData.status || 'delivered',
-                timestamp: new Date(messageData.timestamp)
-              };
-              
-              console.log("✅ ADICIONANDO MENSAGEM RECEBIDA AO CHAT ATIVO:", newMessage);
-              
-              return {
-                ...prev,
-                [instanceKey]: {
-                  ...prev[instanceKey],
-                  [phoneNumber]: [...currentMessages, newMessage]
-                }
-              };
-            });
-          }
+            };
+          });
         }
         
-        // Update conversation list for ALL messages (sent/received)
+        // Always update conversation list
         setChatsByInstance(prev => {
           const currentChats = prev[instanceKey] || [];
           const updatedChats = currentChats.map(chat => {
@@ -95,7 +97,7 @@ export default function MessageInterface({
                 ...chat,
                 lastMessage: messageData.content,
                 lastMessageTime: new Date(messageData.timestamp),
-                unreadCount: (selectedConversation === phoneNumber || messageData.direction === 'sent') ? 0 : (chat.unreadCount || 0) + 1
+                unreadCount: selectedConversation === phoneNumber ? 0 : (chat.unreadCount || 0) + 1
               };
             }
             return chat;
