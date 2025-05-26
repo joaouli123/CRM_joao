@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageCircle, Send, Phone, Clock, User, Search, ChevronDown } from "lucide-react";
 import { Connection, Conversation, Message } from "@/lib/api";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { useWebSocket } from "@/lib/websocket";
 
 interface MessageInterfaceProps {
   connections: Connection[];
@@ -36,6 +37,63 @@ export default function MessageInterface({
   // Get current instance info
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
+
+  // WebSocket for real-time messages
+  useWebSocket({
+    onMessageReceived: (messageData) => {
+      console.log("🟢 MENSAGEM RECEBIDA EM TEMPO REAL:", messageData);
+      
+      // Check if this message belongs to current connection
+      if (messageData.connectionId === selectedConnectionId) {
+        const phoneNumber = messageData.phoneNumber;
+        
+        // Add message to current chat if it's open
+        if (selectedConversation === phoneNumber && instanceKey) {
+          setMessagesByInstance(prev => ({
+            ...prev,
+            [instanceKey]: {
+              ...prev[instanceKey],
+              [phoneNumber]: [
+                ...(prev[instanceKey]?.[phoneNumber] || []),
+                {
+                  id: messageData.id,
+                  connectionId: messageData.connectionId,
+                  direction: messageData.direction,
+                  phoneNumber: messageData.phoneNumber,
+                  content: messageData.content,
+                  status: messageData.status,
+                  timestamp: new Date(messageData.timestamp)
+                }
+              ]
+            }
+          }));
+          
+          console.log("✅ Mensagem adicionada ao chat ativo em tempo real!");
+        }
+        
+        // Update conversation list to show latest message
+        setChatsByInstance(prev => {
+          const currentChats = prev[instanceKey] || [];
+          const updatedChats = currentChats.map(chat => {
+            if (chat.phoneNumber === phoneNumber) {
+              return {
+                ...chat,
+                lastMessage: messageData.content,
+                lastMessageTime: new Date(messageData.timestamp),
+                unreadCount: selectedConversation === phoneNumber ? 0 : chat.unreadCount + 1
+              };
+            }
+            return chat;
+          });
+          
+          return {
+            ...prev,
+            [instanceKey]: updatedChats
+          };
+        });
+      }
+    }
+  });
   
   // Load initial chats for current instance
   const { isLoading: conversationsLoading } = useQuery({
