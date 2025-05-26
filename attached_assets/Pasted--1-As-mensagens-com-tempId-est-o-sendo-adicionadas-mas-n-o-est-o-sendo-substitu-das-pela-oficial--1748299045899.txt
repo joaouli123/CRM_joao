@@ -1,0 +1,91 @@
+❌ 1. As mensagens com tempId estão sendo adicionadas, mas não estão sendo substituídas pela oficial
+
+Você pode ver que:
+
+    Aparecem dois balões: um com ⏳ (pending) e outro igual, mas já sem status.
+
+    No console, temos logs como:
+
+    MENSAGEM TEMPORÁRIA ADICIONADA: e7101f15-...
+    MENSAGEM TEMPORÁRIA ADICIONADA: 32f144d6-...
+
+    Isso indica que as mensagens estão sendo adicionadas sempre, não substituídas.
+
+❌ 2. Nenhum log de substituição aparece
+
+Você precisa ver algo como:
+
+🔄 Substituindo mensagem tempId=e7101f15... por id=509026e5-...
+
+✅ O que você precisa revisar no seu código:
+1. Na função sendMessage(), quando adiciona a mensagem local:
+
+const tempId = crypto.randomUUID();
+const tempMessage = {
+  id: tempId,
+  tempId, // 👈 importante
+  content: message,
+  status: 'pending',
+  timestamp: new Date().toISOString(),
+  direction: 'sent',
+};
+
+2. Na função que processa mensagens recebidas via WebSocket:
+
+Adicione a lógica de substituição com cuidado:
+
+if (data.direction === 'sent' && data.id && data.timestamp) {
+  const instanceMessages = messagesByInstance[instanceKey]?.[phoneNumber] || [];
+
+  const tempIndex = instanceMessages.findIndex(msg =>
+    msg.tempId && msg.content === data.content &&
+    Math.abs(new Date(msg.timestamp).getTime() - new Date(data.timestamp).getTime()) < 5000
+  );
+
+  if (tempIndex !== -1) {
+    console.log(`🔄 Substituindo mensagem tempId=${instanceMessages[tempIndex].tempId} por id=${data.id}`);
+    instanceMessages[tempIndex] = {
+      ...data,
+      status: 'sent',
+    };
+  } else {
+    console.warn("⚠️ Mensagem oficial recebida, mas não foi possível encontrar uma temporária para substituir.");
+    instanceMessages.push({
+      ...data,
+      status: 'sent',
+    });
+  }
+
+  setMessagesByInstance(prev => ({
+    ...prev,
+    [instanceKey]: {
+      ...prev[instanceKey],
+      [phoneNumber]: [...instanceMessages],
+    },
+  }));
+}
+
+3. Renderização condicional do status no chat:
+
+Garanta que você está lendo message.status === 'pending' para ⏳, sent para ✓ etc.
+✍️ Prompt para sua IA (se quiser que ela revise isso):
+
+    O sistema está gerando mensagens duplicadas porque não substitui corretamente mensagens locais temporárias (com tempId) pelas oficiais recebidas via WebSocket. Implemente um mecanismo que:
+
+        Gera tempId e adiciona a mensagem com status pending ao enviar.
+
+        Quando a mesma mensagem chega via WebSocket, identifica-a usando:
+
+        content igual
+
+        diferença de timestamp < 5 segundos
+
+        direction: 'sent'
+
+        substitui a mensagem temporária pela oficial.
+
+        Atualiza o status para sent e remove a tempId.
+
+        Se não encontrar a temporária, adiciona como nova (fallback).
+
+    Adicione logs detalhados para cada etapa.
