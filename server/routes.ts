@@ -554,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send message endpoint
+  // Send message endpoint - SEM DUPLICAÇÃO
   app.post("/api/connections/:id/send", async (req, res) => {
     try {
       const connectionId = parseInt(req.params.id);
@@ -594,22 +594,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`💾 Mensagem salva no banco:`, newMessage);
 
-        // Broadcast via WebSocket to update UI in real-time
-        const messageData = {
-          id: newMessage.id,
-          connectionId: connectionId,
-          phoneNumber: to,
-          direction: "sent",
-          content: message,
-          timestamp: new Date().toISOString(),
-          status: "sent"
-        };
-
-        console.log(`📡 Broadcasting mensagem via WebSocket:`, messageData);
-        broadcast({
-          type: "messageSent",
-          data: messageData
-        });
+        // ⚠️ NÃO FAZER BROADCAST AQUI - A Evolution API fará via webhook
+        console.log(`🚫 BROADCAST removido para evitar duplicação - webhook da Evolution API irá enviar`);
 
         res.json({ 
           success: true, 
@@ -630,7 +616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "sent"
         });
 
-        // Broadcast via WebSocket
+        // Apenas 1 broadcast no fallback
         const messageData = {
           id: newMessage.id,
           connectionId: connectionId,
@@ -641,41 +627,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "sent"
         };
 
-        console.log(`📡 Broadcasting mensagem fallback via WebSocket:`, messageData);
+        console.log(`📡 Broadcasting mensagem fallback via WebSocket (ÚNICO):`, messageData);
         broadcast({
           type: "messageSent",
           data: messageData
         });
-
-        // Simulate received message after 2 seconds for testing
-        setTimeout(async () => {
-          try {
-            const replyMessage = await storage.createMessage({
-              connectionId,
-              phoneNumber: to,
-              direction: "received" as const,
-              content: `Resposta automática: ${message}`,
-              status: "delivered"
-            });
-
-            // Broadcast received message
-            broadcast({
-              type: "messageReceived",
-              data: {
-                id: replyMessage.id,
-                connectionId: connectionId,
-                phoneNumber: to,
-                direction: "received",
-                content: `Resposta automática: ${message}`,
-                timestamp: new Date().toISOString(),
-                status: "delivered"
-              }
-            });
-
-          } catch (replyError) {
-            console.log("⚠️ Erro ao criar resposta automática:", replyError);
-          }
-        }, 2000);
 
         res.json({ 
           success: true, 

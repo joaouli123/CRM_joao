@@ -109,18 +109,12 @@ export default function MessageInterface({
 
                 console.log(`🚀 MENSAGEM CRIADA:`, newMsg);
 
-                // VERIFICAÇÃO RIGOROSA para evitar duplicação
+                // VERIFICAÇÃO SIMPLES para evitar duplicação
                 setRealtimeMessages(prev => {
-                  const existsExact = prev.some(m => 
-                    m.id === newMsg.id || 
-                    (m.content === newMsg.content && 
-                     m.phoneNumber === newMsg.phoneNumber && 
-                     m.direction === newMsg.direction &&
-                     Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 2000)
-                  );
+                  const existsById = prev.some(m => m.id === newMsg.id);
 
-                  if (existsExact) {
-                    console.log("⚠️ Mensagem já existe, ignorando duplicata");
+                  if (existsById) {
+                    console.log("⚠️ Mensagem com mesmo ID já existe, ignorando duplicata");
                     return prev;
                   }
 
