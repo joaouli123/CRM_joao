@@ -1,0 +1,69 @@
+Objetivo:
+Corrigir a duplicação de mensagens no frontend. Atualmente, ao enviar uma mensagem, ela aparece duas vezes no chat, mesmo sendo enviada apenas uma vez.
+
+O que está acontecendo:
+
+    Quando o usuário envia uma mensagem, o frontend executa:
+
+        addLocalMessage() ou algum setState() local que adiciona a mensagem diretamente no estado de mensagens para feedback imediato.
+
+    Logo depois, o WebSocket (ou API de resposta) devolve essa mesma mensagem com o mesmo ID e conteúdo.
+
+    O frontend trata essa mensagem como se fosse nova, e adiciona novamente.
+
+✅ O que precisa ser feito:
+
+    Implementar deduplicação robusta no setMessages() ou no seu estado de mensagens:
+
+const exists = currentMessages.some((msg) => msg.id === data.id);
+if (exists) return prev; // já está no estado, não adiciona de novo
+
+    Separar o tratamento de mensagens enviadas localmente e as recebidas via WebSocket:
+
+        Mensagens locais podem ter um status: "pending" e um ID temporário (por ex., local-uuid).
+
+        Quando o WebSocket retorna com o ID real, você pode:
+
+            substituir a mensagem pendente
+
+            ou ignorar a duplicação caso já esteja visível
+
+    Alternativa (melhor UX):
+    Adicionar a mensagem localmente com status: "pending", e quando a resposta do WebSocket vier com a mesma mensagem:
+
+        Atualizar o status para "sent"
+
+        Atualizar o ID real
+
+        Evitar adicionar uma nova mensagem
+
+💡 Exemplo (resumido):
+
+// Ao enviar
+addMessage({
+  id: 'temp-id-123',
+  content: "Mensagem",
+  status: "pending",
+  direction: "sent"
+});
+
+// Ao receber confirmação via WebSocket
+if (msg.id === 'temp-id-123') {
+  // substitui a mensagem temporária pela real
+  replaceMessage('temp-id-123', msg);
+} else if (!messages.some((m) => m.id === msg.id)) {
+  addMessage(msg); // se não existir, adiciona
+}
+
+🎯 Resultado esperado após aplicar:
+
+    ❌ Não haverá mais duplicações
+
+    ✅ Mensagem aparece imediatamente ao enviar
+
+    ✅ WebSocket atualiza o estado sem criar cópia
+
+    ✅ Se quiser, pode exibir status de envio (🕓 enviado, ✅ entregue etc.)
+
+Atenção:
+Esse comportamento é comum em apps como WhatsApp Web, Telegram Web etc. A chave é ter controle claro entre o que é “mensagem enviada” e “mensagem confirmada”.
