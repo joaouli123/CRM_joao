@@ -22,10 +22,10 @@ async function main() {
     }
   });
 
-  // Register API routes
+  // Register API routes FIRST
   const server = await registerRoutes(app);
 
-  // Set up Vite or serve static files
+  // Set up Vite or serve static files AFTER API routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {

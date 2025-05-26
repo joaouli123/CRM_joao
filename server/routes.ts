@@ -196,9 +196,12 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // API Routes with explicit /api prefix
   app.get("/api/connections", async (req, res) => {
     try {
+      console.log("📞 GET /api/connections");
       const connections = await storage.getAllConnections();
+      res.setHeader('Content-Type', 'application/json');
       res.json(connections);
     } catch (error) {
       console.error("Error fetching connections:", error);
@@ -210,11 +213,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/connections/:id/conversations", async (req, res) => {
     try {
       const connectionId = parseInt(req.params.id);
-      console.log(`🔍 Buscando conversas para conexão ${connectionId}`);
+      console.log(`🔍 GET /api/connections/${connectionId}/conversations`);
       
       const conversations = await storage.getConversationsByConnection(connectionId);
-      console.log(`✅ Encontradas ${conversations.length} conversas`);
+      console.log(`✅ Encontradas ${conversations.length} conversas para conexão ${connectionId}`);
       
+      res.setHeader('Content-Type', 'application/json');
       res.json(conversations);
     } catch (error) {
       console.error("❌ Erro ao buscar conversas:", error);
