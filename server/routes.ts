@@ -209,59 +209,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get conversations for a connection
+  // Get conversations for a connection - FIXED VERSION
   app.get("/api/connections/:id/conversations", async (req, res) => {
     try {
       const connectionId = parseInt(req.params.id);
       console.log(`🔍 GET /api/connections/${connectionId}/conversations`);
       
-      // Create real conversations from your WhatsApp contacts
       const connection = await storage.getConnection(connectionId);
-      if (connection && connection.status === "connected") {
-        const instanceName = `whatsapp_${connectionId}_${connection.name}`;
-        
-        try {
-          console.log(`🎯 Buscando seus contatos reais do WhatsApp...`);
-          const chats = await evolutionAPI.getAllChats(instanceName);
-          console.log(`✅ Encontrados ${chats.length} contatos autênticos na sua conta`);
-          
-          // Create conversations using real contact data
-          const recentChats = chats.slice(0, 10);
-          const realConversations = [];
-          
-          for (let i = 0; i < recentChats.length; i++) {
-            const chat = recentChats[i];
-            const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
-            
-            if (phoneNumber) {
-              const conversation = {
-                phoneNumber,
-                contactName: chat.pushName || phoneNumber,
-                lastMessage: `Conversa com ${chat.pushName || phoneNumber}`,
-                lastMessageTime: new Date(),
-                unreadCount: 0,
-                messageCount: 1
-              };
-              
-              realConversations.push(conversation);
-              console.log(`✅ ${i + 1}. ${chat.pushName || phoneNumber} (${phoneNumber})`);
-            }
-          }
-          
-          console.log(`📱 Retornando ${realConversations.length} conversas reais dos seus contatos WhatsApp`);
-          conversations = realConversations;
-        } catch (error) {
-          console.log(`⚠️ Erro ao buscar contatos:`, error);
-          conversations = [];
-        }
-      } else {
-        conversations = [];
+      
+      if (!connection || connection.status !== "connected") {
+        console.log(`⚠️ Conexão ${connectionId} não está conectada`);
+        return res.json([]);
       }
       
-      res.setHeader('Content-Type', 'application/json');
-      res.json(conversations);
+      const instanceName = `whatsapp_${connectionId}_${connection.name}`;
+      console.log(`🎯 Buscando contatos reais para ${instanceName}...`);
+      
+      try {
+        const chats = await evolutionAPI.getAllChats(instanceName);
+        console.log(`✅ Encontrados ${chats.length} contatos autênticos!`);
+        
+        // Create conversations from your real WhatsApp contacts
+        const realConversations = chats.slice(0, 12).map((chat, index) => {
+          const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+          if (!phoneNumber) return null;
+          
+          const conversation = {
+            phoneNumber,
+            contactName: chat.pushName || phoneNumber,
+            lastMessage: `Conversa com ${chat.pushName || phoneNumber}`,
+            lastMessageTime: new Date(chat.updatedAt || Date.now()),
+            unreadCount: 0,
+            messageCount: 1
+          };
+          
+          console.log(`✅ ${index + 1}. ${chat.pushName || phoneNumber} (${phoneNumber})`);
+          return conversation;
+        }).filter(Boolean);
+        
+        console.log(`🎉 Retornando ${realConversations.length} conversas dos seus contatos reais!`);
+        res.json(realConversations);
+        
+      } catch (apiError) {
+        console.log(`❌ Erro na Evolution API:`, apiError);
+        res.json([]);
+      }
+      
     } catch (error) {
-      console.error("❌ Erro ao buscar conversas:", error);
+      console.error("❌ Erro geral:", error);
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
