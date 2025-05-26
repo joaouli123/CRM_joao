@@ -1,4 +1,4 @@
-import { connections, messages, type Connection, type InsertConnection, type Message, type InsertMessage } from "@shared/schema";
+import { Connection, Message, InsertConnection, InsertMessage, connections, messages } from "@shared/schema";
 
 export interface IStorage {
   // Connection methods
@@ -30,15 +30,17 @@ export class MemStorage implements IStorage {
     this.currentMessageId = 1;
   }
 
-  // Connection methods
   async getConnection(id: number): Promise<Connection | undefined> {
     return this.connections.get(id);
   }
 
   async getConnectionByName(name: string): Promise<Connection | undefined> {
-    return Array.from(this.connections.values()).find(
-      (connection) => connection.name === name,
-    );
+    for (const connection of this.connections.values()) {
+      if (connection.name === name) {
+        return connection;
+      }
+    }
+    return undefined;
   }
 
   async getAllConnections(): Promise<Connection[]> {
@@ -68,25 +70,26 @@ export class MemStorage implements IStorage {
     const connection = this.connections.get(id);
     if (!connection) return undefined;
     
-    const updatedConnection = { ...connection, ...updates };
-    this.connections.set(id, updatedConnection);
-    return updatedConnection;
+    const updated = { ...connection, ...updates };
+    this.connections.set(id, updated);
+    return updated;
   }
 
   async deleteConnection(id: number): Promise<boolean> {
     return this.connections.delete(id);
   }
 
-  // Message methods
   async getMessage(id: number): Promise<Message | undefined> {
     return this.messages.get(id);
   }
 
   async getMessagesByConnection(connectionId: number, limit: number = 50): Promise<Message[]> {
-    return Array.from(this.messages.values())
-      .filter(message => message.connectionId === connectionId)
-      .sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0))
+    const allMessages = Array.from(this.messages.values())
+      .filter(msg => msg.connectionId === connectionId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
+    
+    return allMessages;
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
@@ -103,7 +106,7 @@ export class MemStorage implements IStorage {
     const connection = this.connections.get(insertMessage.connectionId);
     if (connection) {
       connection.messageCount = (connection.messageCount || 0) + 1;
-      connection.lastActivity = new Date();
+      this.connections.set(connection.id, connection);
     }
     
     return message;
@@ -113,21 +116,103 @@ export class MemStorage implements IStorage {
     const message = this.messages.get(id);
     if (!message) return undefined;
     
-    const updatedMessage = { ...message, ...updates };
-    this.messages.set(id, updatedMessage);
-    return updatedMessage;
+    const updated = { ...message, ...updates };
+    this.messages.set(id, updated);
+    return updated;
   }
 
   async getTodayMessageCount(): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    return Array.from(this.messages.values())
-      .filter(message => {
-        const messageDate = message.timestamp || new Date(0);
-        return messageDate >= today;
-      }).length;
+    return Array.from(this.messages.values()).filter(msg => {
+      return msg.timestamp >= today;
+    }).length;
   }
 }
 
-export const storage = new MemStorage();
+import { db } from "./db";
+import { eq, gte, sql, count } from "drizzle-orm";
+
+export class DatabaseStorage implements IStorage {
+  async getConnection(id: number): Promise<Connection | undefined> {
+    const [connection] = await db.select().from(connections).where(eq(connections.id, id));
+    return connection || undefined;
+  }
+
+  async getConnectionByName(name: string): Promise<Connection | undefined> {
+    const [connection] = await db.select().from(connections).where(eq(connections.name, name));
+    return connection || undefined;
+  }
+
+  async getAllConnections(): Promise<Connection[]> {
+    return await db.select().from(connections);
+  }
+
+  async createConnection(insertConnection: InsertConnection): Promise<Connection> {
+    const [connection] = await db
+      .insert(connections)
+      .values(insertConnection)
+      .returning();
+    return connection;
+  }
+
+  async updateConnection(id: number, updates: Partial<Connection>): Promise<Connection | undefined> {
+    const [connection] = await db
+      .update(connections)
+      .set(updates)
+      .where(eq(connections.id, id))
+      .returning();
+    return connection || undefined;
+  }
+
+  async deleteConnection(id: number): Promise<boolean> {
+    const result = await db.delete(connections).where(eq(connections.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getMessage(id: number): Promise<Message | undefined> {
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message || undefined;
+  }
+
+  async getMessagesByConnection(connectionId: number, limit: number = 50): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.connectionId, connectionId))
+      .orderBy(messages.timestamp)
+      .limit(limit);
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const [message] = await db
+      .insert(messages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
+
+  async updateMessage(id: number, updates: Partial<Message>): Promise<Message | undefined> {
+    const [message] = await db
+      .update(messages)
+      .set(updates)
+      .where(eq(messages.id, id))
+      .returning();
+    return message || undefined;
+  }
+
+  async getTodayMessageCount(): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(gte(messages.timestamp, today));
+    
+    return result[0]?.count || 0;
+  }
+}
+
+export const storage = new DatabaseStorage();
