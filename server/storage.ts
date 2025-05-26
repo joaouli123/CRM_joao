@@ -30,6 +30,65 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.currentConnectionId = 1;
     this.currentMessageId = 1;
+    
+    // Adicionar algumas mensagens de exemplo para demonstração
+    this.addSampleMessages();
+  }
+
+  private addSampleMessages() {
+    // Criar mensagens de exemplo para as conexões existentes
+    const sampleMessages = [
+      {
+        connectionId: 30,
+        direction: "received" as const,
+        from: "+5511999888777",
+        to: "",
+        body: "Olá! Gostaria de saber mais sobre seus produtos.",
+        status: "delivered" as const,
+        timestamp: new Date(Date.now() - 3600000) // 1 hora atrás
+      },
+      {
+        connectionId: 30,
+        direction: "sent" as const,
+        from: "",
+        to: "+5511999888777",
+        body: "Olá! Claro, ficaremos felizes em ajudar. Que tipo de produto você procura?",
+        status: "delivered" as const,
+        timestamp: new Date(Date.now() - 3500000)
+      },
+      {
+        connectionId: 30,
+        direction: "received" as const,
+        from: "+5511987654321",
+        to: "",
+        body: "Bom dia! Vocês fazem entrega na região central?",
+        status: "delivered" as const,
+        timestamp: new Date(Date.now() - 1800000) // 30 min atrás
+      },
+      {
+        connectionId: 32,
+        direction: "received" as const,
+        from: "+5511123456789",
+        to: "",
+        body: "Oi! Quero fazer um pedido.",
+        status: "delivered" as const,
+        timestamp: new Date(Date.now() - 900000) // 15 min atrás
+      }
+    ];
+
+    sampleMessages.forEach(msg => {
+      const message: Message = {
+        id: this.currentMessageId++,
+        connectionId: msg.connectionId,
+        direction: msg.direction,
+        from: msg.from,
+        to: msg.to,
+        body: msg.body,
+        status: msg.status,
+        timestamp: msg.timestamp
+      };
+      this.messages.set(message.id, message);
+    });
   }
 
   async getConnection(id: number): Promise<Connection | undefined> {

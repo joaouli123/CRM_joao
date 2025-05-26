@@ -210,7 +210,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/connections/:id/conversations", async (req, res) => {
     try {
       const connectionId = parseInt(req.params.id);
+      console.log(`🔍 Buscando conversas para conexão ${connectionId}`);
+      
       const conversations = await storage.getConversationsByConnection(connectionId);
+      console.log(`✅ Encontradas ${conversations.length} conversas`);
+      
       res.json(conversations);
     } catch (error) {
       console.error("❌ Erro ao buscar conversas:", error);
