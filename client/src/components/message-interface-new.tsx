@@ -42,114 +42,139 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket global para todas as mensagens em tempo real
+  // WebSocket FORÇADO para mensagens em tempo real
   useEffect(() => {
     if (!selectedConnectionId) return;
 
-    console.log(`🔌 Conectando WebSocket global para conexão ${selectedConnectionId}`);
+    console.log(`🔌 INICIANDO WebSocket FORÇADO para conexão ${selectedConnectionId}`);
     
-    const wsUrl = `wss://${window.location.host}/api/ws`;
-    const socket = new WebSocket(wsUrl);
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let socket: WebSocket | null = null;
 
-    socket.onopen = () => {
-      console.log(`✅ WebSocket global conectado!`);
-      setIsConnected(true);
-    };
-
-    socket.onmessage = (event) => {
+    const connectWebSocket = () => {
       try {
-        const data = JSON.parse(event.data);
-        console.log("📨 WebSocket message received:", data);
+        const wsUrl = `wss://${window.location.host}/api/ws`;
+        console.log(`📡 Conectando WebSocket FORÇADO: ${wsUrl}`);
+        
+        socket = new WebSocket(wsUrl);
 
-        // MENSAGENS EM TEMPO REAL - processar TODAS as mensagens
-        if ((data.type === "newMessage" || data.type === "messageReceived" || data.type === "messageSent") && data.data) {
-          const messageData = data.data;
+        socket.onopen = () => {
+          console.log(`✅ WebSocket FORÇADO conectado! Conexão: ${selectedConnectionId}`);
+          setIsConnected(true);
           
-          // Só processa se for da conexão ativa
-          if (messageData.connectionId === selectedConnectionId) {
-            console.log(`✅ Processando mensagem para conexão ${selectedConnectionId}:`, messageData);
-            
-            const targetChat = messageData.phoneNumber;
-            
-            setMessagesByInstance((prevMessages) => {
-              const currentMessages = prevMessages[instanceKey]?.[targetChat] || [];
-              
-              // Verifica duplicação por ID única
-              const exists = currentMessages.some((m: any) => m.id === messageData.id);
-              if (exists) {
-                console.log("Mensagem duplicada ignorada");
-                return prevMessages;
-              }
-              
-              // Adiciona nova mensagem
-              const newMessage = {
-                id: messageData.id || `msg_${Date.now()}_${Math.random()}`,
-                content: messageData.content || messageData.body || messageData.message,
-                phoneNumber: messageData.phoneNumber || messageData.from,
-                direction: messageData.direction,
-                timestamp: new Date(messageData.timestamp),
-                status: messageData.status || 'delivered'
-              };
-              
-              console.log(`✅ TEMPO REAL: Adicionando "${newMessage.content}" para ${targetChat}`);
-              
-              return {
-                ...prevMessages,
-                [instanceKey]: {
-                  ...prevMessages[instanceKey],
-                  [targetChat]: [...currentMessages, newMessage]
-                }
-              };
-            });
+          // FORÇA o registro para receber mensagens
+          socket?.send(JSON.stringify({
+            type: "register",
+            connectionId: selectedConnectionId
+          }));
+        };
 
-            // Atualiza também a lista de conversas
-            setChatsByInstance(prev => {
-              const currentChats = prev[instanceKey] || [];
-              const updatedChats = currentChats.map(chat => {
-                if (chat.phoneNumber === targetChat) {
-                  return {
-                    ...chat,
-                    lastMessage: messageData.content || messageData.body,
-                    lastMessageTime: new Date(messageData.timestamp),
-                    unreadCount: messageData.direction === 'received' && selectedConversation !== targetChat 
-                      ? (chat.unreadCount || 0) + 1 
-                      : chat.unreadCount || 0
-                  };
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log(`📨 WEBSOCKET RECEBEU:`, data);
+
+            // FORÇA o processamento de QUALQUER mensagem relacionada à conexão
+            if (data.data && data.data.connectionId === selectedConnectionId) {
+              const msgData = data.data;
+              const chatPhone = msgData.phoneNumber || msgData.from || msgData.to;
+              
+              console.log(`🎯 PROCESSANDO MENSAGEM FORÇADA: ${msgData.content || msgData.body} para chat ${chatPhone}`);
+              
+              // FORÇAR atualização imediata das mensagens
+              setMessagesByInstance((prevMessages) => {
+                const currentMessages = prevMessages[instanceKey]?.[chatPhone] || [];
+                
+                // Anti-duplicação
+                const messageId = msgData.id || `msg_${Date.now()}_${Math.random()}`;
+                const exists = currentMessages.some((m: any) => m.id === messageId);
+                if (exists) {
+                  console.log("⚠️ Mensagem duplicada ignorada");
+                  return prevMessages;
                 }
-                return chat;
+                
+                // NOVA MENSAGEM FORÇADA
+                const newMessage = {
+                  id: messageId,
+                  content: msgData.content || msgData.body || msgData.message || "Nova mensagem",
+                  phoneNumber: chatPhone,
+                  direction: msgData.direction || (msgData.fromMe ? "sent" : "received"),
+                  timestamp: new Date(msgData.timestamp || Date.now()),
+                  status: msgData.status || 'delivered'
+                };
+                
+                console.log(`🚀 ADICIONANDO MENSAGEM FORÇADA: "${newMessage.content}" para ${chatPhone}`);
+                console.log(`📊 Total mensagens antes: ${currentMessages.length}, depois: ${currentMessages.length + 1}`);
+                
+                return {
+                  ...prevMessages,
+                  [instanceKey]: {
+                    ...prevMessages[instanceKey],
+                    [chatPhone]: [...currentMessages, newMessage]
+                  }
+                };
               });
-              
-              return {
-                ...prev,
-                [instanceKey]: updatedChats
-              };
-            });
-          }
-        }
 
-        // STATUS "DIGITANDO..."
-        if (data.type === "typing") {
-          console.log(`${data.phoneNumber} está digitando...`);
-          if (data.phoneNumber === selectedConversation) {
-            setTyping(true);
-            setTimeout(() => setTyping(false), 2000);
+              // FORÇAR atualização da lista de conversas
+              setChatsByInstance(prev => {
+                const currentChats = prev[instanceKey] || [];
+                const updatedChats = currentChats.map(chat => {
+                  if (chat.phoneNumber === chatPhone) {
+                    return {
+                      ...chat,
+                      lastMessage: msgData.content || msgData.body || "Nova mensagem",
+                      lastMessageTime: new Date(msgData.timestamp || Date.now()),
+                      unreadCount: msgData.direction === 'received' && selectedConversation !== chatPhone 
+                        ? (chat.unreadCount || 0) + 1 
+                        : chat.unreadCount || 0
+                    };
+                  }
+                  return chat;
+                });
+                
+                return {
+                  ...prev,
+                  [instanceKey]: updatedChats
+                };
+              });
+            }
+
+            // STATUS "DIGITANDO..."
+            if (data.type === "typing" && data.phoneNumber === selectedConversation) {
+              setTyping(true);
+              setTimeout(() => setTyping(false), 2000);
+            }
+          } catch (error) {
+            console.error("❌ Erro ao processar WebSocket:", error);
           }
-        }
+        };
+
+        socket.onerror = (error) => {
+          console.error("❌ WebSocket erro:", error);
+        };
+
+        socket.onclose = () => {
+          console.log("🔴 WebSocket FORÇADO fechado, tentando reconectar...");
+          setIsConnected(false);
+          
+          // Reconexão automática
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(connectWebSocket, 2000);
+        };
+
       } catch (error) {
-        console.error("Erro ao processar mensagem WebSocket:", error);
+        console.error("❌ Erro ao criar WebSocket:", error);
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connectWebSocket, 2000);
       }
     };
 
-    socket.onclose = () => {
-      console.log("WebSocket desconectado.");
-      setIsConnected(false);
-    };
-
-    setWebSocket(socket);
+    connectWebSocket();
 
     return () => {
-      console.log("🔌 Fechando WebSocket global");
-      socket.close();
+      console.log("🔌 Limpando WebSocket FORÇADO");
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (socket) socket.close();
     };
   }, [selectedConnectionId, instanceKey]);
 
@@ -352,6 +377,57 @@ export default function MessageInterface({
       socket.close();
     };
   }, [selectedConnectionId, instanceKey, selectedConversation]);
+
+  // POLLING FORÇADO para garantir mensagens em tempo real
+  useEffect(() => {
+    if (!selectedConversation || !selectedConnectionId) return;
+
+    console.log(`⏰ INICIANDO POLLING FORÇADO para ${selectedConversation}`);
+
+    const pollMessages = async () => {
+      try {
+        const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`);
+        const serverMessages = await response.json();
+
+        if (serverMessages.length > 0) {
+          const currentMessages = messagesByInstance[instanceKey]?.[selectedConversation] || [];
+          
+          // Verificar se há mensagens novas no servidor
+          const newestServerMessage = serverMessages[serverMessages.length - 1];
+          const newestClientMessage = currentMessages[currentMessages.length - 1];
+
+          if (!newestClientMessage || 
+              newestServerMessage.id !== newestClientMessage.id ||
+              serverMessages.length !== currentMessages.length) {
+            
+            console.log(`🔄 POLLING: Atualizando mensagens para ${selectedConversation}`);
+            console.log(`📊 Servidor: ${serverMessages.length}, Cliente: ${currentMessages.length}`);
+
+            setMessagesByInstance(prev => ({
+              ...prev,
+              [instanceKey]: {
+                ...prev[instanceKey],
+                [selectedConversation]: serverMessages
+              }
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erro no polling:', error);
+      }
+    };
+
+    // Polling a cada 2 segundos
+    const pollInterval = setInterval(pollMessages, 2000);
+    
+    // Executar imediatamente
+    pollMessages();
+
+    return () => {
+      console.log(`⏰ PARANDO POLLING para ${selectedConversation}`);
+      clearInterval(pollInterval);
+    };
+  }, [selectedConversation, selectedConnectionId, instanceKey]);
 
   // Get conversations for current instance
   const conversations = chatsByInstance[instanceKey] || [];

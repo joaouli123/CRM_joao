@@ -258,4 +258,28 @@ evolutionAPI.findWebSocket = async function(instanceName: string): Promise<any> 
     throw error;
   }
 };
+
+// CONFIGURAR WEBHOOK FORÇADO para receber mensagens
+evolutionAPI.configureWebhook = async function(instanceName: string): Promise<any> {
+  try {
+    const webhookUrl = `https://${process.env.REPL_SLUG || 'default'}.${process.env.REPL_OWNER || 'user'}.repl.co/api/webhook/messages`;
+    console.log(`🔗 Configurando webhook para ${instanceName}: ${webhookUrl}`);
+    
+    const response = await this.makeRequest(`/webhook/set/${instanceName}`, 'POST', {
+      url: webhookUrl,
+      enabled: true,
+      events: [
+        "MESSAGES_UPSERT",
+        "MESSAGES_UPDATE",
+        "SEND_MESSAGE"
+      ]
+    });
+    
+    console.log(`✅ Webhook configurado para ${instanceName}:`, response);
+    return response;
+  } catch (error) {
+    console.error(`❌ Erro ao configurar webhook para ${instanceName}:`, error);
+    throw error;
+  }
+};
 export { EvolutionAPI };
