@@ -1,0 +1,131 @@
+❌ PROBLEMAS A SEREM RESOLVIDOS
+1. Histórico de mensagens não é exibido
+
+Mesmo após clicar em um contato:
+
+    Nenhuma mensagem anterior aparece.
+
+    A interface exibe apenas a mensagem: Conversa iniciada – As mensagens desta conversa aparecerão aqui.
+
+    O envio de novas mensagens é registrado no console, mas nada aparece visualmente no chat.
+
+🔧 Ação esperada:
+
+    Ao clicar num contato, buscar o histórico completo das mensagens.
+
+    Exibir essas mensagens no painel direito do chat.
+
+    Atualizar a interface com novas mensagens em tempo real via WebSocket.
+
+2. Mensagens enviadas não aparecem no chat
+
+As mensagens são enviadas via:
+
+socket.emit("send_message", {
+  to: "55XXXXXXXXXXX",
+  message: "Olá"
+});
+
+O console mostra:
+
+Enviando mensagem: { to: "...", message: "..." }
+
+Porém:
+
+    Nenhuma mensagem aparece na interface.
+
+    Não há escuta dos eventos de retorno (message, message_sent, etc).
+
+🔧 Ação esperada:
+
+    Escutar e renderizar a resposta ao envio de mensagem com o evento certo.
+
+    Exemplo esperado:
+
+socket.on("message", (data) => {
+  // exibir a nova mensagem no chat
+});
+
+3. Carregamento incompleto de contatos
+
+    Apenas 12 contatos são carregados inicialmente.
+
+    O botão "Carregar mais" carrega apenas mais 4 contatos (mesmo com mais de 60 existentes).
+
+🔧 Correção esperada:
+
+    Implementar paginação com carregamento de 8 em 8 contatos.
+
+    Continuar carregando até que todos os contatos do backend sejam listados.
+
+4. Busca não funciona globalmente
+
+O campo de pesquisa só filtra os contatos já carregados na interface.
+
+🔧 Comportamento esperado:
+
+    A busca deve ser feita em todos os contatos da base, mesmo os que ainda não foram carregados na tela.
+
+    A busca pode ser feita via backend (com debounce) usando nome ou telefone.
+
+⚙️ VERIFICAÇÕES TÉCNICAS (Baseado nos documentos oficiais)
+✅ Verificar se as variáveis de ambiente obrigatórias estão configuradas corretamente:
+
+# WebSocket
+WEBSOCKET_ENABLED=true
+WEBSOCKET_GLOBAL_EVENTS=true
+
+# Armazenamento temporário (essencial para histórico funcionar)
+STORE_MESSAGES=true
+STORE_CONTACTS=true
+STORE_CHATS=true
+
+# Banco de dados (MongoDB)
+DATABASE_ENABLED=true
+DATABASE_CONNECTION_URI=mongodb+srv://usuario:senha@cluster.mongodb.net/meubanco
+DATABASE_SAVE_DATA_NEW_MESSAGE=true
+DATABASE_SAVE_DATA_CONTACTS=true
+DATABASE_SAVE_DATA_CHATS=true
+
+    Sem essas variáveis, o backend não armazena mensagens e o frontend não consegue exibir histórico.
+
+✅ Certificar que o frontend esteja escutando os eventos corretos do WebSocket
+
+Segundo a documentação, os eventos do socket.io devem ser escutados assim:
+
+const socket = io('wss://api.seusite.com/nome_instancia', {
+  transports: ['websocket'],
+});
+
+socket.on('connect', () => {
+  console.log('Conectado');
+});
+
+socket.on('message', (data) => {
+  console.log('Mensagem recebida:', data);
+  // Atualizar interface
+});
+
+socket.on('history', (data) => {
+  console.log('Histórico:', data);
+  // Exibir histórico
+});
+
+    Se não escutarmos esses eventos corretamente, o histórico e mensagens nunca aparecerão.
+
+🛠 Sugestão de depuração extra
+
+Adicionar temporariamente:
+
+socket.onAny((event, data) => {
+  console.log("🛰 Evento recebido:", event, data);
+});
+
+Para descobrir todos os eventos que o backend está emitindo, caso o nome dos eventos como "message" ou "history" esteja incorreto ou personalizado.
+✅ OBJETIVO FINAL
+Item	O que precisa funcionar	Status atual
+1️⃣	Mostrar histórico da conversa ao clicar no contato	❌ Não aparece nada
+2️⃣	Exibir mensagens enviadas e recebidas no chat	❌ Mensagens não aparecem
+3️⃣	Carregar todos os contatos paginando de 8 em 8	❌ Só 16 no máximo
+4️⃣	Fazer busca global por nome/número	❌ Busca limitada ao frontend
+5️⃣	WebSocket escutando os eventos corretos	❌ Provavelmente incompleto
