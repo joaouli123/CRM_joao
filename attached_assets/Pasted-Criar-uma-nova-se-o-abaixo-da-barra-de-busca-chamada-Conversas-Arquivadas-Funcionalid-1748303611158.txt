@@ -1,0 +1,60 @@
+Criar uma nova seção abaixo da barra de busca chamada:
+
+    📂 Conversas Arquivadas
+
+Funcionalidade esperada:
+
+    Fazer requisição para GET /api/connections/:connectionId/archived-chats para listar todas as conversas arquivadas da instância atual.
+
+    Exibir:
+
+        Nome do contato
+
+        Última mensagem
+
+        Data de arquivamento
+
+    Cada item da lista deve ter os seguintes botões de ação:
+
+        🔄 Desarquivar: chama PUT /api/archived-chats/:chatId/unarchive
+
+        🗑️ Excluir: chama DELETE /api/archived-chats/:chatId
+
+        🔕 Silenciar: apenas visual, não precisa estar funcional por enquanto
+
+        🏷️ Etiqueta: placeholder visual (a funcionalidade será implementada depois)
+
+🔧 AJUSTES DE INTERFACE
+
+    A seção de arquivados deve aparecer abaixo da barra de busca, com estilo visual diferenciado (ex: cor mais suave, ícone de pasta, etc).
+
+    Adicionar botão de "Arquivar" ao lado de cada conversa ativa na listagem principal.
+
+    Quando uma conversa for arquivada:
+
+        Ela deve sumir da lista de conversas ativas
+
+        Ser adicionada à seção de arquivadas, sem necessidade de recarregar a página.
+
+📦 REQUISIÇÕES DE API QUE DEVEM SER USADAS
+Ação	Método e Rota	Descrição
+Arquivar conversa	POST /api/connections/:connectionId/archive-chat	Arquiva uma conversa ativa
+Listar arquivadas	GET /api/connections/:connectionId/archived-chats	Retorna todas as conversas arquivadas
+Ver mensagens arquivadas	GET /api/archived-chats/:chatId/messages	Mostra mensagens de uma conversa arquivada
+Desarquivar	PUT /api/archived-chats/:chatId/unarchive	Restaura uma conversa arquivada
+Deletar	DELETE /api/archived-chats/:chatId	Remove permanentemente uma conversa
+✅ EXTRAS
+
+    Use componentes reutilizáveis se possível (ex: Card de Conversa).
+
+    Adicione um pequeno ícone com tooltip em cada botão para melhor usabilidade.
+
+    Mostrar mensagens de sucesso/erro após ações como arquivar, desarquivar, excluir.
+
+🎯 OBJETIVO FINAL:
+
+    Corrigir o erro do botão de arquivar.
+
+    Ter uma seção funcional e visualmente agradável para gerenciar conversas arquivadas diretamente pela interface.
+
+    Deixar tudo pronto para futuramente ativar as funções de etiquetas e silenciar.

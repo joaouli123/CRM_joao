@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageCircle, Send, Phone, Clock, User, Search, Archive, MoreVertical, Trash2, Volume, VolumeX, Tag, Bell, BellOff } from "lucide-react";
 import { Connection, Conversation, Message } from "@/lib/api";
 import { format, isToday, isYesterday } from "date-fns";
+import ArchivedConversationsSection from "./archived-conversations-section";
 
 interface MessageInterfaceProps {
   connections: Connection[];
@@ -456,13 +457,9 @@ export default function MessageInterface({
               {filteredConversations.map((conv: any) => (
                 <div
                   key={conv.phoneNumber}
-                  className={`p-4 border-b cursor-pointer hover:bg-muted transition-colors ${
+                  className={`group p-4 border-b hover:bg-muted transition-colors ${
                     selectedConversation === conv.phoneNumber ? 'bg-muted' : ''
                   }`}
-                  onClick={() => {
-                    console.log(`📱 SELECIONANDO CONVERSA: ${conv.phoneNumber}`);
-                    setSelectedConversation(conv.phoneNumber);
-                  }}
                 >
                   <div className="flex items-center space-x-3">
                     <Avatar>
@@ -470,7 +467,13 @@ export default function MessageInterface({
                         <User className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
+                    <div 
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => {
+                        console.log(`📱 SELECIONANDO CONVERSA: ${conv.phoneNumber}`);
+                        setSelectedConversation(conv.phoneNumber);
+                      }}
+                    >
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium truncate">
                           {conv.contactName || conv.phoneNumber}
@@ -488,9 +491,27 @@ export default function MessageInterface({
                         </Badge>
                       )}
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleArchiveChat(conv.phoneNumber);
+                      }}
+                      className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Arquivar conversa"
+                    >
+                      <Archive className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
+
+              {/* Seção de Conversas Arquivadas */}
+              <ArchivedConversationsSection 
+                connectionId={selectedConnectionId}
+                onChatSelect={(phoneNumber) => setSelectedConversation(phoneNumber)}
+              />
             </ScrollArea>
           </CardContent>
         </Card>
