@@ -4,7 +4,7 @@ import Sidebar from "@/components/sidebar";
 import ConnectionCard from "@/components/connection-card";
 import MessageInterface from "@/components/message-interface-final";
 import NewConnectionModal from "@/components/new-connection-modal";
-import QRCodeModal from "@/components/qr-code-modal";
+import { QRCodeModal } from "@/components/modals/qr-code-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, MessageSquare, Clock, Zap } from "lucide-react";
