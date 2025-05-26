@@ -44,6 +44,7 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
         const qrCode = await evolutionAPI.generateQRCode(instanceName);
         const qrExpiry = new Date(Date.now() + 180000);
         
+        // Store the instance name for automatic detection
         await storage.updateConnection(connectionId, { 
           status: "waiting_qr", 
           qrCode,
@@ -52,6 +53,7 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
         });
         
         console.log(`📱 QR Code REAL do WhatsApp gerado para conexão ${connectionId}!`);
+        console.log(`💾 Instância salva: ${instanceName}`);
         
         broadcast({ 
           type: "qrCodeReceived", 
@@ -226,10 +228,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎯 Buscando contatos reais para ${instanceName}...`);
       
       try {
-        // Use your current connected Evolution API instance
-        console.log(`🎯 Conectando com sua instância real: ${instanceName}`);
-        const chats = await evolutionAPI.getAllChats(instanceName);
-        console.log(`✅ Encontrados ${chats.length} contatos autênticos de ${instanceName}!`);
+        // Auto-detect the correct connected instance
+        let activeInstanceName = connection.sessionData || instanceName;
+        
+        console.log(`🎯 Auto-detectando instância ativa: ${activeInstanceName}`);
+        const chats = await evolutionAPI.getAllChats(activeInstanceName);
+        console.log(`✅ Encontrados ${chats.length} contatos autênticos de ${activeInstanceName}!`);
         
         // Create conversations from ALL your real WhatsApp contacts
         const realConversations = chats.map((chat, index) => {
@@ -374,9 +378,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sessionName = connection.name;
           console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
           
-          // Get real messages from Evolution API using your current connected instance
-          const realInstanceName = `whatsapp_${connectionId}_${connection.name}`;
-          console.log(`🔍 Usando instância conectada: ${realInstanceName}`);
+          // Auto-detect and use the correct connected instance dynamically
+          let realInstanceName;
+          
+          if (connection.sessionData) {
+            realInstanceName = connection.sessionData;
+            console.log(`🎯 Usando instância salva: ${realInstanceName}`);
+          } else {
+            realInstanceName = `whatsapp_${connectionId}_${connection.name}`;
+            console.log(`🔄 Usando instância dinâmica: ${realInstanceName}`);
+          }
+          
           const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
           
           if (realMessages && realMessages.length > 0) {
