@@ -1,0 +1,44 @@
+📲 Estou desenvolvendo uma aplicação de atendimento via WhatsApp, mas preciso corrigir e melhorar toda a interface e funcionamento da aba "Mensagens". 
+
+Atualmente, existem os seguintes problemas:
+- As conversas não estão sendo listadas corretamente.
+- Sempre aparece "0 mensagens" mesmo quando existem mensagens.
+- A data aparece como "Invalid Date".
+- Toda a organização visual está confusa e sem filtros.
+
+✅ O que eu preciso que você faça:
+1. A tela de mensagens deve ter, na parte superior, um **seletor de conexões WhatsApp** (dropdown ou combo-box) para escolher qual sessão/conexão será visualizada.
+2. Na lateral esquerda, deve ser exibida uma **lista de todas as conversas** da conexão selecionada. Essa lista deve conter:
+   - Nome do contato ou número de telefone.
+   - Prévia da última mensagem.
+   - Quantidade de mensagens não lidas (se possível).
+   - Data da última mensagem (formatada corretamente como "Hoje", "Ontem", ou DD/MM/YYYY).
+3. Acima da lista de conversas, deve haver um **campo de filtro de texto**, para buscar por:
+   - Nome do contato.
+   - Número.
+   - (No futuro) etiquetas e tags personalizadas.
+4. Ao clicar em um contato na lista, deve abrir no painel principal a **conversa completa desse contato**, com carregamento de mensagens, envio, recebimento, tudo funcionando corretamente.
+5. Resolver os erros:
+   - "0 mensagens" incorreto.
+   - "Invalid Date".
+   - Bugs que impedem o carregamento das conversas.
+6. A arquitetura precisa suportar **multi-conexões WhatsApp**, funcionando de forma separada e organizada para cada conexão selecionada.
+7. Toda comunicação deve ser feita via WebSocket para atualizações em tempo real (novas mensagens, alteração no status da conexão, etc.).
+
+🚀 Me entregue:
+- Código completo e funcional do **frontend**, com React (ou framework usado), interface bem estruturada e responsiva.
+- Código do **backend**, incluindo rotas REST e WebSocket para:
+   - Listar conversas de uma conexão.
+   - Listar mensagens de uma conversa.
+   - Enviar mensagens.
+   - Ouvir novas mensagens em tempo real.
+- Correções nas funções de formatação de data, contagem de mensagens e exibição dos contatos.
+
+⚠️ Atenção:
+- Garanta que o sistema funcione de forma fluida, escalável, com tratamento de erros e bom UX.
+- Pode usar bibliotecas como date-fns, moment ou dayjs para datas.
+- Layout com sidebar fixa à esquerda, seletor no topo e área de chat ocupando o restante da tela.
+
+🔗 Referência visual: parecido com WhatsApp Web, Z-Api, WppConnect e sistemas de atendimento omnichannel.
+
+Me entregue a implementação já pronta e revisada.
