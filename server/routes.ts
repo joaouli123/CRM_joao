@@ -101,6 +101,7 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
             
             console.log(`🔍 Verificando status da conexão ${connectionId}: ${status}, session status: ${session?.status}`);
             
+            // Check if connection was established successfully
             if (status === "open" && session && (session.status === "waiting_qr" || session.status === "connecting")) {
               clearInterval(connectionChecker);
               if (session.qrTimer) {
@@ -149,6 +150,27 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
             }
           } catch (error) {
             console.error(`❌ Erro ao verificar status da conexão ${connectionId}:`, error);
+            // If instance was deleted, stop checking and mark as disconnected
+            if (error.message.includes('does not exist')) {
+              clearInterval(connectionChecker);
+              const session = sessions.get(connectionId);
+              if (session?.qrTimer) {
+                clearTimeout(session.qrTimer);
+              }
+              sessions.delete(connectionId);
+              
+              await storage.updateConnection(connectionId, { 
+                status: "disconnected",
+                qrCode: null,
+                qrExpiry: null,
+                sessionData: null
+              });
+              
+              broadcast({ 
+                type: "connectionStatusChanged", 
+                data: { id: connectionId, status: "disconnected" }
+              });
+            }
           }
         }, 3000);
         
