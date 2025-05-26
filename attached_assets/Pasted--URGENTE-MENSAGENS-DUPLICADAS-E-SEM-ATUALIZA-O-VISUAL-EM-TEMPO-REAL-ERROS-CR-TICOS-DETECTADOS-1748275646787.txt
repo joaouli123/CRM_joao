@@ -1,0 +1,72 @@
+🚨 URGENTE: MENSAGENS DUPLICADAS E SEM ATUALIZAÇÃO VISUAL EM TEMPO REAL
+❌ ERROS CRÍTICOS DETECTADOS:
+
+    Mensagens aparecem duplicadas no chat
+
+        A mesma mensagem enviada aparece 2x (como mostrado no log com id: 17)
+
+        Motivo provável: exibida ao enviar e novamente ao receber pelo WebSocket
+
+        Repetição tanto no sent quanto no recebimento WebSocket do sent
+
+    Mensagens recebidas de contatos reais não aparecem automaticamente
+
+        Só são visíveis após:
+
+            Trocar de contato, ou
+
+            Recarregar a página
+
+        Isso quebra completamente a experiência de tempo real
+
+✅ EXIJO AS SEGUINTES CORREÇÕES:
+1. 🔄 Mensagens enviadas devem:
+
+    Ser exibidas imediatamente no frontend (via setMessages)
+
+    Não serem reexibidas se a mesma mensagem vier pelo WebSocket
+
+    Use message.id, direction, ou uma flag localSent = true para evitar duplicação
+
+2. 🟢 Mensagens recebidas de contatos reais devem:
+
+    Ser exibidas em tempo real no chat aberto sem atualizar a página
+
+    Isso deve ocorrer automaticamente via WebSocket
+
+    Verifique se socket.on('new_message') chama setMessages(prev => [...prev, msg]) somente se for a conversa aberta no momento
+
+🧪 TESTE FUNCIONAL ESPERADO:
+
+    Abra um chat com um contato (ex: 554187038339)
+
+    Envie uma mensagem e veja ela aparecer 1 vez (sem duplicação)
+
+    Do outro celular, envie uma resposta
+
+    Ela deve aparecer instantaneamente na janela sem trocar de contato ou recarregar
+
+    Não deve haver duplicatas nem atraso visual
+
+🧠 DICA DE IMPLEMENTAÇÃO:
+
+socket.on("new_message", (msg) => {
+  if (msg.phoneNumber === activeChatPhoneNumber) {
+    if (msg.direction === 'received') {
+      // Evita duplicação de mensagens enviadas
+      if (!messages.find((m) => m.id === msg.id)) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    }
+  } else {
+    marcarComoNaoLido(msg.phoneNumber);
+  }
+});
+
+Corrija isso imediatamente. O sistema só estará concluído quando:
+
+✅ Mensagens enviadas não duplicam
+✅ Mensagens recebidas aparecem em tempo real
+✅ Interface visível é atualizada automaticamente
+
+⏳ Aguardo confirmação com todos os testes passando
