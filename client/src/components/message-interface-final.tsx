@@ -76,17 +76,32 @@ export default function MessageInterface({
                     console.log(`🔍 BUSCANDO mensagem temporária para "${msgData.content}"`);
                     
                     const tempIndex = prev.findIndex((m: any) => {
+                      // Buscar mensagem com tempId E status pending
                       const isTemporary = m.tempId && m.status === 'pending';
                       const sameContent = m.content === msgData.content;
-                      const sameDirection = m.direction === msgData.direction;
-                      const timeDiff = Math.abs(new Date(m.timestamp).getTime() - new Date(msgData.timestamp).getTime());
-                      const withinTimeWindow = timeDiff < 5000; // 5 segundos
+                      const sameDirection = m.direction === 'sent'; // Só substituir mensagens enviadas
+                      const samePhoneNumber = m.phoneNumber === msgData.phoneNumber;
                       
-                      const isMatch = isTemporary && sameContent && sameDirection && withinTimeWindow;
+                      // Calcular diferença de tempo mais precisa
+                      const msgTime = new Date(m.timestamp).getTime();
+                      const dataTime = new Date(msgData.timestamp).getTime();
+                      const timeDiff = Math.abs(msgTime - dataTime);
+                      const withinTimeWindow = timeDiff < 10000; // 10 segundos para ser mais flexível
                       
-                      if (isTemporary) {
-                        console.log(`🔍 Verificando tempId=${m.tempId}: content="${m.content}" | timeDiff=${timeDiff}ms | match=${isMatch}`);
-                      }
+                      const isMatch = isTemporary && sameContent && sameDirection && samePhoneNumber && withinTimeWindow;
+                      
+                      console.log(`🔍 Verificando mensagem:`, {
+                        tempId: m.tempId,
+                        content: m.content,
+                        status: m.status,
+                        isTemporary,
+                        sameContent,
+                        sameDirection,
+                        samePhoneNumber,
+                        timeDiff: `${timeDiff}ms`,
+                        withinTimeWindow,
+                        isMatch
+                      });
                       
                       return isMatch;
                     });
