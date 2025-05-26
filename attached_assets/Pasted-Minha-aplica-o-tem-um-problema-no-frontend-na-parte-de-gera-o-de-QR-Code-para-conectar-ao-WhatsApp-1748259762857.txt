@@ -1,0 +1,56 @@
+Minha aplicação tem um problema no frontend na parte de geração de QR Code para conectar ao WhatsApp via Evolution API (ou instância equivalente).
+
+🔍 O problema:
+
+Quando clico em "Nova Conexão", o modal abre, mas não aparece o QR Code na interface.
+
+O console do navegador mostra que o WebSocket recebe o QR Code corretamente:
+
+css
+Copiar
+Editar
+WebSocket message received: {type: 'qrCodeReceived', data: { connectionId: 13, qrCode: 'data:image/png;base64,data:image/png;base64,iVBORw...SuQmCC', expiration: '2025-05-26T11:43:31.468Z' }, timestamp: '...'}
+✅ Ou seja, o backend está funcionando certo, enviando o QR Code no evento qrCodeReceived.
+🚩 Porém, o frontend não exibe o QR Code no modal.
+
+🔥 Possíveis causas:
+
+O handler do WebSocket não está atualizando corretamente o estado do frontend (React, Vue ou JS puro).
+
+O modal não está ouvindo corretamente o evento qrCodeReceived.
+
+O QR Code vem com um prefixo duplicado no src da imagem:
+data:image/png;base64,data:image/png;base64,...
+Isso quebra a renderização da imagem.
+
+✅ O comportamento correto deve ser:
+
+Clicar em "Nova Conexão".
+
+O modal abrir e exibir o QR Code.
+
+Após escanear o QR no WhatsApp, a conexão deve ser estabelecida.
+
+⚙️ Quero que você faça:
+
+Analise e corrija o código frontend, especialmente a lógica que trata a mensagem WebSocket do tipo qrCodeReceived.
+
+Garanta que o QR Code apareça corretamente no modal.
+
+Adapte também, se necessário, o backend ou o formato da mensagem, para evitar o erro do prefixo duplicado no base64 (data:image/png;base64,data:image/png;base64,).
+
+Me entregue o código backend e frontend funcionando corretamente, exibindo o QR Code na nova conexão.
+
+✅ Exemplo de como deve ser tratado o QR Code recebido:
+
+javascript
+Copiar
+Editar
+const cleanQR = qrCode.replace('data:image/png;base64,data:image/png;base64,', 'data:image/png;base64,');
+🔥 Saída esperada:
+
+Código 100% funcional, com QR Code sendo exibido corretamente na interface assim que clico em "Nova Conexão".
+
+Conexão só se estabelece após o usuário escanear o QR no WhatsApp.
+
+🔧 Se necessário, adapte tanto o WebSocket quanto os componentes do frontend.

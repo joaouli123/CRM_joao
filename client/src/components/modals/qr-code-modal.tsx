@@ -7,17 +7,16 @@ import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface QRCodeModalProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
-  connection: {
-    id: number;
-    name: string;
-    qrCode?: string;
-    qrExpiry?: Date;
+  qrData: {
+    connectionId: number;
+    qrCode: string;
+    expiration: Date;
   } | null;
 }
 
-export function QRCodeModal({ isOpen, onClose, connection }: QRCodeModalProps) {
+export function QRCodeModal({ open, onClose, qrData }: QRCodeModalProps) {
   const [timeLeft, setTimeLeft] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,20 +40,20 @@ export function QRCodeModal({ isOpen, onClose, connection }: QRCodeModalProps) {
   });
 
   const handleRefreshQR = () => {
-    if (connection) {
-      startConnectionMutation.mutate(connection.id);
+    if (qrData) {
+      startConnectionMutation.mutate(qrData.connectionId);
     }
   };
 
   useEffect(() => {
-    if (!connection?.qrExpiry || !isOpen) {
+    if (!qrData?.expiration || !open) {
       setTimeLeft(0);
       return;
     }
 
     const updateTimer = () => {
       const now = new Date().getTime();
-      const expiry = new Date(connection.qrExpiry!).getTime();
+      const expiry = new Date(qrData.expiration).getTime();
       const remaining = Math.max(0, Math.floor((expiry - now) / 1000));
       setTimeLeft(remaining);
     };
@@ -63,29 +62,36 @@ export function QRCodeModal({ isOpen, onClose, connection }: QRCodeModalProps) {
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [connection?.qrExpiry, isOpen]);
+  }, [qrData?.expiration, open]);
 
-  if (!connection) return null;
+  if (!qrData) return null;
+
+  // Clean QR code to prevent double base64 prefix
+  const cleanQrCode = qrData.qrCode.replace(/^data:image\/png;base64,data:image\/png;base64,/, 'data:image/png;base64,');
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Conectar WhatsApp - {connection.name}</DialogTitle>
+          <DialogTitle>Conectar WhatsApp - Conexão #{qrData.connectionId}</DialogTitle>
         </DialogHeader>
         
         <div className="text-center space-y-4">
           <div className="w-64 h-64 bg-gray-100 rounded-lg mx-auto flex items-center justify-center border-2 border-dashed border-gray-300">
-            {connection.qrCode ? (
+            {cleanQrCode ? (
               <img
-                src={connection.qrCode}
-                alt="QR Code"
-                className="max-w-full max-h-full"
+                src={cleanQrCode}
+                alt="QR Code WhatsApp"
+                className="max-w-full max-h-full object-contain"
+                onError={(e) => {
+                  console.error('Erro ao carregar QR Code:', e);
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
               />
             ) : (
               <div className="text-center">
                 <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">QR Code será exibido aqui</p>
+                <p className="text-sm text-gray-500">Gerando QR Code...</p>
               </div>
             )}
           </div>
@@ -101,6 +107,11 @@ export function QRCodeModal({ isOpen, onClose, connection }: QRCodeModalProps) {
                 <span className="text-warning font-medium">
                   Expira em: {timeLeft}s
                 </span>
+              </div>
+            )}
+            {timeLeft === 0 && qrData && (
+              <div className="text-sm text-red-600">
+                QR Code expirado - clique em "Atualizar QR Code"
               </div>
             )}
           </div>

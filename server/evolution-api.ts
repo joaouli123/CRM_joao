@@ -98,19 +98,21 @@ class EvolutionAPI {
       const response = await this.makeRequest(`instance/connect/${instanceName}`, 'GET');
       
       // Handle different possible response formats from Evolution API
+      let qrBase64 = null;
+      
       if (response.qrcode?.base64) {
-        console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
-        return `data:image/png;base64,${response.qrcode.base64}`;
+        qrBase64 = response.qrcode.base64;
+      } else if (response.base64) {
+        qrBase64 = response.base64;
+      } else if (response.qr) {
+        qrBase64 = response.qr;
       }
       
-      if (response.base64) {
+      if (qrBase64) {
+        // Clean any existing data URL prefix to avoid duplication
+        const cleanBase64 = qrBase64.replace(/^data:image\/png;base64,/, '');
         console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
-        return `data:image/png;base64,${response.base64}`;
-      }
-      
-      if (response.qr) {
-        console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
-        return `data:image/png;base64,${response.qr}`;
+        return `data:image/png;base64,${cleanBase64}`;
       }
       
       console.error('❌ Formato de resposta inesperado da Evolution API:', response);
