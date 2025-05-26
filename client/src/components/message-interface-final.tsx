@@ -197,26 +197,45 @@ export default function MessageInterface({
     refetchIntervalInBackground: true
   });
 
-  // Combinar mensagens da API com mensagens em tempo real SEM DUPLICATAS
+  // DEDUPLICAÇÃO ROBUSTA - Combinar mensagens sem duplicatas
   const allMessagesMap = new Map();
+  const contentHashes = new Set(); // Para detectar duplicatas por conteúdo + timestamp
 
-  // 1. PRIMEIRO: Adicionar todas as mensagens da API (prioridade)
+  // Função para criar hash único baseado em conteúdo + timestamp + telefone
+  const createContentHash = (msg: any) => {
+    const timestamp = new Date(msg.timestamp).getTime();
+    return `${msg.content}_${msg.phoneNumber}_${msg.direction}_${Math.floor(timestamp / 1000)}`;
+  };
+
+  // 1. PRIMEIRO: Adicionar mensagens da API (sempre prioridade)
   (Array.isArray(chatMessages) ? chatMessages : []).forEach((msg) => {
     if (msg.id) {
+      const contentHash = createContentHash(msg);
       allMessagesMap.set(msg.id, msg);
+      contentHashes.add(contentHash);
     }
   });
 
-  // 2. SEGUNDO: Adicionar mensagens do WebSocket apenas se não existirem na API
+  // 2. SEGUNDO: Adicionar mensagens do WebSocket com verificação rigorosa
   realtimeMessages
     .filter((m) => m.phoneNumber === selectedConversation)
     .forEach((msg) => {
+      const contentHash = createContentHash(msg);
+      
+      // Evitar duplicatas por conteúdo
+      if (contentHashes.has(contentHash)) {
+        console.log(`🚫 DUPLICATA DETECTADA POR CONTEÚDO: ${msg.content}`);
+        return;
+      }
+      
       if (msg.id && !allMessagesMap.has(msg.id)) {
-        // Mensagem com ID oficial - adicionar se não existir
+        // Mensagem oficial nova
         allMessagesMap.set(msg.id, msg);
-      } else if (msg.tempId && !msg.id) {
-        // Mensagem temporária - adicionar apenas se não há ID oficial
+        contentHashes.add(contentHash);
+      } else if (msg.tempId && !msg.id && !allMessagesMap.has(msg.tempId)) {
+        // Mensagem temporária nova
         allMessagesMap.set(msg.tempId, msg);
+        contentHashes.add(contentHash);
       }
     });
 
