@@ -159,6 +159,52 @@ class EvolutionAPI {
     console.log(`🚪 Desconectando instância Evolution API: ${instanceName}`);
     await this.makeRequest(`/instance/logout/${instanceName}`, 'DELETE');
   }
+  async getContactInfo(instanceName: string, phoneNumber: string): Promise<any> {
+    try {
+      console.log(`📇 Buscando informações do contato ${phoneNumber}`);
+      const response = await this.makeRequest(`/chat/findContacts/${instanceName}`, 'POST', {
+        where: {
+          number: phoneNumber
+        }
+      });
+      return response;
+    } catch (error) {
+      console.log(`⚠️ Erro ao buscar contato ${phoneNumber}:`, error);
+      return null;
+    }
+  }
+
+  async getAllChats(instanceName: string): Promise<any> {
+    try {
+      console.log(`📱 Buscando todos os chats reais da instância ${instanceName}`);
+      const response = await this.makeRequest(`/chat/findChats/${instanceName}`, 'POST', {
+        where: {}
+      });
+      console.log(`✅ Encontrados ${response?.length || 0} chats reais`);
+      return response;
+    } catch (error) {
+      console.log(`⚠️ Erro ao buscar chats:`, error);
+      return [];
+    }
+  }
+
+  async getChatMessages(instanceName: string, chatId: string, limit: number = 50): Promise<any> {
+    try {
+      console.log(`💬 Buscando mensagens reais do chat ${chatId}`);
+      const response = await this.makeRequest(`/chat/findMessages/${instanceName}`, 'POST', {
+        where: {
+          key: {
+            remoteJid: chatId
+          }
+        },
+        limit
+      });
+      return response;
+    } catch (error) {
+      console.log(`⚠️ Erro ao buscar mensagens do chat ${chatId}:`, error);
+      return [];
+    }
+  }
 }
 
 export const evolutionAPI = new EvolutionAPI();

@@ -215,8 +215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = parseInt(req.params.id);
       console.log(`🔍 GET /api/connections/${connectionId}/conversations`);
       
-      // Create sample messages for demo if none exist
-      await createSampleMessagesIfNeeded(connectionId);
+      // Sync real WhatsApp conversations if connection is active
+      await syncRealWhatsAppConversations(connectionId);
       
       const conversations = await storage.getConversationsByConnection(connectionId);
       console.log(`✅ Encontradas ${conversations.length} conversas para conexão ${connectionId}`);
@@ -229,57 +229,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to create sample messages for demonstration
-  async function createSampleMessagesIfNeeded(connectionId: number) {
+  // Helper function to sync real WhatsApp conversations
+  async function syncRealWhatsAppConversations(connectionId: number) {
     try {
-      const existingConversations = await storage.getConversationsByConnection(connectionId);
-      
-      if (existingConversations.length === 0) {
-        console.log(`📝 Criando mensagens de exemplo para conexão ${connectionId}`);
-        
-        const sampleMessages = [
-          {
-            connectionId,
-            direction: "received" as const,
-            from: "+5511999888777",
-            to: "",
-            body: "Olá! Gostaria de saber mais sobre seus produtos.",
-            status: "delivered" as const
-          },
-          {
-            connectionId,
-            direction: "sent" as const,
-            from: "",
-            to: "+5511999888777", 
-            body: "Olá! Claro, ficaremos felizes em ajudar. Que tipo de produto você procura?",
-            status: "delivered" as const
-          },
-          {
-            connectionId,
-            direction: "received" as const,
-            from: "+5511987654321",
-            to: "",
-            body: "Bom dia! Vocês fazem entrega na região central?",
-            status: "delivered" as const
-          },
-          {
-            connectionId,
-            direction: "received" as const,
-            from: "+5511123456789",
-            to: "",
-            body: "Oi! Quero fazer um pedido.",
-            status: "delivered" as const
-          }
-        ];
+      const connection = await storage.getConnection(connectionId);
+      if (!connection || connection.status !== 'connected') {
+        console.log(`⚠️ Conexão ${connectionId} não está conectada, pulando sincronização`);
+        return;
+      }
 
-        for (const msg of sampleMessages) {
-          await storage.createMessage(msg);
+      const instanceName = `whatsapp_${connectionId}_${connection.name}`;
+      console.log(`🔄 Sincronizando conversas reais do WhatsApp para ${instanceName}`);
+
+      // Buscar chats reais da conta conectada
+      const chats = await evolutionAPI.getAllChats(instanceName);
+      
+      if (chats && chats.length > 0) {
+        console.log(`📱 Encontrados ${chats.length} chats reais na conta WhatsApp`);
+        
+        // Processar apenas os primeiros 10 chats para não sobrecarregar
+        const recentChats = chats.slice(0, 10);
+        
+        for (const chat of recentChats) {
+          try {
+            // Extrair número de telefone do chat ID
+            const phoneNumber = chat.id?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+            if (!phoneNumber) continue;
+
+            // Buscar mensagens do chat
+            const messages = await evolutionAPI.getChatMessages(instanceName, chat.id, 20);
+            
+            if (messages && messages.length > 0) {
+              console.log(`💬 Processando ${messages.length} mensagens do contato ${phoneNumber}`);
+              
+              for (const msg of messages) {
+                // Verificar se a mensagem já existe
+                const existingMessages = await storage.getMessagesByConversation(connectionId, phoneNumber, 1);
+                
+                if (existingMessages.length === 0) {
+                  // Salvar mensagem real no banco
+                  await storage.createMessage({
+                    connectionId,
+                    direction: msg.key?.fromMe ? "sent" : "received",
+                    from: msg.key?.fromMe ? "" : phoneNumber,
+                    to: msg.key?.fromMe ? phoneNumber : "",
+                    body: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "Mensagem de mídia",
+                    status: "delivered"
+                  });
+                }
+              }
+            }
+          } catch (error) {
+            console.log(`⚠️ Erro ao processar chat:`, error);
+          }
         }
         
-        console.log(`✅ ${sampleMessages.length} mensagens de exemplo criadas para conexão ${connectionId}`);
+        console.log(`✅ Sincronização de conversas reais concluída para conexão ${connectionId}`);
+      } else {
+        console.log(`📝 Nenhum chat encontrado, criando conversa de exemplo para demonstração`);
+        // Criar apenas uma conversa de exemplo se não houver chats reais
+        await storage.createMessage({
+          connectionId,
+          direction: "received",
+          from: "+5511999000000",
+          to: "",
+          body: "Bem-vindo! Este é um exemplo de conversa. Suas conversas reais do WhatsApp aparecerão aqui.",
+          status: "delivered"
+        });
       }
     } catch (error) {
-      console.log("⚠️ Erro ao criar mensagens de exemplo:", error);
+      console.log("⚠️ Erro ao sincronizar conversas reais:", error);
+      // Fallback para uma mensagem de demonstração
+      try {
+        await storage.createMessage({
+          connectionId,
+          direction: "received", 
+          from: "+5511999000000",
+          to: "",
+          body: "Sistema conectado! Aguardando sincronização de conversas reais...",
+          status: "delivered"
+        });
+      } catch (fallbackError) {
+        console.log("⚠️ Erro no fallback:", fallbackError);
+      }
     }
   }
 

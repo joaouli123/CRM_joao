@@ -1,0 +1,55 @@
+O sistema está conectando corretamente ao WebSocket e recebendo mensagens novas com timestamps válidos.
+Porém, na interface:
+
+Não aparece a foto do contato
+
+Não aparece o nome do contato (apenas o telefone)
+
+Ao tentar abrir a conversa do contato, as mensagens detalhadas não são exibidas
+
+Além disso, apenas um contato está listado na interface, o que pode indicar que este contato seja um dado fake/teste e não uma conversa real do WhatsApp
+
+Problemas suspeitos:
+
+O backend pode não estar buscando, armazenando ou expondo os dados do perfil do contato (nome, foto).
+
+A API que retorna as mensagens detalhadas pode estar incompleta ou com schema errado.
+
+O frontend pode estar esperando campos que não existem ou que estão com nomes diferentes.
+
+Falta de associação correta entre connectionId e phoneNumber para buscar a conversa correta.
+
+O frontend pode não tratar corretamente a ausência dos dados do contato, nem a ausência ou formato inesperado do histórico.
+
+A listagem com apenas um contato pode indicar que o sistema está apresentando dados de teste e não está recebendo mensagens reais da conta conectada
+
+O que precisa ser feito:
+
+Verificar se o backend está recebendo e armazenando informações do contato (nome, foto). Se não, implementar essa captura e persistência, usando a API do WhatsApp/Evolution API conforme necessário.
+
+Validar o endpoint que retorna mensagens detalhadas do contato, garantindo que o JSON tenha todos os campos necessários (from, to, body/content, timestamp) e que o formato das datas seja ISO 8601.
+
+Ajustar o frontend para:
+
+Buscar e exibir nome e foto do contato quando disponíveis;
+
+Exibir o telefone como fallback;
+
+Tratar corretamente o histórico da conversa mesmo que vazio, com mensagens, ou em formato parcialmente diferente.
+
+Testar manualmente com curl/Postman os endpoints de perfil e mensagens para confirmar os dados retornados.
+
+Implementar logs detalhados no backend e frontend para facilitar o debug e garantir que os dados estejam chegando e sendo consumidos corretamente.
+
+Garantir que o frontend faça chamadas corretas com connectionId e phoneNumber para carregar o histórico certo.
+
+Verificar se o contato listado é real ou um dado fake/teste e garantir que mensagens reais da conta conectada estejam sendo capturadas e exibidas corretamente.
+
+Por favor, realize uma análise completa para identificar e corrigir esses problemas, garantindo que:
+
+As informações do contato (nome e foto) sejam capturadas e exibidas na interface;
+
+O histórico da conversa seja corretamente carregado e exibido ao usuário;
+
+O sistema exiba corretamente todos os contatos reais da conta conectada, não apenas dados de teste.
+
