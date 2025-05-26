@@ -84,17 +84,22 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           }
         }, 180000);
 
-        sessions.set(connectionId, {
+        const session = {
           client: { instanceName },
           connection: await storage.getConnection(connectionId),
           qrTimer,
           status: "waiting_qr"
-        });
+        };
+        sessions.set(connectionId, session);
+        
+        console.log(`📋 Sessão criada para conexão ${connectionId}: status = ${session.status}`);
 
         const connectionChecker = setInterval(async () => {
           try {
             const status = await evolutionAPI.getConnectionStatus(instanceName);
             const session = sessions.get(connectionId);
+            
+            console.log(`🔍 Verificando status da conexão ${connectionId}: ${status}, session status: ${session?.status}`);
             
             if (status === "open" && session && (session.status === "waiting_qr" || session.status === "connecting")) {
               clearInterval(connectionChecker);
