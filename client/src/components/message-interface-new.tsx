@@ -44,34 +44,49 @@ export default function MessageInterface({
       console.log("🟢 MENSAGEM RECEBIDA EM TEMPO REAL:", messageData);
       
       // Check if this message belongs to current connection
-      if (messageData.connectionId === selectedConnectionId) {
+      if (messageData.connectionId === selectedConnectionId && instanceKey) {
         const phoneNumber = messageData.phoneNumber;
         
-        // Add message to current chat if it's open
-        if (selectedConversation === phoneNumber && instanceKey) {
-          setMessagesByInstance(prev => ({
-            ...prev,
-            [instanceKey]: {
-              ...prev[instanceKey],
-              [phoneNumber]: [
-                ...(prev[instanceKey]?.[phoneNumber] || []),
-                {
-                  id: messageData.id,
-                  connectionId: messageData.connectionId,
-                  direction: messageData.direction,
-                  phoneNumber: messageData.phoneNumber,
-                  content: messageData.content,
-                  status: messageData.status,
-                  timestamp: new Date(messageData.timestamp)
-                }
-              ]
-            }
-          }));
+        // CRITICAL: Only add RECEIVED messages to avoid duplicates
+        if (messageData.direction === 'received') {
+          console.log("📥 MENSAGEM RECEBIDA - ADICIONANDO AO CHAT ATIVO");
           
-          console.log("✅ Mensagem adicionada ao chat ativo em tempo real!");
+          // Add message to current chat if it's open
+          if (selectedConversation === phoneNumber) {
+            setMessagesByInstance(prev => {
+              const currentMessages = prev[instanceKey]?.[phoneNumber] || [];
+              
+              // Check if message already exists to avoid duplicates
+              const messageExists = currentMessages.some(msg => msg.id === messageData.id);
+              if (messageExists) {
+                console.log("⚠️ Mensagem já existe, ignorando duplicata");
+                return prev;
+              }
+              
+              const newMessage = {
+                id: messageData.id,
+                connectionId: messageData.connectionId,
+                direction: messageData.direction,
+                phoneNumber: messageData.phoneNumber,
+                content: messageData.content,
+                status: messageData.status || 'delivered',
+                timestamp: new Date(messageData.timestamp)
+              };
+              
+              console.log("✅ ADICIONANDO MENSAGEM RECEBIDA AO CHAT ATIVO:", newMessage);
+              
+              return {
+                ...prev,
+                [instanceKey]: {
+                  ...prev[instanceKey],
+                  [phoneNumber]: [...currentMessages, newMessage]
+                }
+              };
+            });
+          }
         }
         
-        // Update conversation list to show latest message
+        // Update conversation list for ALL messages (sent/received)
         setChatsByInstance(prev => {
           const currentChats = prev[instanceKey] || [];
           const updatedChats = currentChats.map(chat => {
@@ -80,7 +95,7 @@ export default function MessageInterface({
                 ...chat,
                 lastMessage: messageData.content,
                 lastMessageTime: new Date(messageData.timestamp),
-                unreadCount: selectedConversation === phoneNumber ? 0 : chat.unreadCount + 1
+                unreadCount: (selectedConversation === phoneNumber || messageData.direction === 'sent') ? 0 : (chat.unreadCount || 0) + 1
               };
             }
             return chat;
