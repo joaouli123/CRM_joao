@@ -1,0 +1,76 @@
+Corrija urgentemente o sistema de mensagens com base nos seguintes requisitos críticos:
+✅ 1. WebSocket Evolution API em tempo real
+
+Use o WebSocket da Evolution API no modo tradicional, pois cada conexão é única. A URL de conexão deve ser:
+
+wss://evolution.lowfy.com.br/whatsapp_36_lowfy
+
+Use transports: ['websocket']. Exemplo de conexão:
+
+const socket = io('wss://evolution.lowfy.com.br/whatsapp_36_lowfy', {
+  transports: ['websocket']
+});
+
+Escute o evento newMessage e repasse diretamente para o chat:
+
+socket.on('newMessage', (data) => {
+  console.log("🟢 Nova mensagem via WebSocket:", data);
+  // Exibir diretamente no chat, se o número corresponder ao contato aberto
+});
+
+✅ 2. Corrigir mensagens duplicadas no chat
+
+Evite adicionar mensagens já existentes no array. Compare por ID:
+
+setMessages((prev) => {
+  const exists = prev.some(m => m.id === newMsg.id);
+  if (exists) return prev;
+  return [...prev, newMsg];
+});
+
+Nunca adicione mensagem ao estado no envio local, espere ela retornar via WebSocket.
+✅ 3. Corrigir não recebimento de mensagens do contato em tempo real
+
+Garanta que:
+
+    O webhook da Evolution API está configurado para sua URL /webhook
+
+    O servidor Express redireciona POST /webhook para broadcast via WebSocket:
+
+app.post("/webhook", (req, res) => {
+  const msg = req.body;
+  if (msg?.type === "message" && msg?.direction === "received") {
+    io.emit("newMessage", msg); // enviar a todos os clientes
+  }
+  res.sendStatus(200);
+});
+
+✅ 4. Reexibir mensagens em tempo real somente se o contato estiver aberto
+
+Use activePhoneNumber para filtrar a exibição:
+
+if (msg.phoneNumber === activePhoneNumber) {
+  setMessages(prev => [...prev, msg]);
+}
+
+✅ 5. Encerrar conexão ao desmontar
+
+useEffect(() => {
+  const socket = io(...);
+
+  return () => {
+    socket.disconnect();
+  };
+}, []);
+
+✅ 6. Teste esperado após a correção
+
+    Enviar uma mensagem no frontend → aparece no chat uma vez só
+
+    Receber mensagem do contato → aparece imediatamente no chat
+
+    Alternar entre chats → não perde histórico
+
+    Recarregar a página → mensagens anteriores aparecem corretamente
+
+Corrija tudo acima com prioridade e garanta que o WebSocket funcione perfeitamente com a Evolution API no modo tradicional.

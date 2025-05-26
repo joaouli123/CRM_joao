@@ -61,31 +61,26 @@ export default function MessageInterface({
             return prev;
           }
           
-          // CRITICAL: Only add RECEIVED messages to avoid sent duplicates
-          if (messageData.direction === 'received') {
-            console.log("✅ ADICIONANDO MENSAGEM RECEBIDA EM TEMPO REAL");
-            
-            const newMessage = {
-              id: messageData.id,
-              connectionId: messageData.connectionId,
-              direction: messageData.direction,
-              phoneNumber: messageData.phoneNumber,
-              content: messageData.content,
-              status: 'delivered',
-              timestamp: new Date(messageData.timestamp)
-            };
-            
-            return {
-              ...prev,
-              [instanceKey]: {
-                ...prev[instanceKey],
-                [selectedConversation]: [...currentMessages, newMessage]
-              }
-            };
-          }
+          // Add ALL messages (sent and received) via WebSocket
+          console.log(`✅ ADICIONANDO MENSAGEM ${messageData.direction.toUpperCase()} EM TEMPO REAL`);
           
-          console.log("🚫 MENSAGEM ENVIADA IGNORADA (evita duplicação)");
-          return prev;
+          const newMessage = {
+            id: messageData.id,
+            connectionId: messageData.connectionId,
+            direction: messageData.direction,
+            phoneNumber: messageData.phoneNumber,
+            content: messageData.content,
+            status: messageData.status || (messageData.direction === 'sent' ? 'sent' : 'delivered'),
+            timestamp: new Date(messageData.timestamp)
+          };
+          
+          return {
+            ...prev,
+            [instanceKey]: {
+              ...prev[instanceKey],
+              [selectedConversation]: [...currentMessages, newMessage]
+            }
+          };
         });
       }
       
@@ -294,25 +289,8 @@ export default function MessageInterface({
     const messageText = newMessage;
     setNewMessage(''); // Clear input immediately
 
-    // Add message to UI immediately for instant feedback
-    const tempMessage = {
-      id: Date.now(),
-      connectionId: selectedConnectionId,
-      direction: "sent" as const,
-      phoneNumber: selectedConversation,
-      content: messageText,
-      status: "pending" as const,
-      timestamp: new Date()
-    };
-
-    // Update messages immediately in the UI
-    setMessagesByInstance(prev => ({
-      ...prev,
-      [instanceKey]: {
-        ...prev[instanceKey],
-        [selectedConversation]: [...(prev[instanceKey]?.[selectedConversation] || []), tempMessage]
-      }
-    }));
+    // REMOVED: Don't add message locally to avoid duplication
+    // The message will be added via WebSocket when it's confirmed sent
 
     try {
       console.log(`📤 Enviando mensagem para ${selectedConversation}: ${messageText}`);
@@ -342,44 +320,12 @@ export default function MessageInterface({
       
       if (response.ok) {
         console.log(`✅ Mensagem enviada com sucesso:`, result);
-        
-        // Update message status to sent
-        setMessagesByInstance(prev => ({
-          ...prev,
-          [instanceKey]: {
-            ...prev[instanceKey],
-            [selectedConversation]: (prev[instanceKey]?.[selectedConversation] || []).map(msg => 
-              msg.id === tempMessage.id ? { ...msg, status: "sent" } : msg
-            )
-          }
-        }));
+        // Message will be added via WebSocket when confirmed
       } else {
         console.error(`❌ Erro ao enviar mensagem:`, result);
-        
-        // Remove message from UI if failed
-        setMessagesByInstance(prev => ({
-          ...prev,
-          [instanceKey]: {
-            ...prev[instanceKey],
-            [selectedConversation]: (prev[instanceKey]?.[selectedConversation] || []).filter(msg => 
-              msg.id !== tempMessage.id
-            )
-          }
-        }));
       }
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
-      
-      // Remove message from UI if failed
-      setMessagesByInstance(prev => ({
-        ...prev,
-        [instanceKey]: {
-          ...prev[instanceKey],
-          [selectedConversation]: (prev[instanceKey]?.[selectedConversation] || []).filter(msg => 
-            msg.id !== tempMessage.id
-          )
-        }
-      }));
     }
   };
 
