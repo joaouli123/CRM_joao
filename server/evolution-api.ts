@@ -36,9 +36,9 @@ class EvolutionAPI {
   private apiKey: string;
 
   constructor() {
-    // Use suas credenciais reais da Evolution API - URL corrigida
+    // Use suas credenciais reais da Evolution API - URL corrigida sem /manager/
     this.baseUrl = "https://evolution.lowfy.com.br";
-    this.apiKey = process.env.EVOLUTION_API_KEY || "011dA95bf60bb215afd8cce1e01f99598A";
+    this.apiKey = "011dA95bf60bb215afd8cce1e01f99598A";
     
     console.log("✅ Evolution API configurada com URL corrigida:", this.baseUrl);
   }
