@@ -126,7 +126,7 @@ export default function MessageInterface({
                      m.phoneNumber === newMsg.phoneNumber && 
                      Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000)
                   );
-                  
+
                   if (existsExact) {
                     console.log("⚠️ Mensagem já existe, ignorando");
                     return prev;

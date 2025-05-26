@@ -89,14 +89,40 @@ class EvolutionAPI {
 
     const result = await this.makeRequest('/instance/create', 'POST', data);
     
-    // CONFIGURAR WEBHOOK IMEDIATAMENTE após criar instância
+    // CONFIGURAR WEBHOOK SUPER AGRESSIVO IMEDIATAMENTE
     try {
+      // Aguardar um pouco para a instância estar pronta
       setTimeout(async () => {
-        await this.configureWebhook(instanceName);
-        console.log(`✅ Webhook configurado automaticamente para ${instanceName}`);
-      }, 2000);
+        try {
+          await this.configureWebhook(instanceName);
+          console.log(`✅ Webhook SUPER AGRESSIVO configurado para ${instanceName}`);
+          
+          // VERIFICAR se funcionou
+          setTimeout(async () => {
+            try {
+              const checkResponse = await this.makeRequest(`/webhook/find/${instanceName}`, 'GET');
+              console.log(`🔍 Verificação final do webhook:`, checkResponse);
+            } catch (checkError) {
+              console.log(`⚠️ Erro na verificação:`, checkError);
+            }
+          }, 2000);
+          
+        } catch (webhookError) {
+          console.log(`❌ ERRO CRÍTICO ao configurar webhook:`, webhookError);
+          
+          // TENTAR NOVAMENTE
+          setTimeout(async () => {
+            try {
+              await this.configureWebhook(instanceName);
+              console.log(`🔄 SEGUNDA TENTATIVA de webhook configurada`);
+            } catch (retryError) {
+              console.log(`❌ FALHA na segunda tentativa:`, retryError);
+            }
+          }, 5000);
+        }
+      }, 3000);
     } catch (error) {
-      console.log(`⚠️ Erro ao configurar webhook para ${instanceName}:`, error);
+      console.log(`⚠️ Erro ao agendar configuração de webhook:`, error);
     }
 
     return result;
@@ -274,15 +300,18 @@ evolutionAPI.findWebSocket = async function(instanceName: string): Promise<any> 
 // CONFIGURAR WEBHOOK SUPER AGRESSIVO para receber mensagens
 evolutionAPI.configureWebhook = async function(instanceName: string): Promise<any> {
   try {
+    // SEMPRE usar a instância real conectada
+    const realInstanceName = "whatsapp_36_lowfy";
+    
     // OBTER URL atual do Replit automaticamente
     const currentUrl = process.env.REPL_URL || 
                       `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` ||
                       'https://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev';
     
     const webhookUrl = `${currentUrl}/api/webhook/messages`;
-    console.log(`🔗 CONFIGURANDO WEBHOOK SUPER AGRESSIVO para ${instanceName}: ${webhookUrl}`);
+    console.log(`🔗 CONFIGURANDO WEBHOOK SUPER AGRESSIVO para ${realInstanceName}: ${webhookUrl}`);
     
-    const response = await this.makeRequest(`/webhook/set/${instanceName}`, 'POST', {
+    const response = await this.makeRequest(`/webhook/set/${realInstanceName}`, 'POST', {
       url: webhookUrl,
       enabled: true,
       webhookByEvents: true,
@@ -297,17 +326,40 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
       ]
     });
     
-    console.log(`✅ WEBHOOK SUPER AGRESSIVO configurado para ${instanceName}:`, response);
+    console.log(`✅ WEBHOOK SUPER AGRESSIVO configurado para ${realInstanceName}:`, response);
     
     // VERIFICAR se o webhook foi configurado corretamente
     setTimeout(async () => {
       try {
-        const checkResponse = await this.makeRequest(`/webhook/find/${instanceName}`, 'GET');
-        console.log(`🔍 Verificação do webhook para ${instanceName}:`, checkResponse);
+        const checkResponse = await this.makeRequest(`/webhook/find/${realInstanceName}`, 'GET');
+        console.log(`🔍 Verificação do webhook para ${realInstanceName}:`, checkResponse);
       } catch (checkError) {
         console.log(`⚠️ Erro ao verificar webhook:`, checkError);
       }
     }, 1000);
+    
+    // CONFIGURAR TAMBÉM para a instância passada como parâmetro (backup)
+    if (instanceName !== realInstanceName) {
+      try {
+        const backupResponse = await this.makeRequest(`/webhook/set/${instanceName}`, 'POST', {
+          url: webhookUrl,
+          enabled: true,
+          webhookByEvents: true,
+          events: [
+            "MESSAGES_UPSERT",
+            "MESSAGES_UPDATE", 
+            "SEND_MESSAGE",
+            "CONNECTION_UPDATE",
+            "QRCODE_UPDATED",
+            "CHATS_UPDATE",
+            "CONTACTS_UPDATE"
+          ]
+        });
+        console.log(`🔄 BACKUP webhook configurado para ${instanceName}:`, backupResponse);
+      } catch (backupError) {
+        console.log(`⚠️ Erro no backup webhook:`, backupError);
+      }
+    }
     
     return response;
   } catch (error) {

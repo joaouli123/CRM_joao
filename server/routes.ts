@@ -18,7 +18,7 @@ const clients = new Set<WebSocket>();
 function broadcast(data: any) {
   const message = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
   console.log(`📡 BROADCASTING para ${clients.size} clientes:`, data);
-  
+
   let sentCount = 0;
   clients.forEach((client, index) => {
     if (client.readyState === WebSocket.OPEN) {
@@ -29,7 +29,7 @@ function broadcast(data: any) {
       console.log(`❌ Cliente ${index + 1} não conectado (estado: ${client.readyState})`);
     }
   });
-  
+
   console.log(`📊 BROADCAST finalizado: ${sentCount}/${clients.size} clientes alcançados`);
 }
 
@@ -75,7 +75,7 @@ export function setupSendMessageRoute(app: Express) {
       // MÚLTIPLOS BROADCASTS para garantir recebimento
       broadcast({ type: "newMessage", data: messageData });
       broadcast({ type: "messageSent", data: messageData });
-      
+
       // BROADCAST ADICIONAL após delay
       setTimeout(() => {
         broadcast({ type: "messageReceived", data: messageData });
@@ -854,104 +854,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
 
-  // Webhook endpoint FORÇADO para Evolution API
+  // Webhook endpoint para receber mensagens da Evolution API
   app.post("/api/webhook/messages", async (req, res) => {
     try {
-      const data = req.body;
-      console.log('📡 WEBHOOK RECEBIDO DA EVOLUTION API:', JSON.stringify(data, null, 2));
+      console.log("🔔 WEBHOOK RECEBIDO:", JSON.stringify(req.body, null, 2));
 
-      // PROCESSA QUALQUER TIPO DE EVENTO - SUPER AGRESSIVO
-      if (data.event && data.data) {
-        const messageData = data.data;
-        
-        // CAPTURA chatId de QUALQUER formato possível
-        let chatId = null;
-        if (messageData.key?.remoteJid) {
-          chatId = messageData.key.remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
-        } else if (messageData.remoteJid) {
-          chatId = messageData.remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
-        } else if (messageData.from) {
-          chatId = messageData.from.replace('@s.whatsapp.net', '').replace('@c.us', '');
-        }
+      const webhookData = req.body;
 
-        // PROCESSA mensagens que NÃO são enviadas por nós
-        if (chatId && (!messageData.key?.fromMe || messageData.key?.fromMe === false)) {
-          // EXTRAI conteúdo da mensagem de QUALQUER formato
-          let messageContent = "Nova mensagem";
-          
-          if (messageData.message?.conversation) {
-            messageContent = messageData.message.conversation;
-          } else if (messageData.message?.extendedTextMessage?.text) {
-            messageContent = messageData.message.extendedTextMessage.text;
-          } else if (messageData.message?.imageMessage?.caption) {
-            messageContent = messageData.message.imageMessage.caption;
-          } else if (messageData.body) {
-            messageContent = messageData.body;
-          } else if (messageData.text) {
-            messageContent = messageData.text;
-          } else if (messageData.content) {
-            messageContent = messageData.content;
-          }
+      // Processar diferentes tipos de eventos da Evolution API
+      if (webhookData.event === "messages.upsert" && webhookData.data?.key) {
+        const messageData = webhookData.data;
 
-          console.log(`🎯 WEBHOOK SUPER AGRESSIVO: Nova mensagem de ${chatId}: ${messageContent}`);
+        console.log("📨 Processando mensagem recebida:", messageData);
 
-          try {
-            // SALVA mensagem no banco
-            const newMessage = await storage.createMessage({
-              connectionId: 36,
-              from: chatId,
-              to: "me",
+        // Verificar se a mensagem não é nossa (fromMe = false)
+        if (!messageData.key.fromMe && messageData.message) {
+          const phoneNumber = messageData.key.remoteJid.replace("@s.whatsapp.net", "");
+          const messageContent = messageData.message.conversation || 
+                               messageData.message.extendedTextMessage?.text || 
+                               "Mensagem de mídia";
+
+          console.log(`📱 Nova mensagem recebida de ${phoneNumber}: ${messageContent}`);
+
+          // Encontrar a conexão correspondente
+          const connections = await storage.getAllConnections();
+          const connection = connections.find(c => c.status === "connected");
+
+          if (connection) {
+            // Criar registro da mensagem recebida
+            const receivedMessage = await storage.createMessage({
+              connectionId: connection.id,
+              from: phoneNumber,
+              to: connection.phoneNumber || "system", 
               body: messageContent,
-              direction: "received",
-              status: "delivered"
+              direction: "received"
             });
 
-            console.log(`💾 Mensagem salva: ID ${newMessage.id}`);
+            console.log("💾 Mensagem salva no banco:", receivedMessage);
 
-            // MÚLTIPLOS BROADCASTS SUPER AGRESSIVOS
-            const broadcastData = {
-              id: newMessage.id,
-              connectionId: 36,
-              direction: "received",
-              phoneNumber: chatId,
-              content: messageContent,
-              status: "delivered",
-              timestamp: new Date().toISOString()
+            // Broadcast MÚLTIPLO para todos os clientes WebSocket
+            const messageToSend = {
+              type: "messageReceived",
+              data: {
+                id: receivedMessage.id,
+                connectionId: connection.id,
+                direction: "received",
+                phoneNumber: phoneNumber,
+                content: messageContent,
+                status: "received",
+                timestamp: new Date().toISOString()
+              }
             };
 
-            // BROADCAST 1
-            console.log(`📡 BROADCAST 1 SUPER AGRESSIVO:`, broadcastData);
-            broadcast({ type: "newMessage", data: broadcastData });
-            
-            // BROADCAST 2
-            setTimeout(() => {
-              console.log(`📡 BROADCAST 2 SUPER AGRESSIVO:`, broadcastData);
-              broadcast({ type: "messageReceived", data: broadcastData });
-            }, 50);
-            
-            // BROADCAST 3 - FORÇADO
-            setTimeout(() => {
-              console.log(`📡 BROADCAST 3 SUPER AGRESSIVO:`, broadcastData);
-              broadcast({ type: "incomingMessage", data: broadcastData });
-            }, 100);
+            console.log("📡 BROADCASTING SUPER AGRESSIVO mensagem recebida:", messageToSend);
 
-            // BROADCAST 4 - ULTRA FORÇADO
-            setTimeout(() => {
-              console.log(`📡 BROADCAST 4 ULTRA FORÇADO:`, broadcastData);
-              broadcast({ type: "realTimeMessage", data: broadcastData });
-            }, 150);
+            // Enviar para TODOS os clientes conectados
+            let clientCount = 0;
+            wss.clients.forEach((client) => {
+              if (client.readyState === client.OPEN) {
+                client.send(JSON.stringify(messageToSend));
+                clientCount++;
+                console.log(`✅ Mensagem enviada para cliente WebSocket ${clientCount}`);
+              }
+            });
 
-            console.log(`✅ WEBHOOK SUPER AGRESSIVO: 4 broadcasts enviados para ${chatId}`);
-          } catch (error) {
-            console.error('❌ Erro ao salvar mensagem:', error);
+            console.log(`📊 BROADCAST finalizado: ${clientCount} clientes alcançados`);
+
+            // BACKUP: Também enviar como newMessage para compatibilidade
+            const backupMessage = { ...messageToSend, type: "newMessage" };
+            wss.clients.forEach((client) => {
+              if (client.readyState === client.OPEN) {
+                client.send(JSON.stringify(backupMessage));
+              }
+            });
+
+            console.log("🔄 BACKUP broadcast enviado como newMessage");
           }
         }
       }
 
-      res.status(200).json({ success: true });
+      res.status(200).json({ success: true, message: "Webhook processado" });
     } catch (error) {
-      console.error('❌ Erro no webhook:', error);
-      res.status(500).json({ error: "Webhook processing failed" });
+      console.error("❌ Erro no webhook:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
@@ -959,7 +944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test/receive-message", async (req, res) => {
     try {
       const { phoneNumber = "554187038339", message = "Mensagem de teste em tempo real" } = req.body;
-      
+
       console.log(`🧪 TESTE SUPER AGRESSIVO: Simulando mensagem de ${phoneNumber}: ${message}`);
 
       const newMessage = await storage.createMessage({
@@ -983,7 +968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       console.log(`📡 TESTE: 4 BROADCASTS sendo enviados:`, broadcastData);
-      
+
       broadcast({ type: "newMessage", data: broadcastData });
       broadcast({ type: "messageReceived", data: broadcastData });
       broadcast({ type: "incomingMessage", data: broadcastData });
@@ -1016,7 +1001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Simula webhook
       console.log(`🧪 SIMULANDO WEBHOOK:`, testWebhookData);
-      
+
       // Chama o webhook internamente
       const webhookResponse = await fetch(`http://localhost:5000/api/webhook/messages`, {
         method: 'POST',
