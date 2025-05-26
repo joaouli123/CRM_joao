@@ -225,4 +225,37 @@ class EvolutionAPI {
 }
 
 export const evolutionAPI = new EvolutionAPI();
+
+// Configure WebSocket methods based on Evolution API documentation
+evolutionAPI.setWebSocket = async function(instanceName: string): Promise<any> {
+  try {
+    const response = await this.makeRequest(`/websocket/set/${instanceName}`, 'POST', {
+      enabled: true,
+      events: [
+        "MESSAGES_UPSERT",
+        "MESSAGES_UPDATE", 
+        "SEND_MESSAGE",
+        "CONTACTS_UPDATE",
+        "CHATS_UPDATE",
+        "CONNECTION_UPDATE"
+      ]
+    });
+    console.log(`🔌 WebSocket configurado para ${instanceName}:`, response);
+    return response;
+  } catch (error) {
+    console.error(`Erro ao configurar WebSocket para ${instanceName}:`, error);
+    throw error;
+  }
+};
+
+evolutionAPI.findWebSocket = async function(instanceName: string): Promise<any> {
+  try {
+    const response = await this.makeRequest(`/websocket/find/${instanceName}`, 'GET');
+    console.log(`📡 Status WebSocket ${instanceName}:`, response);
+    return response;
+  } catch (error) {
+    console.error(`Erro ao verificar WebSocket ${instanceName}:`, error);
+    throw error;
+  }
+};
 export { EvolutionAPI };

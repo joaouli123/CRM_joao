@@ -546,11 +546,15 @@ export default function MessageInterface({
             {/* Mensagens */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {currentMessages.map((message, index) => (
-                  <div
-                    key={`msg-${message.id}-${message.direction}-${message.timestamp}-${index}`}
-                    className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
-                  >
+                {currentMessages.map((message, index) => {
+                  // Garante chave única baseada em múltiplos fatores únicos
+                  const uniqueKey = `msg-${message.id || 'unknown'}-${message.direction}-${new Date(message.timestamp).getTime()}-${index}-${message.content?.slice(0, 10) || 'empty'}`;
+                  
+                  return (
+                    <div
+                      key={uniqueKey}
+                      className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
+                    >
                     <div
                       className={`max-w-[70%] rounded-lg px-3 py-2 ${
                         message.direction === 'sent'
@@ -566,7 +570,8 @@ export default function MessageInterface({
                       </p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
 
