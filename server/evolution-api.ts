@@ -312,18 +312,20 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
     console.log(`🔗 CONFIGURANDO WEBHOOK SUPER AGRESSIVO para ${realInstanceName}: ${webhookUrl}`);
     
     const response = await this.makeRequest(`/webhook/set/${realInstanceName}`, 'POST', {
-      url: webhookUrl,
-      enabled: true,
-      webhookByEvents: true,
-      events: [
-        "MESSAGES_UPSERT",
-        "MESSAGES_UPDATE", 
-        "SEND_MESSAGE",
-        "CONNECTION_UPDATE",
-        "QRCODE_UPDATED",
-        "CHATS_UPDATE",
-        "CONTACTS_UPDATE"
-      ]
+      webhook: {
+        url: webhookUrl,
+        enabled: true,
+        webhookByEvents: true,
+        events: [
+          "MESSAGES_UPSERT",
+          "MESSAGES_UPDATE", 
+          "SEND_MESSAGE",
+          "CONNECTION_UPDATE",
+          "QRCODE_UPDATED",
+          "CHATS_UPDATE",
+          "CONTACTS_UPDATE"
+        ]
+      }
     });
     
     console.log(`✅ WEBHOOK SUPER AGRESSIVO configurado para ${realInstanceName}:`, response);
@@ -342,18 +344,20 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
     if (instanceName !== realInstanceName) {
       try {
         const backupResponse = await this.makeRequest(`/webhook/set/${instanceName}`, 'POST', {
-          url: webhookUrl,
-          enabled: true,
-          webhookByEvents: true,
-          events: [
-            "MESSAGES_UPSERT",
-            "MESSAGES_UPDATE", 
+          webhook: {
+            url: webhookUrl,
+            enabled: true,
+            webhookByEvents: true,
+            events: [
+              "MESSAGES_UPSERT",
+              "MESSAGES_UPDATE", 
             "SEND_MESSAGE",
             "CONNECTION_UPDATE",
             "QRCODE_UPDATED",
             "CHATS_UPDATE",
             "CONTACTS_UPDATE"
           ]
+          }
         });
         console.log(`🔄 BACKUP webhook configurado para ${instanceName}:`, backupResponse);
       } catch (backupError) {
