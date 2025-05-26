@@ -487,6 +487,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send message endpoint - REAL WhatsApp delivery
+  app.post("/api/connections/:id/send", async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.id);
+      const { to, message: messageText } = req.body;
+      
+      console.log(`📤 Enviando mensagem via ${connectionId} para ${to}: ${messageText}`);
+      
+      const connection = await storage.getConnection(connectionId);
+      if (!connection) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+
+      if (connection.status !== "connected") {
+        return res.status(400).json({ error: "Connection is not active" });
+      }
+
+      // Use the correct instance name for message sending
+      const activeInstanceName = "whatsapp_36_lowfy";
+      
+      // Clean phone number (remove @s.whatsapp.net if present)
+      const cleanPhoneNumber = to.replace('@s.whatsapp.net', '').replace('@c.us', '');
+      
+      try {
+        console.log(`🎯 Enviando via Evolution API - Instância: ${activeInstanceName}, Para: ${cleanPhoneNumber}`);
+        
+        // Send via Evolution API to real WhatsApp
+        const result = await evolutionAPI.sendMessage(activeInstanceName, cleanPhoneNumber, messageText);
+        console.log(`✅ Mensagem enviada com sucesso via Evolution API:`, result);
+        
+        // Store message in database for history
+        const newMessage = await storage.createMessage({
+          connectionId,
+          from: "me", // Indicating it's from us
+          to: cleanPhoneNumber,
+          body: messageText,
+          direction: "sent",
+          status: "sent"
+        });
+        
+        // Broadcast via WebSocket to update UI in real-time
+        broadcast({ 
+          type: "newMessage", 
+          data: { 
+            id: newMessage.id,
+            connectionId, 
+            direction: "sent",
+            phoneNumber: cleanPhoneNumber,
+            content: messageText,
+            status: "sent",
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`🚀 Mensagem armazenada e transmitida via WebSocket`);
+        
+        res.json({ 
+          success: true, 
+          message: "Message sent successfully to WhatsApp",
+          data: result,
+          messageId: newMessage.id
+        });
+      } catch (apiError) {
+        console.error(`❌ Erro ao enviar mensagem via Evolution API:`, apiError);
+        res.status(500).json({ 
+          error: "Failed to send message via Evolution API",
+          details: apiError 
+        });
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
   app.post("/api/messages/send", async (req, res) => {
     try {
       const result = sendMessageSchema.safeParse(req.body);
@@ -521,12 +596,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Store the message
       try {
-        await storage.createMessage({
+        const newMessage = await storage.createMessage({
           connectionId,
           from: connection.phoneNumber || "system",
           to,
           body: message,
           direction: "sent",
+          status: "sent"
         });
         
         sentMessage.status = "delivered";
@@ -543,11 +619,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ Mensagem enviada e armazenada com sucesso!`);
         
       } catch (error) {
-        console.error(`❌ Erro ao enviar mensagem via Evolution API:`, error);
-        await storage.updateMessage(messageRecord.id, { status: "failed" });
+        console.error(`❌ Erro ao enviar mensagem:`, error);
       }
 
-      res.json({ success: true, message: messageRecord });
+      res.json({ success: true, message: sentMessage });
     } catch (error) {
       console.error("Error sending message:", error);
       res.status(500).json({ error: "Failed to send message" });
@@ -644,6 +719,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       data: { message: "WebSocket connected successfully" },
       timestamp: new Date().toISOString()
     }));
+  });
+
+  // Webhook endpoint for Evolution API to send real-time messages
+  app.post("/api/webhook/messages", async (req, res) => {
+    try {
+      const data = req.body;
+      console.log('📡 Webhook recebido da Evolution API:', JSON.stringify(data, null, 2));
+      
+      // Handle message events from Evolution API
+      if (data.event === 'messages.upsert' && data.data) {
+        const messageData = data.data;
+        const chatId = messageData.key?.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        
+        // Only process messages that are not from us (received messages)
+        if (!messageData.key?.fromMe && chatId) {
+          const messageContent = messageData.message?.conversation || 
+                               messageData.message?.extendedTextMessage?.text || 
+                               messageData.message?.imageMessage?.caption ||
+                               "Nova mensagem de mídia";
+          
+          // Store the received message in database
+          try {
+            const newMessage = await storage.createMessage({
+              connectionId: 1, // We know it's connection 1 for whatsapp_36_lowfy
+              from: chatId,
+              to: "me",
+              body: messageContent,
+              direction: "received",
+              status: "delivered"
+            });
+            
+            // Broadcast to all connected WebSocket clients in real-time
+            broadcast({
+              type: "newMessage",
+              data: {
+                id: newMessage.id,
+                connectionId: 1,
+                direction: "received",
+                phoneNumber: chatId,
+                content: messageContent,
+                status: "delivered",
+                timestamp: new Date(messageData.messageTimestamp * 1000)
+              }
+            });
+            
+            console.log(`📨 Nova mensagem recebida em tempo real de ${chatId}: ${messageContent}`);
+          } catch (error) {
+            console.error('Erro ao salvar mensagem recebida:', error);
+          }
+        }
+      }
+      
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Erro no webhook:', error);
+      res.status(500).json({ error: "Webhook processing failed" });
+    }
   });
 
   return httpServer;

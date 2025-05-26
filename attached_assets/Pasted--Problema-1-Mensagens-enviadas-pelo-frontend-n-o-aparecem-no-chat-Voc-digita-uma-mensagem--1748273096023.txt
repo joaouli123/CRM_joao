@@ -1,0 +1,100 @@
+❌ Problema 1: Mensagens enviadas pelo frontend não aparecem no chat
+
+    Você digita uma mensagem no painel e clica "enviar", mas:
+
+    Ela não aparece na interface
+
+    E o contato não recebe no WhatsApp
+
+❌ Problema 2: Mensagens recebidas não aparecem em tempo real
+
+    Contatos te enviam mensagens, mas:
+
+    Elas não aparecem automaticamente no chat
+
+    Você só vê depois de atualizar manualmente ou relogar
+
+Vamos tratar ambos de forma clara, objetiva e pronta para sua IA resolver.
+✅ PROMPT COMPLETO PARA A IA — MENSAGENS NÃO SÃO ENTREGUES NEM RECEBIDAS EM TEMPO REAL
+
+    ⚠️ Estou com dois problemas principais que precisam ser resolvidos agora:
+
+❌ 1. Mensagens enviadas não chegam ao WhatsApp
+
+        No frontend, o botão “enviar” dispara a função sendMessage()
+
+        Mas a mensagem:
+
+            ❌ Não aparece no chat local
+
+            ❌ Não chega ao WhatsApp do contato
+
+    Verifique:
+
+        Se a função sendMessage() está chamando corretamente o endpoint:
+
+POST /message/sendText/{{instanceName}}
+
+Com corpo:
+
+        {
+          "number": "55XXXXXXXXXXX",
+          "text": "mensagem enviada"
+        }
+
+        Se o número está sem o sufixo @s.whatsapp.net (tem que ser apenas o número puro)
+
+        Se está passando o instanceName correto (não o instanceId)
+
+        Se a API responde com sucesso (200 OK) ou erro (400, 401, 404)
+
+        Se a resposta do envio está sendo logada no console para confirmação
+
+    Após o envio, adicione a mensagem manualmente no estado setMessages([...]) para refletir na interface.
+
+❌ 2. Mensagens recebidas não aparecem em tempo real
+
+        O WebSocket está conectado, mas os eventos messages.upsert ou message não estão sendo escutados corretamente
+
+    Por favor, verifique:
+
+        Se o WebSocket foi conectado com:
+
+const socket = io(`wss://evolution.lowfy.com.br/instance/${instanceId}`, {
+  transports: ['websocket'],
+  extraHeaders: {
+    Authorization: 'Bearer {{API_KEY}}'
+  }
+});
+
+Se há:
+
+socket.onAny((event, data) => {
+  console.log("📡 Evento WebSocket:", event, data);
+});
+
+Se está escutando:
+
+        socket.on("messages.upsert", (data) => {
+          const chatId = data.key.remoteJid;
+          if (chatId === chatAtual) {
+            setMessages((prev) => [...prev, data]);
+          } else {
+            atualizarPreviewContato(chatId, data);
+          }
+        });
+
+        Se a instância do WebSocket está corretamente vinculada ao instanceId atual.
+
+        Se o sessionData carrega os dados certos para essa instância ativa.
+
+    Importante: cada instância deve ter seu próprio canal WebSocket (multi-instância).
+
+✅ O que espero agora:
+
+        Que mensagens enviadas pelo sistema cheguem ao WhatsApp do contato
+
+        Que mensagens enviadas pelos contatos apareçam em tempo real
+
+        Que o setMessages() atualize o chat atual corretamente
+

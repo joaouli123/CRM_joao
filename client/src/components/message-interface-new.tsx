@@ -210,26 +210,87 @@ export default function MessageInterface({
     conv.phoneNumber.includes(searchFilter)
   );
 
-  // Send message function
+  // Send message function with immediate UI update
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
+    if (!newMessage.trim() || !selectedConversation || !selectedConnectionId || !instanceKey) return;
+
+    const messageText = newMessage;
+    setNewMessage(''); // Clear input immediately
+
+    // Add message to UI immediately for instant feedback
+    const tempMessage = {
+      id: Date.now(),
+      connectionId: selectedConnectionId,
+      direction: "sent" as const,
+      phoneNumber: selectedConversation,
+      content: messageText,
+      status: "pending" as const,
+      timestamp: new Date()
+    };
+
+    // Update messages immediately in the UI
+    setMessagesByInstance(prev => ({
+      ...prev,
+      [instanceKey]: {
+        ...prev[instanceKey],
+        [selectedConversation]: [...(prev[instanceKey]?.[selectedConversation] || []), tempMessage]
+      }
+    }));
 
     try {
+      console.log(`📤 Enviando mensagem para ${selectedConversation}: ${messageText}`);
+      
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: selectedConversation,
-          message: newMessage
+          message: messageText
         })
       });
 
+      const result = await response.json();
+      
       if (response.ok) {
-        setNewMessage('');
-        // The message will be added via WebSocket real-time update
+        console.log(`✅ Mensagem enviada com sucesso:`, result);
+        
+        // Update message status to sent
+        setMessagesByInstance(prev => ({
+          ...prev,
+          [instanceKey]: {
+            ...prev[instanceKey],
+            [selectedConversation]: (prev[instanceKey]?.[selectedConversation] || []).map(msg => 
+              msg.id === tempMessage.id ? { ...msg, status: "sent" } : msg
+            )
+          }
+        }));
+      } else {
+        console.error(`❌ Erro ao enviar mensagem:`, result);
+        
+        // Remove message from UI if failed
+        setMessagesByInstance(prev => ({
+          ...prev,
+          [instanceKey]: {
+            ...prev[instanceKey],
+            [selectedConversation]: (prev[instanceKey]?.[selectedConversation] || []).filter(msg => 
+              msg.id !== tempMessage.id
+            )
+          }
+        }));
       }
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
+      
+      // Remove message from UI if failed
+      setMessagesByInstance(prev => ({
+        ...prev,
+        [instanceKey]: {
+          ...prev[instanceKey],
+          [selectedConversation]: (prev[instanceKey]?.[selectedConversation] || []).filter(msg => 
+            msg.id !== tempMessage.id
+          )
+        }
+      }));
     }
   };
 
