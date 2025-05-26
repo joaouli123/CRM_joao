@@ -15,7 +15,7 @@ const sessions = new Map<number, WhatsAppSession>();
 const clients = new Set<WebSocket>();
 
 function broadcast(data: any) {
-  const message = JSON.stringify(data);
+  const message = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -23,11 +23,12 @@ function broadcast(data: any) {
   });
 }
 
-// Generate a realistic QR code for WhatsApp Web simulation
+// Generate a realistic QR code for WhatsApp Web
 function generateQRCode(): string {
   const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 15);
   
-  // Create a more realistic QR code SVG
+  // Create a more realistic QR code SVG that looks like WhatsApp Web QR
   const qrSize = 256;
   const cellSize = 8;
   const cells = qrSize / cellSize;
@@ -35,17 +36,18 @@ function generateQRCode(): string {
   let svg = `<svg width="${qrSize}" height="${qrSize}" xmlns="http://www.w3.org/2000/svg">
     <rect width="100%" height="100%" fill="white"/>`;
   
-  // Generate a pseudo-random pattern that looks like a QR code
+  // Generate a pseudo-random pattern based on timestamp and random string
   for (let y = 0; y < cells; y++) {
     for (let x = 0; x < cells; x++) {
       const hash = ((x * 7 + y * 13 + timestamp) % 97) / 97;
-      if (hash > 0.5) {
+      const hash2 = (randomString.charCodeAt((x + y) % randomString.length) % 100) / 100;
+      if ((hash + hash2) / 2 > 0.5) {
         svg += `<rect x="${x * cellSize}" y="${y * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`;
       }
     }
   }
   
-  // Add positioning markers (corners)
+  // Add positioning markers (corners) - characteristic of QR codes
   const markerSize = cellSize * 7;
   const markerPositions = [
     [0, 0], [cells - 7, 0], [0, cells - 7]
@@ -59,6 +61,14 @@ function generateQRCode(): string {
             <rect x="${x + 2 * cellSize}" y="${y + 2 * cellSize}" width="${markerSize - 4 * cellSize}" height="${markerSize - 4 * cellSize}" fill="black"/>`;
   });
   
+  // Add some central timing patterns
+  for (let i = 6; i < cells - 6; i++) {
+    if (i % 2 === 0) {
+      svg += `<rect x="${i * cellSize}" y="${6 * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`;
+      svg += `<rect x="${6 * cellSize}" y="${i * cellSize}" width="${cellSize}" height="${cellSize}" fill="black"/>`;
+    }
+  }
+  
   svg += '</svg>';
   
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
@@ -66,83 +76,108 @@ function generateQRCode(): string {
 
 async function initializeWhatsAppSession(connectionId: number, sessionName: string) {
   try {
-    console.log(`Initializing WhatsApp session for connection ${connectionId}`);
+    console.log(`🔄 Iniciando sessão WhatsApp para conexão ${connectionId}: ${sessionName}`);
     
     await storage.updateConnection(connectionId, { status: "connecting" });
-    broadcast({ type: "connectionStatusChanged", data: { id: connectionId, status: "connecting" }});
+    broadcast({ 
+      type: "connectionStatusChanged", 
+      data: { id: connectionId, status: "connecting" }
+    });
 
-    // Simulate QR code generation
+    // Simulate QR code generation after a short delay
     setTimeout(async () => {
-      const qrCode = generateQRCode();
-      const qrExpiry = new Date(Date.now() + 60000); // 1 minute expiration
-      
-      await storage.updateConnection(connectionId, { 
-        status: "waiting_qr", 
-        qrCode,
-        qrExpiry 
-      });
-      
-      broadcast({ 
-        type: "qrCodeReceived", 
-        data: { 
-          connectionId, 
+      try {
+        const qrCode = generateQRCode();
+        const qrExpiry = new Date(Date.now() + 90000); // 90 seconds expiration
+        
+        await storage.updateConnection(connectionId, { 
+          status: "waiting_qr", 
           qrCode,
-          expiration: qrExpiry 
-        }
-      });
-
-      // Set timer to expire QR code
-      const qrTimer = setTimeout(async () => {
-        const connection = await storage.getConnection(connectionId);
-        if (connection && connection.status === "waiting_qr") {
-          await storage.updateConnection(connectionId, { 
-            status: "disconnected",
-            qrCode: null,
-            qrExpiry: null 
-          });
-          broadcast({ type: "connectionStatusChanged", data: { id: connectionId, status: "disconnected" }});
-        }
-      }, 60000);
-
-      // Store session
-      sessions.set(connectionId, {
-        client: null,
-        connection: await storage.getConnection(connectionId),
-        qrTimer,
-        status: "waiting_qr"
-      });
-
-      // Simulate successful connection after 10 seconds (user would scan QR in real scenario)
-      setTimeout(async () => {
-        const session = sessions.get(connectionId);
-        if (session && session.status === "waiting_qr") {
-          if (session.qrTimer) {
-            clearTimeout(session.qrTimer);
+          qrExpiry 
+        });
+        
+        console.log(`📱 QR Code gerado para conexão ${connectionId}`);
+        
+        broadcast({ 
+          type: "qrCodeReceived", 
+          data: { 
+            connectionId, 
+            qrCode,
+            expiration: qrExpiry 
           }
-          
-          await storage.updateConnection(connectionId, { 
-            status: "connected",
-            qrCode: null,
-            qrExpiry: null,
-            lastActivity: new Date(),
-            phoneNumber: "+5511999999999" // Simulated phone number
-          });
-          
-          session.status = "connected";
-          sessions.set(connectionId, session);
-          
-          broadcast({ type: "connectionStatusChanged", data: { id: connectionId, status: "connected" }});
-          console.log(`Connection ${connectionId} established successfully`);
-        }
-      }, 10000);
-      
+        });
+
+        // Set timer to expire QR code
+        const qrTimer = setTimeout(async () => {
+          const connection = await storage.getConnection(connectionId);
+          if (connection && connection.status === "waiting_qr") {
+            console.log(`⏰ QR Code expirado para conexão ${connectionId}`);
+            await storage.updateConnection(connectionId, { 
+              status: "disconnected",
+              qrCode: null,
+              qrExpiry: null 
+            });
+            broadcast({ 
+              type: "connectionStatusChanged", 
+              data: { id: connectionId, status: "disconnected" }
+            });
+          }
+        }, 90000);
+
+        // Store session
+        sessions.set(connectionId, {
+          client: null,
+          connection: await storage.getConnection(connectionId),
+          qrTimer,
+          status: "waiting_qr"
+        });
+
+        // Simulate successful connection after QR scan (15 seconds for demo)
+        setTimeout(async () => {
+          const session = sessions.get(connectionId);
+          if (session && session.status === "waiting_qr") {
+            if (session.qrTimer) {
+              clearTimeout(session.qrTimer);
+            }
+            
+            console.log(`✅ Conexão ${connectionId} estabelecida com sucesso`);
+            
+            await storage.updateConnection(connectionId, { 
+              status: "connected",
+              qrCode: null,
+              qrExpiry: null,
+              lastActivity: new Date(),
+              phoneNumber: `+55119${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}` // Simulated phone number
+            });
+            
+            session.status = "connected";
+            sessions.set(connectionId, session);
+            
+            broadcast({ 
+              type: "connectionStatusChanged", 
+              data: { id: connectionId, status: "connected" }
+            });
+          }
+        }, 15000);
+        
+      } catch (error) {
+        console.error(`❌ Erro ao gerar QR Code para conexão ${connectionId}:`, error);
+        await storage.updateConnection(connectionId, { status: "disconnected" });
+        broadcast({ 
+          type: "connectionStatusChanged", 
+          data: { id: connectionId, status: "disconnected" }
+        });
+      }
     }, 2000);
     
   } catch (error) {
-    console.error(`Error initializing WhatsApp session for connection ${connectionId}:`, error);
+    console.error(`❌ Erro ao inicializar sessão WhatsApp para conexão ${connectionId}:`, error);
     
     await storage.updateConnection(connectionId, { status: "disconnected" });
-    broadcast({ type: "connectionStatusChanged", data: { id: connectionId, status: "disconnected" }});
+    broadcast({ 
+      type: "connectionStatusChanged", 
+      data: { id: connectionId, status: "disconnected" }
+    });
   }
 }
 
@@ -175,6 +210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const connection = await storage.createConnection(result.data);
       
+      console.log(`🆕 Nova conexão criada: ${connection.name} (ID: ${connection.id})`);
+      
       // Start WhatsApp session automatically
       initializeWhatsAppSession(connection.id, connection.name);
       
@@ -196,6 +233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!connection) {
         return res.status(404).json({ error: "Connection not found" });
       }
+
+      console.log(`🔄 Reiniciando conexão: ${connection.name} (ID: ${id})`);
 
       // Close existing session if any
       const existingSession = sessions.get(id);
@@ -224,7 +263,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { connectionId, to, message } = result.data;
       
-      const session = sessions.get(connectionId);
       const connection = await storage.getConnection(connectionId);
       
       if (!connection) {
@@ -235,6 +273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Connection is not active" });
       }
 
+      console.log(`📤 Enviando mensagem via conexão ${connectionId} para ${to}: ${message}`);
+
       // Store message in database
       const messageRecord = await storage.createMessage({
         connectionId,
@@ -244,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         direction: "sent",
       });
 
-      // Simulate sending message (in real implementation, this would use WhatsApp Web API)
+      // Simulate sending message
       setTimeout(async () => {
         await storage.updateMessage(messageRecord.id, { status: "sent" });
         
@@ -260,6 +300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: "sent"
           }
         });
+
+        console.log(`✅ Mensagem enviada com sucesso`);
 
         // Simulate receiving a response after 3 seconds
         setTimeout(async () => {
@@ -279,6 +321,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: "messageReceived", 
             data: responseMessage
           });
+
+          console.log(`📥 Resposta automática recebida`);
         }, 3000);
         
       }, 1000);
@@ -323,6 +367,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Connection not found" });
       }
       
+      console.log(`🗑️ Conexão deletada: ID ${id}`);
+      
       broadcast({ type: "connectionDeleted", data: { id } });
       res.json({ success: true });
     } catch (error) {
@@ -362,20 +408,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   wss.on('connection', (ws) => {
     clients.add(ws);
-    console.log('Client connected to WebSocket');
+    console.log('🔌 Cliente conectado ao WebSocket');
 
     ws.on('close', () => {
       clients.delete(ws);
-      console.log('Client disconnected from WebSocket');
+      console.log('🔌 Cliente desconectado do WebSocket');
     });
 
     ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      console.error('❌ Erro WebSocket:', error);
       clients.delete(ws);
     });
 
     // Send welcome message
-    ws.send(JSON.stringify({ type: "connected", data: { message: "WebSocket connected" } }));
+    ws.send(JSON.stringify({ 
+      type: "connected", 
+      data: { message: "WebSocket connected successfully" },
+      timestamp: new Date().toISOString()
+    }));
   });
 
   return httpServer;
