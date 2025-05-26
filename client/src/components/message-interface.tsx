@@ -52,7 +52,7 @@ export default function MessageInterface({
   const formatTime = (date: Date | string) => {
     try {
       const dateObj = typeof date === 'string' ? parseISO(date) : date;
-      return format(dateObj, "HH:mm", { locale: ptBR });
+      return format(dateObj, "HH:mm");
     } catch {
       return "";
     }
@@ -68,8 +68,11 @@ export default function MessageInterface({
       const now = new Date();
       const diffDays = Math.floor((now.getTime() - dateObj.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (diffDays < 7) return format(dateObj, "EEEE", { locale: ptBR });
-      return format(dateObj, "dd/MM/yyyy", { locale: ptBR });
+      if (diffDays < 7) {
+        const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        return dayNames[dateObj.getDay()];
+      }
+      return format(dateObj, "dd/MM/yyyy");
     } catch {
       return "Data inválida";
     }
