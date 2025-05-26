@@ -199,12 +199,14 @@ export class MemStorage implements IStorage {
     const conversationsMap = new Map<string, Conversation>();
     
     for (const message of connectionMessages) {
-      const phoneNumber = message.phoneNumber;
+      const phoneNumber = message.direction === "received" ? message.from : message.to;
+      if (!phoneNumber) continue;
+      
       if (!conversationsMap.has(phoneNumber)) {
         conversationsMap.set(phoneNumber, {
           phoneNumber,
           contactName: phoneNumber,
-          lastMessage: message.content,
+          lastMessage: message.body,
           lastMessageTime: new Date(message.timestamp!),
           unreadCount: 0,
           messageCount: 1
@@ -221,7 +223,7 @@ export class MemStorage implements IStorage {
 
   async getMessagesByConversation(connectionId: number, phoneNumber: string, limit: number = 50): Promise<Message[]> {
     return Array.from(this.messages.values())
-      .filter(msg => msg.connectionId === connectionId && msg.phoneNumber === phoneNumber)
+      .filter(msg => msg.connectionId === connectionId && (msg.from === phoneNumber || msg.to === phoneNumber))
       .sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime())
       .slice(0, limit);
   }

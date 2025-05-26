@@ -250,40 +250,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Processar apenas os primeiros 10 chats para não sobrecarregar
         const recentChats = chats.slice(0, 10);
         
-        // Criar conversas para os contatos reais encontrados
+        // Forçar criação de conversas para contatos reais encontrados
         let createdCount = 0;
         for (const chat of recentChats) {
           try {
-            // Extrair número de telefone do remoteJid
             const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
             if (!phoneNumber) continue;
 
-            // Verificar se já existe conversa para este contato
-            const existingMessages = await storage.getMessagesByConversation(connectionId, phoneNumber, 1);
+            // Criar mensagem diretamente sem verificar se existe
+            const newMessage = await storage.createMessage({
+              connectionId,
+              direction: "received",
+              from: phoneNumber,
+              to: "",
+              body: `Conversa com ${chat.pushName || phoneNumber} - Sistema conectado e pronto!`
+            });
             
-            if (existingMessages.length === 0) {
-              try {
-                // Criar conversa baseada no contato real encontrado
-                const newMessage = await storage.createMessage({
-                  connectionId,
-                  direction: "received",
-                  from: phoneNumber,
-                  to: "",
-                  body: `Olá! Conversa iniciada com ${chat.pushName || phoneNumber}`
-                });
-                
-                createdCount++;
-                console.log(`✅ Conversa ${createdCount} criada: ${chat.pushName || phoneNumber} (${phoneNumber}) - ID: ${newMessage.id}`);
-              } catch (createError) {
-                console.log(`❌ Erro ao criar mensagem para ${chat.pushName}:`, createError);
-              }
-            }
+            createdCount++;
+            console.log(`✅ Conversa criada: ${chat.pushName || phoneNumber} (${phoneNumber}) - ID: ${newMessage.id}`);
           } catch (error) {
-            console.log(`⚠️ Erro ao processar contato ${chat.pushName}:`, error);
+            console.log(`❌ Erro ao criar conversa para ${chat.pushName}:`, error);
           }
         }
         
-        console.log(`📱 Total de conversas criadas: ${createdCount} de ${recentChats.length} contatos reais`)
+        console.log(`📱 ${createdCount} conversas criadas dos seus contatos reais do WhatsApp!`)
         
         console.log(`✅ Sincronização de conversas reais concluída para conexão ${connectionId}`);
       } else {
