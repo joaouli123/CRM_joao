@@ -1,0 +1,112 @@
+Com base nas últimas informações, você mencionou que tem um sistema configurado com múltiplas camadas de segurança e que está utilizando Webhooks e WebSockets para garantir que as mensagens apareçam em tempo real, mas ainda assim você não consegue ver a mensagem no chat sem atualizar a página.
+
+Aqui estão algumas verificações e ajustes que podemos tentar para resolver o problema:
+Passo 1: Verifique se a mensagem está sendo recebida pelo WebSocket
+
+Primeiramente, é importante garantir que as mensagens estão sendo recebidas corretamente no WebSocket, ou seja, o backend está emitindo a mensagem corretamente para o frontend. Verifique o console do navegador para os eventos de WebSocket. Se o WebSocket está recebendo a mensagem, você deve ver algo como:
+
+WebSocket evento recebido: {type: 'newMessage', data: {content: "mensagem nova"}}
+
+Caso contrário, verifique se o WebSocket está se conectando corretamente e se não há nenhum erro de conexão. No seu código, já vimos mensagens de erro do WebSocket, como:
+
+WebSocket connection to 'wss://...' failed: WebSocket is closed before the connection is established.
+
+Solução: Tente implementar uma lógica de reconexão no WebSocket, para garantir que a conexão seja estabelecida corretamente. Verifique também se a URL está correta, e se o servidor está respondendo como esperado.
+Passo 2: Certifique-se de que o frontend está processando as mensagens recebidas
+
+No frontend, quando você receber uma mensagem via WebSocket, deve garantir que o estado de mensagens (ou o array que contém as mensagens) está sendo atualizado corretamente para forçar o re-render do componente de chat.
+
+Veja um exemplo de como a atualização de estado pode ser feita de forma eficaz:
+
+socket.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log("Mensagem recebida via WebSocket:", message);
+
+  // Atualize o estado apenas se a mensagem for do chat ativo
+  if (message.phoneNumber === selectedConversation) {
+    setMessages((prevMessages) => {
+      // Adiciona a nova mensagem sem duplicação
+      const newMessages = [...prevMessages, message];
+      return newMessages;
+    });
+  }
+};
+
+Aqui, estamos verificando se a mensagem recebida é do chat ativo e, se sim, atualizamos o estado do chat com a nova mensagem.
+
+Solução: Garanta que, após a atualização do estado com a nova mensagem, o componente do chat seja re-renderizado. Utilize o useEffect ou setState para forçar a re-renderização.
+Passo 3: Verifique a configuração do Webhook
+
+Se as mensagens estão chegando corretamente no WebSocket, mas não estão sendo exibidas no frontend, a falha pode estar no processamento do Webhook.
+
+    Certifique-se de que a configuração do Webhook da Evolution API está corretamente vinculada à instância do chat. A mensagem pode estar sendo recebida, mas o frontend não está processando corretamente essas mensagens.
+
+Aqui está um exemplo de como você pode configurar o Webhook para processar e enviar a mensagem para o frontend:
+
+// Exemplo de configuração do Webhook
+app.post('/webhook', (req, res) => {
+  const message = req.body;
+
+  // Validação do formato da mensagem
+  if (message && message.content && message.phoneNumber) {
+    console.log('Nova mensagem recebida:', message);
+
+    // Emitir a mensagem para o WebSocket
+    websocket.emit('newMessage', message);
+    res.status(200).send({ success: true });
+  } else {
+    res.status(400).send({ error: 'Mensagem inválida' });
+  }
+});
+
+Passo 4: Debugging e Verificação do Estado do WebSocket
+
+Se o WebSocket estiver se desconectando antes de processar as mensagens, talvez seja necessário melhorar a verificação do estado de conexão. Verifique o status do WebSocket e implemente uma lógica de reconexão se necessário. Por exemplo:
+
+const socket = new WebSocket('wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/ws');
+
+socket.onopen = () => {
+  console.log("WebSocket conectado!");
+};
+
+socket.onerror = (event) => {
+  console.error("Erro no WebSocket:", event);
+};
+
+socket.onclose = (event) => {
+  console.log("WebSocket fechado. Tentando reconectar...");
+  setTimeout(() => {
+    socket = new WebSocket('wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/ws');
+  }, 5000);
+};
+
+Passo 5: Verifique a Interface de Usuário
+
+Às vezes, o backend pode estar funcionando corretamente, mas o frontend pode não estar exibindo as mensagens devido a problemas de re-renderização. No React, por exemplo, é importante garantir que a atualização do estado seja feita de forma adequada. Verifique o seguinte:
+
+    Garantir que o estado de mensagens seja atualizado corretamente.
+
+    Garantir que o componente de chat seja re-renderizado quando novas mensagens chegarem.
+
+    Garantir que as mensagens recebidas sejam inseridas no lugar correto na interface.
+
+Exemplo de Atualização de Estado no React:
+
+useEffect(() => {
+  // Verifique se a mensagem é do chat ativo e atualize o estado
+  if (newMessage.phoneNumber === selectedConversation) {
+    setMessages(prevMessages => [...prevMessages, newMessage]);
+  }
+}, [newMessage]); // Depende da nova mensagem
+
+O que Fazer Agora:
+
+    Rever a conexão do WebSocket: Tente garantir que a conexão esteja estável e configurada corretamente.
+
+    Verifique a lógica de reconexão: Implementar reconexões automáticas no WebSocket.
+
+    Testar as configurações do Webhook: Verifique se o Webhook da Evolution API está funcionando corretamente e processando as mensagens.
+
+    Garantir re-renderização no frontend: Verifique a atualização de estado e re-renderização no React para garantir que as mensagens apareçam assim que recebidas.
+
+Com essas ações, você deverá conseguir corrigir o problema e garantir que as mensagens apareçam imediatamente na interface sem necessidade de atualizar a página.
