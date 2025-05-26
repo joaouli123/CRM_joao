@@ -249,7 +249,15 @@ export default function MessageInterface({
         })
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        // If response is not JSON, get text for debugging
+        const responseText = await response.text();
+        console.error(`❌ Resposta não é JSON:`, responseText);
+        throw new Error(`Servidor retornou HTML: ${responseText.substring(0, 100)}...`);
+      }
       
       if (response.ok) {
         console.log(`✅ Mensagem enviada com sucesso:`, result);

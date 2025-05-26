@@ -493,14 +493,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = parseInt(req.params.id);
       const { to, message: messageText } = req.body;
       
+      console.log(`📤 ENDPOINT /api/connections/${connectionId}/send CHAMADO`);
       console.log(`📤 Enviando mensagem via ${connectionId} para ${to}: ${messageText}`);
       
       const connection = await storage.getConnection(connectionId);
       if (!connection) {
+        console.log(`❌ Conexão ${connectionId} não encontrada`);
         return res.status(404).json({ error: "Connection not found" });
       }
 
+      console.log(`🔍 Conexão encontrada:`, connection);
+
       if (connection.status !== "connected") {
+        console.log(`❌ Conexão ${connectionId} não está ativa. Status: ${connection.status}`);
         return res.status(400).json({ error: "Connection is not active" });
       }
 
