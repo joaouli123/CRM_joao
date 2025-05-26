@@ -860,22 +860,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = req.body;
       console.log('📡 WEBHOOK RECEBIDO DA EVOLUTION API:', JSON.stringify(data, null, 2));
 
-      // FORÇAR processamento de QUALQUER evento de mensagem
-      if (data.event === 'messages.upsert' && data.data) {
+      // PROCESSA QUALQUER TIPO DE EVENTO - SUPER AGRESSIVO
+      if (data.event && data.data) {
         const messageData = data.data;
-        const chatId = messageData.key?.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        
+        // CAPTURA chatId de QUALQUER formato possível
+        let chatId = null;
+        if (messageData.key?.remoteJid) {
+          chatId = messageData.key.remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        } else if (messageData.remoteJid) {
+          chatId = messageData.remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        } else if (messageData.from) {
+          chatId = messageData.from.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        }
 
-        // PROCESSAR mensagens que NÃO são nossas (mensagens recebidas)
-        if (!messageData.key?.fromMe && chatId) {
-          const messageContent = messageData.message?.conversation || 
-                               messageData.message?.extendedTextMessage?.text || 
-                               messageData.message?.imageMessage?.caption ||
-                               "Nova mensagem de mídia";
+        // PROCESSA mensagens que NÃO são enviadas por nós
+        if (chatId && (!messageData.key?.fromMe || messageData.key?.fromMe === false)) {
+          // EXTRAI conteúdo da mensagem de QUALQUER formato
+          let messageContent = "Nova mensagem";
+          
+          if (messageData.message?.conversation) {
+            messageContent = messageData.message.conversation;
+          } else if (messageData.message?.extendedTextMessage?.text) {
+            messageContent = messageData.message.extendedTextMessage.text;
+          } else if (messageData.message?.imageMessage?.caption) {
+            messageContent = messageData.message.imageMessage.caption;
+          } else if (messageData.body) {
+            messageContent = messageData.body;
+          } else if (messageData.text) {
+            messageContent = messageData.text;
+          } else if (messageData.content) {
+            messageContent = messageData.content;
+          }
 
-          console.log(`🎯 WEBHOOK: Nova mensagem de ${chatId}: ${messageContent}`);
+          console.log(`🎯 WEBHOOK SUPER AGRESSIVO: Nova mensagem de ${chatId}: ${messageContent}`);
 
-          // SALVAR no banco
           try {
+            // SALVA mensagem no banco
             const newMessage = await storage.createMessage({
               connectionId: 36,
               from: chatId,
@@ -885,37 +906,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: "delivered"
             });
 
-            console.log(`💾 Mensagem salva no banco: ID ${newMessage.id}`);
+            console.log(`💾 Mensagem salva: ID ${newMessage.id}`);
 
-            // BROADCAST FORÇADO para TODOS os clientes WebSocket
+            // MÚLTIPLOS BROADCASTS SUPER AGRESSIVOS
             const broadcastData = {
-              type: "newMessage",
-              data: {
-                id: newMessage.id,
-                connectionId: 36,
-                direction: "received",
-                phoneNumber: chatId,
-                content: messageContent,
-                status: "delivered",
-                timestamp: new Date(messageData.messageTimestamp * 1000).toISOString()
-              }
+              id: newMessage.id,
+              connectionId: 36,
+              direction: "received",
+              phoneNumber: chatId,
+              content: messageContent,
+              status: "delivered",
+              timestamp: new Date().toISOString()
             };
 
-            console.log(`📡 BROADCASTING FORÇADO:`, broadcastData);
-            broadcast(broadcastData);
-
-            // BROADCAST ADICIONAL para garantir recebimento
+            // BROADCAST 1
+            console.log(`📡 BROADCAST 1 SUPER AGRESSIVO:`, broadcastData);
+            broadcast({ type: "newMessage", data: broadcastData });
+            
+            // BROADCAST 2
             setTimeout(() => {
-              console.log(`📡 BROADCAST ADICIONAL FORÇADO:`, broadcastData);
-              broadcast({
-                ...broadcastData,
-                type: "messageReceived"
-              });
+              console.log(`📡 BROADCAST 2 SUPER AGRESSIVO:`, broadcastData);
+              broadcast({ type: "messageReceived", data: broadcastData });
+            }, 50);
+            
+            // BROADCAST 3 - FORÇADO
+            setTimeout(() => {
+              console.log(`📡 BROADCAST 3 SUPER AGRESSIVO:`, broadcastData);
+              broadcast({ type: "incomingMessage", data: broadcastData });
             }, 100);
 
-            console.log(`✅ WEBHOOK: Mensagem processada e broadcast enviado para ${chatId}`);
+            // BROADCAST 4 - ULTRA FORÇADO
+            setTimeout(() => {
+              console.log(`📡 BROADCAST 4 ULTRA FORÇADO:`, broadcastData);
+              broadcast({ type: "realTimeMessage", data: broadcastData });
+            }, 150);
+
+            console.log(`✅ WEBHOOK SUPER AGRESSIVO: 4 broadcasts enviados para ${chatId}`);
           } catch (error) {
-            console.error('❌ Erro ao salvar mensagem recebida:', error);
+            console.error('❌ Erro ao salvar mensagem:', error);
           }
         }
       }
@@ -930,9 +958,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ENDPOINT ADICIONAL para simular mensagem recebida (para testes)
   app.post("/api/test/receive-message", async (req, res) => {
     try {
-      const { phoneNumber, message } = req.body;
+      const { phoneNumber = "554187038339", message = "Mensagem de teste em tempo real" } = req.body;
       
-      console.log(`🧪 TESTE: Simulando mensagem recebida de ${phoneNumber}: ${message}`);
+      console.log(`🧪 TESTE SUPER AGRESSIVO: Simulando mensagem de ${phoneNumber}: ${message}`);
 
       const newMessage = await storage.createMessage({
         connectionId: 36,
@@ -943,26 +971,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "delivered"
       });
 
+      // MÚLTIPLOS BROADCASTS para garantir que chegue
       const broadcastData = {
-        type: "newMessage",
-        data: {
-          id: newMessage.id,
-          connectionId: 36,
-          direction: "received",
-          phoneNumber: phoneNumber,
-          content: message,
-          status: "delivered",
-          timestamp: new Date().toISOString()
-        }
+        id: newMessage.id,
+        connectionId: 36,
+        direction: "received",
+        phoneNumber: phoneNumber,
+        content: message,
+        status: "delivered",
+        timestamp: new Date().toISOString()
       };
 
-      console.log(`📡 TESTE BROADCAST:`, broadcastData);
-      broadcast(broadcastData);
+      console.log(`📡 TESTE: 4 BROADCASTS sendo enviados:`, broadcastData);
+      
+      broadcast({ type: "newMessage", data: broadcastData });
+      broadcast({ type: "messageReceived", data: broadcastData });
+      broadcast({ type: "incomingMessage", data: broadcastData });
+      broadcast({ type: "realTimeMessage", data: broadcastData });
 
-      res.json({ success: true, messageId: newMessage.id });
+      res.json({ success: true, messageId: newMessage.id, broadcasts: 4 });
     } catch (error) {
       console.error('❌ Erro no teste:', error);
       res.status(500).json({ error: "Test failed" });
+    }
+  });
+
+  // ENDPOINT para testar webhook diretamente
+  app.post("/api/test/simulate-webhook", async (req, res) => {
+    try {
+      const testWebhookData = {
+        event: "messages.upsert",
+        data: {
+          key: {
+            remoteJid: "554187038339@s.whatsapp.net",
+            fromMe: false,
+            id: `test_${Date.now()}`
+          },
+          message: {
+            conversation: "Teste de webhook - mensagem deve aparecer em tempo real"
+          },
+          messageTimestamp: Math.floor(Date.now() / 1000)
+        }
+      };
+
+      // Simula webhook
+      console.log(`🧪 SIMULANDO WEBHOOK:`, testWebhookData);
+      
+      // Chama o webhook internamente
+      const webhookResponse = await fetch(`http://localhost:5000/api/webhook/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testWebhookData)
+      });
+
+      res.json({ success: true, webhook: testWebhookData });
+    } catch (error) {
+      console.error('❌ Erro no teste de webhook:', error);
+      res.status(500).json({ error: "Webhook test failed" });
     }
   });
 

@@ -85,41 +85,60 @@ export default function MessageInterface({
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log(`📨 WEBSOCKET RECEBEU:`, data);
+            console.log(`📨 WEBSOCKET SUPER AGRESSIVO RECEBEU:`, data);
 
-            // PROCESSA QUALQUER TIPO DE MENSAGEM NOVA
-            if ((data.type === "newMessage" || data.type === "messageSent" || data.type === "messageReceived") && data.data) {
+            // PROCESSA TODOS OS TIPOS DE MENSAGEM POSSÍVEIS - SUPER AGRESSIVO
+            const messageTypes = [
+              "newMessage", "messageSent", "messageReceived", 
+              "incomingMessage", "realTimeMessage", "messageUpdate",
+              "message", "chat", "notification"
+            ];
+
+            if (messageTypes.includes(data.type) && data.data) {
               const msgData = data.data;
 
-              // VERIFICA se é da conexão ativa
-              if (msgData.connectionId === selectedConnectionId) {
-                console.log(`🎯 PROCESSANDO MENSAGEM FORÇADA: "${msgData.content}" para chat ${msgData.phoneNumber}`);
+              // ACEITA QUALQUER connectionId ou força para a conexão ativa
+              const isValidConnection = !msgData.connectionId || 
+                                      msgData.connectionId === selectedConnectionId || 
+                                      selectedConnectionId;
 
-                // ADICIONA MENSAGEM IMEDIATAMENTE
+              if (isValidConnection) {
+                console.log(`🎯 PROCESSANDO MENSAGEM SUPER AGRESSIVA: "${msgData.content || msgData.message || msgData.body}" para chat ${msgData.phoneNumber || msgData.to || msgData.from}`);
+
+                // CRIA mensagem com MÚLTIPLAS fontes de dados
                 const newMsg: RealtimeMessage = {
-                  id: msgData.id || `msg_${Date.now()}_${Math.random()}`,
-                  content: msgData.content || msgData.message || msgData.body || "Nova mensagem",
-                  phoneNumber: msgData.phoneNumber || msgData.to || msgData.from,
-                  direction: msgData.direction || (msgData.fromMe ? "sent" : "received"),
-                  timestamp: new Date(msgData.timestamp || Date.now()),
+                  id: msgData.id || msgData.messageId || `msg_${Date.now()}_${Math.random()}`,
+                  content: msgData.content || msgData.message || msgData.body || msgData.text || "Nova mensagem recebida",
+                  phoneNumber: msgData.phoneNumber || msgData.to || msgData.from || msgData.chatId || "unknown",
+                  direction: msgData.direction || (msgData.fromMe ? "sent" : "received") || "received",
+                  timestamp: new Date(msgData.timestamp || msgData.time || Date.now()),
                   status: msgData.status || 'delivered'
                 };
 
+                console.log(`🚀 MENSAGEM CRIADA:`, newMsg);
+
+                // FORÇA ADIÇÃO sem verificações excessivas
                 setRealtimeMessages(prev => {
-                  // Anti-duplicação
-                  const exists = prev.some(m => m.id === newMsg.id);
-                  if (exists) {
-                    console.log("⚠️ Mensagem duplicada ignorada");
+                  // Verificação MENOS rígida para duplicação
+                  const existsExact = prev.some(m => 
+                    m.id === newMsg.id || 
+                    (m.content === newMsg.content && 
+                     m.phoneNumber === newMsg.phoneNumber && 
+                     Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000)
+                  );
+                  
+                  if (existsExact) {
+                    console.log("⚠️ Mensagem já existe, ignorando");
                     return prev;
                   }
 
-                  console.log(`🚀 ADICIONANDO MENSAGEM FORÇADA: "${newMsg.content}"`);
+                  console.log(`🚀 ADICIONANDO MENSAGEM SUPER AGRESSIVA: "${newMsg.content}" de ${newMsg.phoneNumber}`);
                   return [...prev, newMsg];
                 });
 
-                // ATUALIZA lista de conversas
+                // ATUALIZA lista de conversas FORÇADAMENTE
                 setConversationsList(prevConvs => {
-                  return prevConvs.map(conv => {
+                  const updated = prevConvs.map(conv => {
                     if (conv.phoneNumber === newMsg.phoneNumber) {
                       return {
                         ...conv,
@@ -129,11 +148,29 @@ export default function MessageInterface({
                     }
                     return conv;
                   });
+
+                  // Se conversa não existe, tenta adicionar
+                  const conversationExists = updated.some(conv => conv.phoneNumber === newMsg.phoneNumber);
+                  if (!conversationExists && newMsg.phoneNumber !== "unknown") {
+                    updated.push({
+                      phoneNumber: newMsg.phoneNumber,
+                      contactName: newMsg.phoneNumber,
+                      lastMessage: newMsg.content,
+                      lastMessageTime: newMsg.timestamp,
+                      unreadCount: 1,
+                      messageCount: 1
+                    });
+                  }
+
+                  return updated;
                 });
+
+                // FORÇA scroll para baixo
+                setTimeout(scrollToBottom, 100);
               }
             }
           } catch (error) {
-            console.error("❌ Erro ao processar WebSocket:", error);
+            console.error("❌ Erro ao processar WebSocket SUPER AGRESSIVO:", error);
           }
         };
 

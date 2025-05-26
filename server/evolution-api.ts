@@ -87,7 +87,19 @@ class EvolutionAPI {
       integration: "WHATSAPP-BAILEYS"
     };
 
-    return await this.makeRequest('/instance/create', 'POST', data);
+    const result = await this.makeRequest('/instance/create', 'POST', data);
+    
+    // CONFIGURAR WEBHOOK IMEDIATAMENTE após criar instância
+    try {
+      setTimeout(async () => {
+        await this.configureWebhook(instanceName);
+        console.log(`✅ Webhook configurado automaticamente para ${instanceName}`);
+      }, 2000);
+    } catch (error) {
+      console.log(`⚠️ Erro ao configurar webhook para ${instanceName}:`, error);
+    }
+
+    return result;
   }
 
   async getInstanceInfo(instanceName: string): Promise<EvolutionConnectionInfo> {
@@ -259,23 +271,44 @@ evolutionAPI.findWebSocket = async function(instanceName: string): Promise<any> 
   }
 };
 
-// CONFIGURAR WEBHOOK FORÇADO para receber mensagens
+// CONFIGURAR WEBHOOK SUPER AGRESSIVO para receber mensagens
 evolutionAPI.configureWebhook = async function(instanceName: string): Promise<any> {
   try {
-    const webhookUrl = `https://${process.env.REPL_SLUG || 'default'}.${process.env.REPL_OWNER || 'user'}.repl.co/api/webhook/messages`;
-    console.log(`🔗 Configurando webhook para ${instanceName}: ${webhookUrl}`);
+    // OBTER URL atual do Replit automaticamente
+    const currentUrl = process.env.REPL_URL || 
+                      `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` ||
+                      'https://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev';
+    
+    const webhookUrl = `${currentUrl}/api/webhook/messages`;
+    console.log(`🔗 CONFIGURANDO WEBHOOK SUPER AGRESSIVO para ${instanceName}: ${webhookUrl}`);
     
     const response = await this.makeRequest(`/webhook/set/${instanceName}`, 'POST', {
       url: webhookUrl,
       enabled: true,
+      webhookByEvents: true,
       events: [
         "MESSAGES_UPSERT",
-        "MESSAGES_UPDATE",
-        "SEND_MESSAGE"
+        "MESSAGES_UPDATE", 
+        "SEND_MESSAGE",
+        "CONNECTION_UPDATE",
+        "QRCODE_UPDATED",
+        "CHATS_UPDATE",
+        "CONTACTS_UPDATE"
       ]
     });
     
-    console.log(`✅ Webhook configurado para ${instanceName}:`, response);
+    console.log(`✅ WEBHOOK SUPER AGRESSIVO configurado para ${instanceName}:`, response);
+    
+    // VERIFICAR se o webhook foi configurado corretamente
+    setTimeout(async () => {
+      try {
+        const checkResponse = await this.makeRequest(`/webhook/find/${instanceName}`, 'GET');
+        console.log(`🔍 Verificação do webhook para ${instanceName}:`, checkResponse);
+      } catch (checkError) {
+        console.log(`⚠️ Erro ao verificar webhook:`, checkError);
+      }
+    }, 1000);
+    
     return response;
   } catch (error) {
     console.error(`❌ Erro ao configurar webhook para ${instanceName}:`, error);
