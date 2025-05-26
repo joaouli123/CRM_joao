@@ -1,0 +1,45 @@
+ WebSocket conecta normalmente (URL correta, sem fallback para localhost inválido).
+O sistema lista as conexões (contatos) com as últimas mensagens corretamente, mas o histórico detalhado das conversas não aparece na interface, mostrando “0 mensagens” ou “data inválida”.
+Possuo várias mensagens reais no WhatsApp que deveriam aparecer.
+
+Problemas identificados e suspeitos:
+
+Backend pode não estar retornando o histórico detalhado correto para uma conversa específica.
+
+Pode haver inconsistência no schema das mensagens (ex.: nomes de campos diferentes entre backend e frontend, formato incorreto de datas).
+
+A rota para buscar as mensagens detalhadas pode estar errada ou mal implementada.
+
+O frontend pode não estar interpretando corretamente os dados recebidos, especialmente o campo de data.
+
+Pode haver problemas na persistência das mensagens no backend (perda dos dados ao reiniciar ou falha no salvamento).
+
+O que precisa ser feito:
+
+Verificar se o backend realmente está armazenando e retornando as mensagens do histórico para um contato específico.
+
+Confirmar o formato exato dos dados retornados pelo endpoint de mensagens detalhadas, especialmente os campos: remetente (from), destinatário (to), corpo da mensagem (body ou content), timestamp ou data da mensagem (timestamp, date, createdAt).
+
+Garantir que as datas estejam em formato ISO 8601 válido para evitar erros no frontend.
+
+Validar se o endpoint de mensagens detalhadas está correto e acessível (exemplo: GET /api/connections/{connectionId}/conversations/{contactPhoneNumber}) e que retorna JSON válido com as mensagens.
+
+Ajustar o frontend para consumir e exibir esses dados corretamente, tratando casos de datas inválidas ou ausentes.
+
+Implementar logs detalhados no backend e frontend para rastrear fluxo de dados e erros no carregamento das mensagens.
+
+Criar mensagens de exemplo persistidas para teste enquanto as mensagens reais não chegam, evitando “0 mensagens” na interface.
+
+Corrigir qualquer problema no WebSocket que impeça atualização em tempo real das mensagens.
+
+Passos práticos para diagnosticar agora:
+
+Fazer uma requisição curl no endpoint de mensagens detalhadas para um contato conhecido e analisar o JSON retornado.
+
+Validar se o JSON tem os campos esperados e formato correto.
+
+Se houver erros de data, ajustar o parser ou o formato no backend.
+
+Confirmar que o frontend faz o request correto e manipula a resposta sem erros.
+
+Por favor, faça uma análise completa do sistema para identificar o ponto exato de falha no fluxo das mensagens e corrija todos os problemas de schema, rotas, persistência e exibição no frontend. Gere logs para facilitar a depuração e crie dados de exemplo para testes.

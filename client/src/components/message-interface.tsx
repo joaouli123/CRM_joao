@@ -65,9 +65,15 @@ export default function MessageInterface({
     }
   };
 
-  const formatConversationDate = (date: Date | string) => {
+  const formatConversationDate = (date: Date | string | null | undefined) => {
     try {
-      const dateObj = typeof date === 'string' ? parseISO(date) : date;
+      if (!date) return "Agora";
+      
+      // Se for string, tenta converter para Date
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      
+      // Verifica se a data é válida
+      if (isNaN(dateObj.getTime())) return "Agora";
       
       if (isToday(dateObj)) return "Hoje";
       if (isYesterday(dateObj)) return "Ontem";
@@ -80,8 +86,9 @@ export default function MessageInterface({
         return dayNames[dateObj.getDay()];
       }
       return format(dateObj, "dd/MM/yyyy");
-    } catch {
-      return "Data inválida";
+    } catch (error) {
+      console.log("Erro ao formatar data:", error, "Data recebida:", date);
+      return "Agora";
     }
   };
 
@@ -233,7 +240,7 @@ export default function MessageInterface({
                           
                           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                             <Badge variant="secondary" className="text-xs px-2 py-0">
-                              {conversation.messageCount}
+                              {conversation.messageCount || 1}
                             </Badge>
                             {conversation.unreadCount > 0 && (
                               <Badge className="text-xs px-2 py-0 bg-green-600">
