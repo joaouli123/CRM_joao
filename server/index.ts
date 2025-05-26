@@ -22,18 +22,18 @@ async function main() {
     }
   });
 
-  // Add specific API route handler to ensure they're processed before Vite
-  app.use('/api/*', (req, res, next) => {
-    console.log(`🔧 API Request intercepted: ${req.method} ${req.originalUrl}`);
-    next();
-  });
-
-  // Register SEND MESSAGE route with absolute priority
+  // Register SEND MESSAGE route with absolute priority BEFORE any middleware
   const { setupSendMessageRoute } = await import("./routes");
   setupSendMessageRoute(app);
   
-  // Register API routes FIRST
+  // Register ALL API routes FIRST before any other middleware
   const server = await registerRoutes(app);
+  
+  // Add logging middleware AFTER routes are registered
+  app.use('/api/*', (req, res, next) => {
+    console.log(`🔧 API Request processed: ${req.method} ${req.originalUrl}`);
+    next();
+  });
 
   // Set up Vite or serve static files AFTER API routes
   if (app.get("env") === "development") {
