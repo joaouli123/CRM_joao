@@ -226,14 +226,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎯 Buscando contatos reais para ${instanceName}...`);
       
       try {
-        // Use your connected Evolution API instance
-        const realInstanceName = "whatsapp_34_lowfy";
-        console.log(`🎯 Conectando com sua instância real: ${realInstanceName}`);
-        const chats = await evolutionAPI.getAllChats(realInstanceName);
-        console.log(`✅ Encontrados ${chats.length} contatos autênticos de ${realInstanceName}!`);
+        // Use your current connected Evolution API instance
+        console.log(`🎯 Conectando com sua instância real: ${instanceName}`);
+        const chats = await evolutionAPI.getAllChats(instanceName);
+        console.log(`✅ Encontrados ${chats.length} contatos autênticos de ${instanceName}!`);
         
-        // Create conversations from your real WhatsApp contacts - showing more contacts
-        const realConversations = chats.slice(0, 50).map((chat, index) => {
+        // Create conversations from ALL your real WhatsApp contacts
+        const realConversations = chats.map((chat, index) => {
           const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
           if (!phoneNumber) return null;
           
@@ -375,8 +374,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sessionName = connection.name;
           console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
           
-          // Get real messages from Evolution API using your connected instance
-          const realInstanceName = "whatsapp_34_lowfy";
+          // Get real messages from Evolution API using your current connected instance
+          const realInstanceName = `whatsapp_${connectionId}_${connection.name}`;
           console.log(`🔍 Usando instância conectada: ${realInstanceName}`);
           const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
           
