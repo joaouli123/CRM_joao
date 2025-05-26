@@ -554,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send message endpoint - SEM DUPLICAÇÃO
+  // Send message endpoint - ZERO DUPLICAÇÃO
   app.post("/api/connections/:id/send", async (req, res) => {
     try {
       const connectionId = parseInt(req.params.id);
@@ -583,23 +583,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await evolutionAPI.sendMessage(sessionName, to, message);
         console.log(`✅ Mensagem enviada via Evolution API:`, result);
 
-        // Create message record in database
-        const newMessage = await storage.createMessage({
-          connectionId,
-          phoneNumber: to,
-          direction: "sent" as const,
-          content: message,
-          status: "sent"
-        });
-
-        console.log(`💾 Mensagem salva no banco:`, newMessage);
-
-        // ⚠️ NÃO FAZER BROADCAST AQUI - A Evolution API fará via webhook
-        console.log(`🚫 BROADCAST removido para evitar duplicação - webhook da Evolution API irá enviar`);
+        // ⚠️ NÃO SALVAR NO BANCO - O webhook da Evolution API fará isso
+        console.log(`🚫 SALVAMENTO removido - webhook da Evolution API irá salvar e fazer broadcast`);
 
         res.json({ 
           success: true, 
-          messageId: newMessage.id,
           evolutionResult: result,
           message: "Mensagem enviada com sucesso"
         });
@@ -815,22 +803,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (webhookData.event === "messages.upsert" && webhookData.data?.key) {
         const messageData = webhookData.data;
 
-        console.log("📨 Processando mensagem recebida:", messageData);
+        console.log("📨 Processando mensagem webhook:", messageData);
 
-        // Verificar se a mensagem não é nossa (fromMe = false)
-        if (!messageData.key.fromMe && messageData.message) {
-          const phoneNumber = messageData.key.remoteJid.replace("@s.whatsapp.net", "");
-          const messageContent = messageData.message.conversation || 
-                               messageData.message.extendedTextMessage?.text || 
-                               "Mensagem de mídia";
+        const phoneNumber = messageData.key.remoteJid.replace("@s.whatsapp.net", "");
+        const messageContent = messageData.message.conversation || 
+                             messageData.message.extendedTextMessage?.text || 
+                             "Mensagem de mídia";
 
-          console.log(`📱 Nova mensagem recebida de ${phoneNumber}: ${messageContent}`);
+        // Encontrar a conexão correspondente
+        const connections = await storage.getAllConnections();
+        const connection = connections.find(c => c.status === "connected");
 
-          // Encontrar a conexão correspondente
-          const connections = await storage.getAllConnections();
-          const connection = connections.find(c => c.status === "connected");
+        if (connection) {
+          // Processar mensagem RECEBIDA (não nossa)
+          if (!messageData.key.fromMe && messageData.message) {
+            console.log(`📱 Nova mensagem RECEBIDA de ${phoneNumber}: ${messageContent}`);
 
-          if (connection) {
             // Criar registro da mensagem recebida
             const receivedMessage = await storage.createMessage({
               connectionId: connection.id,
@@ -840,9 +828,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               direction: "received"
             });
 
-            console.log("💾 Mensagem salva no banco:", receivedMessage);
+            console.log("💾 Mensagem RECEBIDA salva no banco:", receivedMessage);
 
-            // Broadcast MÚLTIPLO para todos os clientes WebSocket
+            // APENAS UM BROADCAST para mensagem recebida
             const messageToSend = {
               type: "messageReceived",
               data: {
@@ -856,29 +844,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             };
 
-            console.log("📡 BROADCASTING SUPER AGRESSIVO mensagem recebida:", messageToSend);
+            console.log("📡 Broadcasting mensagem RECEBIDA:", messageToSend);
+            broadcast(messageToSend);
+          }
+          
+          // Processar mensagem ENVIADA (nossa)
+          else if (messageData.key.fromMe && messageData.message) {
+            console.log(`📤 Confirmação de mensagem ENVIADA para ${phoneNumber}: ${messageContent}`);
 
-            // Enviar para TODOS os clientes conectados
-            let clientCount = 0;
-            wss.clients.forEach((client) => {
-              if (client.readyState === client.OPEN) {
-                client.send(JSON.stringify(messageToSend));
-                clientCount++;
-                console.log(`✅ Mensagem enviada para cliente WebSocket ${clientCount}`);
-              }
+            // Criar registro da mensagem enviada
+            const sentMessage = await storage.createMessage({
+              connectionId: connection.id,
+              from: connection.phoneNumber || "system",
+              to: phoneNumber, 
+              body: messageContent,
+              direction: "sent"
             });
 
-            console.log(`📊 BROADCAST finalizado: ${clientCount} clientes alcançados`);
+            console.log("💾 Mensagem ENVIADA salva no banco:", sentMessage);
 
-            // BACKUP: Também enviar como newMessage para compatibilidade
-            const backupMessage = { ...messageToSend, type: "newMessage" };
-            wss.clients.forEach((client) => {
-              if (client.readyState === client.OPEN) {
-                client.send(JSON.stringify(backupMessage));
+            // APENAS UM BROADCAST para mensagem enviada
+            const messageToSend = {
+              type: "messageSent",
+              data: {
+                id: sentMessage.id,
+                connectionId: connection.id,
+                direction: "sent",
+                phoneNumber: phoneNumber,
+                content: messageContent,
+                status: "sent",
+                timestamp: new Date().toISOString()
               }
-            });
+            };
 
-            console.log("🔄 BACKUP broadcast enviado como newMessage");
+            console.log("📡 Broadcasting mensagem ENVIADA:", messageToSend);
+            broadcast(messageToSend);
           }
         }
       }

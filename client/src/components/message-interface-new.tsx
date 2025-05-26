@@ -85,36 +85,45 @@ export default function MessageInterface({
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log(`📨 WEBSOCKET SUPER AGRESSIVO RECEBEU:`, data);
+            console.log(`📨 WEBSOCKET RECEBEU:`, data);
 
-            // PROCESSA MENSAGENS WebSocket - CONTROLE DE DUPLICAÇÃO
-            const messageTypes = ["messageSent", "messageReceived", "newMessage"];
+            // PROCESSA APENAS messageSent e messageReceived - SEM DUPLICAÇÃO
+            const validTypes = ["messageSent", "messageReceived"];
 
-            if (messageTypes.includes(data.type) && data.data) {
+            if (validTypes.includes(data.type) && data.data) {
               const msgData = data.data;
 
               // Verifica se é para esta conexão
               if (msgData.connectionId === selectedConnectionId) {
-                console.log(`🎯 PROCESSANDO MENSAGEM: "${msgData.content}" para chat ${msgData.phoneNumber}`);
+                console.log(`🎯 PROCESSANDO ${data.type}: "${msgData.content}" para chat ${msgData.phoneNumber}`);
 
-                // CRIA mensagem com dados únicos
+                // CRIA mensagem com ID único baseado no banco de dados
                 const newMsg: RealtimeMessage = {
-                  id: msgData.id || `msg_${Date.now()}_${Math.random()}`,
-                  content: msgData.content || "Nova mensagem",
-                  phoneNumber: msgData.phoneNumber || "unknown",
-                  direction: msgData.direction || "received",
-                  timestamp: new Date(msgData.timestamp || Date.now()),
+                  id: msgData.id.toString(), // Usar ID do banco de dados
+                  content: msgData.content,
+                  phoneNumber: msgData.phoneNumber,
+                  direction: msgData.direction,
+                  timestamp: new Date(msgData.timestamp),
                   status: msgData.status || 'delivered'
                 };
 
                 console.log(`🚀 MENSAGEM CRIADA:`, newMsg);
 
-                // VERIFICAÇÃO SIMPLES para evitar duplicação
+                // VERIFICAÇÃO RIGOROSA para evitar duplicação
                 setRealtimeMessages(prev => {
+                  // Verifica por ID exato do banco
                   const existsById = prev.some(m => m.id === newMsg.id);
+                  
+                  // Verifica duplicação por conteúdo e timestamp próximo
+                  const existsByContent = prev.some(m => 
+                    m.content === newMsg.content && 
+                    m.phoneNumber === newMsg.phoneNumber && 
+                    m.direction === newMsg.direction &&
+                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000
+                  );
 
-                  if (existsById) {
-                    console.log("⚠️ Mensagem com mesmo ID já existe, ignorando duplicata");
+                  if (existsById || existsByContent) {
+                    console.log("⚠️ Mensagem duplicada detectada, ignorando");
                     return prev;
                   }
 
@@ -122,7 +131,7 @@ export default function MessageInterface({
                   return [...prev, newMsg];
                 });
 
-                // ATUALIZA lista de conversas FORÇADAMENTE
+                // ATUALIZA lista de conversas
                 setConversationsList(prevConvs => {
                   const updated = prevConvs.map(conv => {
                     if (conv.phoneNumber === newMsg.phoneNumber) {
@@ -135,15 +144,15 @@ export default function MessageInterface({
                     return conv;
                   });
 
-                  // Se conversa não existe, tenta adicionar
+                  // Se conversa não existe, adiciona
                   const conversationExists = updated.some(conv => conv.phoneNumber === newMsg.phoneNumber);
-                  if (!conversationExists && newMsg.phoneNumber !== "unknown") {
+                  if (!conversationExists) {
                     updated.push({
                       phoneNumber: newMsg.phoneNumber,
                       contactName: newMsg.phoneNumber,
                       lastMessage: newMsg.content,
                       lastMessageTime: newMsg.timestamp,
-                      unreadCount: 1,
+                      unreadCount: newMsg.direction === 'received' ? 1 : 0,
                       messageCount: 1
                     });
                   }
@@ -156,7 +165,7 @@ export default function MessageInterface({
               }
             }
           } catch (error) {
-            console.error("❌ Erro ao processar WebSocket SUPER AGRESSIVO:", error);
+            console.error("❌ Erro ao processar WebSocket:", error);
           }
         };
 
@@ -239,17 +248,16 @@ export default function MessageInterface({
     ...realtimeMessages.filter(msg => msg.phoneNumber === selectedConversation)
   ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  // FUNÇÃO FORÇADA PARA ENVIAR MENSAGEM
+  // FUNÇÃO PARA ENVIAR MENSAGEM SEM DUPLICAÇÃO
   const sendMessageForced = async () => {
     if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
 
     const messageText = newMessage.trim();
-    setNewMessage(''); // Limpa input imediatamente
-
+    
     try {
       console.log(`📤 ENVIANDO MENSAGEM para ${selectedConversation}: ${messageText}`);
 
-      // ENVIA para o servidor (o WebSocket irá adicionar a mensagem)
+      // ENVIA para o servidor (o WebSocket irá adicionar a mensagem via webhook)
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -261,22 +269,19 @@ export default function MessageInterface({
 
       if (response.ok) {
         console.log(`✅ SUCESSO! Mensagem "${messageText}" enviada!`);
-
-        // ATUALIZA lista de conversas
-        setConversationsList(prev => 
-          prev.map(conv => 
-            conv.phoneNumber === selectedConversation 
-              ? { ...conv, lastMessage: messageText, lastMessageTime: new Date() }
-              : conv
-          )
-        );
+        
+        // Limpa input apenas após confirmação de sucesso
+        setNewMessage('');
+        
+        // NÃO atualizar lista de conversas aqui - o WebSocket fará isso
+        console.log(`🔄 Aguardando WebSocket atualizar interface...`);
       } else {
         console.error(`❌ Erro ao enviar mensagem:`, response.status);
-        setNewMessage(messageText); // Restaura texto
+        // Mantém a mensagem no input em caso de erro
       }
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error);
-      setNewMessage(messageText); // Restaura texto
+      // Mantém a mensagem no input em caso de erro
     }
   };
 
