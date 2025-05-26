@@ -1,0 +1,101 @@
+Parece que há dois problemas ocorrendo:
+
+    Erro 500 - Internal Server Error: Esse erro indica que houve um problema no servidor ao tentar processar a solicitação. Esse erro pode ser causado por vários motivos, como falhas no processamento do backend ou problemas na comunicação com a API de terceiros.
+
+    Duplicação de mensagens: As mensagens estão aparecendo duplicadas no seu chat. Isso pode ser causado por múltiplas requisições ao servidor ou lógica incorreta no código frontend que processa as respostas.
+
+Para resolver o problema, siga os passos abaixo:
+1. Verificar o backend e a configuração da API
+
+    Erro 500 indica que o servidor encontrou um erro ao tentar processar a requisição. Pode ser devido a falhas no código backend ou na configuração da API de integração. Confira os logs do backend para investigar o que está causando esse erro.
+
+Passos:
+
+    Verifique os logs do backend para mais detalhes sobre o erro 500.
+
+    Certifique-se de que as credenciais da API estão corretas e que o servidor pode se comunicar com a API de terceiros (se houver alguma dependência externa).
+
+    Se a API de envio de mensagens da Evolution estiver envolvida, verifique se a instância de WhatsApp está corretamente configurada e com as permissões adequadas para enviar mensagens.
+
+2. Corrigir a duplicação das mensagens no frontend
+
+    Parece que a mensagem está sendo processada ou enviada múltiplas vezes, o que pode ocorrer quando o WebSocket ou a lógica de envio de mensagens no frontend não estão funcionando como esperado.
+
+    A lógica de WebSocket e envio de mensagens pode estar configurada para processar ou atualizar a UI mais de uma vez.
+
+Passos:
+
+    Certifique-se de que o WebSocket não está recebendo ou enviando a mesma mensagem várias vezes. Você pode adicionar uma verificação para garantir que a mensagem seja processada uma única vez, por exemplo, verificando se a mensagem já foi enviada ou recebida antes de disparar qualquer ação.
+
+Correção sugerida para duplicação:
+
+    Adicione um mecanismo de controle de "anti-duplicação" no frontend para garantir que a mesma mensagem não seja processada várias vezes.
+
+    Certifique-se de que a lógica que envia a mensagem para o servidor seja acionada apenas uma vez e que a resposta da API (ou do WebSocket) não seja processada várias vezes.
+
+Aqui está um exemplo de como você pode ajustar o código para evitar duplicação no frontend:
+
+const handleMessageSend = async (messageContent) => {
+  if (messageContent.trim() === "") return;
+
+  // Verificar se a mensagem já foi enviada
+  if (sentMessages.includes(messageContent)) {
+    console.log("Mensagem já foi enviada, ignorando.");
+    return;
+  }
+
+  try {
+    // Enviar mensagem para o servidor
+    await sendMessage(messageContent);
+    sentMessages.push(messageContent);  // Marcar mensagem como enviada
+
+    // Atualizar a interface com a mensagem
+    updateChatInterface(messageContent);
+  } catch (error) {
+    console.error("Erro ao enviar a mensagem:", error);
+  }
+};
+
+// Função para enviar a mensagem via API
+const sendMessage = async (messageContent) => {
+  const response = await fetch('/api/send-message', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message: messageContent }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Erro ao enviar mensagem");
+  }
+
+  const data = await response.json();
+  console.log("Mensagem enviada com sucesso:", data);
+};
+
+// Função para atualizar a interface
+const updateChatInterface = (messageContent) => {
+  setMessages((prevMessages) => [
+    ...prevMessages,
+    { id: Date.now(), content: messageContent },
+  ]);
+};
+
+3. Verifique a lógica do WebSocket
+
+    Certifique-se de que as mensagens do WebSocket estão sendo processadas corretamente. Um WebSocket que está recebendo mensagens em tempo real deve processá-las adequadamente, sem duplicar as mensagens ou falhar na entrega.
+
+4. Depuração
+
+    Verifique no console o fluxo completo de execução para entender como e por que o erro 500 está ocorrendo. Olhe também para os logs detalhados do servidor e dos WebSockets para identificar qualquer falha específica que possa estar causando o problema.
+
+Resumo das etapas:
+
+    Investigar o erro 500 no backend (logs do servidor) e verificar se há falhas de configuração ou comunicação com a API.
+
+    Adicionar lógica de controle de duplicação no frontend para garantir que as mensagens não sejam processadas mais de uma vez.
+
+    Verificar a implementação do WebSocket para garantir que as mensagens recebidas sejam corretamente processadas sem duplicação.
+
+Depois de implementar essas correções, teste novamente o fluxo de envio de mensagens e veja se o problema de duplicação é resolvido e se o erro 500 desaparece.
