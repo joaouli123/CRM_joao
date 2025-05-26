@@ -1,0 +1,67 @@
+🚨 PROBLEMA 1: MENSAGEM ENVIADA ESTÁ DUPLICANDO NO CHAT
+
+Causa: A mensagem enviada aparece quando:
+
+    É adicionada no setMessages() logo após o envio
+
+    E também quando o WebSocket devolve a mesma mensagem (direction: 'sent')
+
+Correção esperada:
+
+No evento WebSocket, não re-adicionar mensagens enviadas pelo próprio usuário se já estão no estado.
+Garanta que, ao enviar uma mensagem (sendMessage), ela seja adicionada manualmente e ignorada no WebSocket se for duplicada.
+🚨 PROBLEMA 2: MENSAGEM RECEBIDA NÃO APARECE EM TEMPO REAL
+
+Causa: O backend está recebendo corretamente (webhook funciona), e o WebSocket envia o evento, mas o frontend não está tratando ou adicionando a mensagem no chat.
+
+Correção esperada:
+
+No WebSocket listener (socket.on('newMessage', ...)), verifique se:
+
+    direction === 'received'
+
+    phoneNumber === contato atualmente aberto
+
+    Mensagem ainda não está em messages[] (evitar duplicação)
+
+    Se for válida, adicione no chat via setMessages([...prev, newMsg])
+
+✅ EXEMPLO DE LÓGICA ESPERADA:
+
+No seu listener do WebSocket:
+
+socket.on("newMessage", (msg) => {
+  // Verifica se é para o chat aberto
+  if (msg.phoneNumber !== activePhoneNumber) return;
+
+  setMessages((prev) => {
+    const alreadyExists = prev.some(m => m.id === msg.id);
+    if (!alreadyExists) {
+      return [...prev, msg];
+    }
+    return prev;
+  });
+});
+
+⚠️ activePhoneNumber deve ser o número do chat que está aberto no momento no frontend.
+⚠️ IMPORTANTE:
+
+    O WebSocket está emitindo os eventos corretamente (newMessage ou outro nome usado).
+
+    Não use polling, nem Ajax — WebSocket é a tecnologia correta.
+
+    Corrigir o frontend para distinguir sent e received, e tratar duplicação com base no msg.id.
+
+✅ RESUMO DO QUE A IA DEVE FAZER:
+
+    Corrigir lógica de envio para não duplicar mensagem enviada
+
+    Corrigir listener WebSocket para:
+
+        Escutar mensagens novas
+
+        Verificar phoneNumber
+
+        Adicionar mensagem nova recebida no chat em tempo real
+
+    Garantir que setMessages() atualize corretamente sem repetir mensagens

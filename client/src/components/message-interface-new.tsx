@@ -38,7 +38,7 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket for REAL-TIME messages - BRUTAL FIX!
+  // WebSocket for REAL-TIME messages - FINAL BRUTAL FIX!
   useWebSocket({
     onMessageReceived: (messageData) => {
       console.log("🔥 WEBSOCKET RECEBEU:", messageData);
@@ -47,19 +47,27 @@ export default function MessageInterface({
       if (messageData.connectionId === selectedConnectionId && instanceKey) {
         const phoneNumber = messageData.phoneNumber;
         
-        // 🎯 CRITICAL: Only add RECEIVED messages to avoid sent duplicates
-        if (messageData.direction === 'received' && selectedConversation === phoneNumber) {
-          console.log("📥 MENSAGEM RECEBIDA REAL - ADICIONANDO:", messageData);
+        // 🎯 CRITICAL FIX: Handle BOTH sent and received but avoid duplicates
+        if (selectedConversation === phoneNumber) {
+          console.log(`📥 PROCESSANDO MENSAGEM PARA CHAT ATIVO (${messageData.direction}):`, messageData);
           
           setMessagesByInstance(prev => {
             const currentMessages = prev[instanceKey]?.[phoneNumber] || [];
             
-            // Ultra-robust duplicate check
+            // ROBUST duplicate check by ID
             const isDuplicate = currentMessages.some(msg => msg.id === messageData.id);
             
             if (isDuplicate) {
-              console.log("🛑 MENSAGEM RECEBIDA JÁ EXISTE - IGNORANDO");
+              console.log("🛑 MENSAGEM JÁ EXISTE - IGNORANDO DUPLICATA");
               return prev;
+            }
+            
+            // For RECEIVED messages: Always add to chat
+            // For SENT messages: Only add if not already in state (to avoid duplication)
+            if (messageData.direction === 'received') {
+              console.log("✅ ADICIONANDO MENSAGEM RECEBIDA EM TEMPO REAL");
+            } else if (messageData.direction === 'sent') {
+              console.log("✅ ADICIONANDO MENSAGEM ENVIADA VIA WEBSOCKET");
             }
             
             const newMessage = {
@@ -68,11 +76,9 @@ export default function MessageInterface({
               direction: messageData.direction,
               phoneNumber: messageData.phoneNumber,
               content: messageData.content,
-              status: 'delivered',
+              status: messageData.status || (messageData.direction === 'sent' ? 'sent' : 'delivered'),
               timestamp: new Date(messageData.timestamp)
             };
-            
-            console.log("✅ MENSAGEM RECEBIDA ADICIONADA EM TEMPO REAL:", newMessage);
             
             return {
               ...prev,
