@@ -5,17 +5,21 @@ import { storage } from "./storage";
 import { insertConnectionSchema, sendMessageSchema } from "@shared/schema";
 import { evolutionAPI } from "./evolution-api";
 
-const connections = new Map<WebSocket, any>();
-let wss: WebSocketServer;
+interface WhatsAppSession {
+  client: any;
+  connection: any;
+  qrTimer?: NodeJS.Timeout;
+  status: string;
+}
 
-// Session management
-const sessions = new Map<number, any>();
+const sessions = new Map<number, WhatsAppSession>();
+const clients = new Set<WebSocket>();
 
 function broadcast(data: any) {
-  const message = JSON.stringify(data);
-  connections.forEach((_, ws) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(message);
+  const message = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
     }
   });
 }
@@ -23,36 +27,32 @@ function broadcast(data: any) {
 async function initializeWhatsAppSession(connectionId: number, sessionName: string) {
   try {
     console.log(`🔄 Iniciando sessão WhatsApp real com Evolution API para conexão ${connectionId}: ${sessionName}`);
-
+    
     await storage.updateConnection(connectionId, { status: "connecting" });
     broadcast({ 
       type: "connectionStatusChanged", 
       data: { id: connectionId, status: "connecting" }
     });
 
-    // Create Evolution API instance and generate real QR code
     setTimeout(async () => {
       try {
         const instanceName = `whatsapp_${connectionId}_${sessionName.replace(/\s+/g, '_')}`;
-
-        // Create Evolution API instance
+        
         console.log(`🆕 Criando instância Evolution API: ${instanceName}`);
         await evolutionAPI.createInstance(instanceName);
-
-        // Generate real WhatsApp QR code
+        
         const qrCode = await evolutionAPI.generateQRCode(instanceName);
-        const qrExpiry = new Date(Date.now() + 180000); // 3 minutes expiration
-
+        const qrExpiry = new Date(Date.now() + 180000);
+        
         await storage.updateConnection(connectionId, { 
           status: "waiting_qr", 
           qrCode,
           qrExpiry,
           sessionData: instanceName
         });
-
+        
         console.log(`📱 QR Code REAL do WhatsApp gerado para conexão ${connectionId}!`);
-        console.log(`🔗 Instância Evolution API: ${instanceName}`);
-
+        
         broadcast({ 
           type: "qrCodeReceived", 
           data: { 
@@ -62,7 +62,6 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           }
         });
 
-        // Set timer to expire QR code
         const qrTimer = setTimeout(async () => {
           const connection = await storage.getConnection(connectionId);
           if (connection && connection.status === "waiting_qr") {
@@ -85,7 +84,6 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           }
         }, 180000);
 
-        // Store session
         sessions.set(connectionId, {
           client: { instanceName },
           connection: await storage.getConnection(connectionId),
@@ -93,26 +91,22 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           status: "waiting_qr"
         });
 
-        // Check for connection status every 3 seconds
         const connectionChecker = setInterval(async () => {
           try {
             const status = await evolutionAPI.getConnectionStatus(instanceName);
             const session = sessions.get(connectionId);
-
-            console.log(`🔍 Verificando status da instância ${instanceName}: ${status}`);
-
+            
             if (status === "open" && session && session.status === "waiting_qr") {
               clearInterval(connectionChecker);
               if (session.qrTimer) {
                 clearTimeout(session.qrTimer);
               }
-
-              // Get connection info
+              
               const connectionInfo = await evolutionAPI.getInstanceInfo(instanceName);
               const phoneNumber = connectionInfo.instance.phoneNumber;
-
+              
               console.log(`✅ Conexão ${connectionId} estabelecida com sucesso! Telefone: ${phoneNumber}`);
-
+              
               await storage.updateConnection(connectionId, { 
                 status: "connected",
                 qrCode: null,
@@ -120,37 +114,32 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
                 lastActivity: new Date(),
                 phoneNumber: phoneNumber || null
               });
-
+              
               session.status = "connected";
               sessions.set(connectionId, session);
-
+              
               broadcast({ 
                 type: "connectionStatusChanged", 
                 data: { id: connectionId, status: "connected" }
               });
             }
           } catch (error) {
-            console.error(`❌ Erro ao verificar status da conexão ${instanceName}:`, error);
+            console.error(`❌ Erro ao verificar status da conexão ${connectionId}:`, error);
           }
         }, 3000);
-
+        
       } catch (error) {
-        console.error(`❌ Erro ao criar instância Evolution API:`, error);
-        await storage.updateConnection(connectionId, { 
-          status: "disconnected",
-          qrCode: null,
-          qrExpiry: null,
-          sessionData: null
-        });
+        console.error(`❌ Erro ao gerar QR Code real para conexão ${connectionId}:`, error);
+        await storage.updateConnection(connectionId, { status: "disconnected" });
         broadcast({ 
           type: "connectionStatusChanged", 
           data: { id: connectionId, status: "disconnected" }
         });
       }
-    }, 1000);
-
+    }, 2000);
+    
   } catch (error) {
-    console.error(`❌ Erro ao inicializar sessão WhatsApp:`, error);
+    console.error(`❌ Erro ao inicializar sessão WhatsApp real para conexão ${connectionId}:`, error);
     await storage.updateConnection(connectionId, { status: "disconnected" });
     broadcast({ 
       type: "connectionStatusChanged", 
@@ -159,32 +148,11 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
   }
 }
 
-export function setupRoutes(app: Express): Server {
-  const server = createServer(app);
-
-  // Setup WebSocket
-  wss = new WebSocketServer({ server });
-
-  wss.on("connection", (ws) => {
-    console.log("🔌 Cliente conectado ao WebSocket");
-    connections.set(ws, {});
-
-    ws.send(JSON.stringify({
-      type: "connected",
-      data: { message: "WebSocket connected successfully" },
-      timestamp: new Date().toISOString()
-    }));
-
-    ws.on("close", () => {
-      console.log("🔌 Cliente desconectado do WebSocket");
-      connections.delete(ws);
-    });
-  });
-
-  // Get all connections
+export async function registerRoutes(app: Express): Promise<Server> {
+  
   app.get("/api/connections", async (req, res) => {
     try {
-      const connections = await storage.getConnections();
+      const connections = await storage.getAllConnections();
       res.json(connections);
     } catch (error) {
       console.error("Error fetching connections:", error);
@@ -192,90 +160,70 @@ export function setupRoutes(app: Express): Server {
     }
   });
 
-  // Create new connection
   app.post("/api/connections", async (req, res) => {
     try {
-      const data = insertConnectionSchema.parse(req.body);
-      const connection = await storage.createConnection(data);
+      const result = insertConnectionSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid connection data", details: result.error.errors });
+      }
 
-      broadcast({ 
-        type: "connectionCreated", 
-        data: connection,
-        timestamp: new Date().toISOString()
-      });
+      const existing = await storage.getConnectionByName(result.data.name);
+      if (existing) {
+        return res.status(409).json({ error: "Connection name already exists" });
+      }
 
-      res.json(connection);
+      const connection = await storage.createConnection(result.data);
+      
+      console.log(`🆕 Nova conexão criada: ${connection.name} (ID: ${connection.id})`);
+      
+      initializeWhatsAppSession(connection.id, connection.name);
+      
+      broadcast({ type: "connectionCreated", data: connection });
+      
+      res.status(201).json(connection);
     } catch (error) {
       console.error("Error creating connection:", error);
       res.status(500).json({ error: "Failed to create connection" });
     }
   });
 
-  // Start connection
   app.post("/api/connections/:id/start", async (req, res) => {
     try {
-      const connectionId = parseInt(req.params.id);
-      const connection = await storage.getConnection(connectionId);
-
+      const id = parseInt(req.params.id);
+      const connection = await storage.getConnection(id);
+      
       if (!connection) {
         return res.status(404).json({ error: "Connection not found" });
       }
 
-      console.log(`🚀 Iniciando conexão ${connectionId}: ${connection.name}`);
+      console.log(`🔄 Reiniciando conexão: ${connection.name} (ID: ${id})`);
 
-      // Initialize WhatsApp session with Evolution API
-      await initializeWhatsAppSession(connectionId, connection.name);
+      const existingSession = sessions.get(id);
+      if (existingSession?.qrTimer) {
+        clearTimeout(existingSession.qrTimer);
+      }
+      sessions.delete(id);
 
-      res.json({ success: true });
+      await initializeWhatsAppSession(id, connection.name);
+      
+      res.json({ success: true, message: "Connection starting, QR code will be generated" });
     } catch (error) {
       console.error("Error starting connection:", error);
-      res.status(500).json({ error: "Failed to start connection" });
+      res.status(500).json({ error: "Failed to start WhatsApp session" });
     }
   });
 
-  // Delete connection
-  app.delete("/api/connections/:id", async (req, res) => {
+  app.post("/api/messages/send", async (req, res) => {
     try {
-      const connectionId = parseInt(req.params.id);
-      const connection = await storage.getConnection(connectionId);
-
-      if (connection && connection.sessionData) {
-        try {
-          await evolutionAPI.deleteInstance(connection.sessionData);
-        } catch (e) {
-          console.log(`ℹ️ Instância ${connection.sessionData} já foi removida`);
-        }
+      const result = sendMessageSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid message data", details: result.error.errors });
       }
 
-      // Clear session
-      const session = sessions.get(connectionId);
-      if (session && session.qrTimer) {
-        clearTimeout(session.qrTimer);
-      }
-      sessions.delete(connectionId);
-
-      await storage.deleteConnection(connectionId);
-
-      broadcast({ 
-        type: "connectionDeleted", 
-        data: { id: connectionId },
-        timestamp: new Date().toISOString()
-      });
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting connection:", error);
-      res.status(500).json({ error: "Failed to delete connection" });
-    }
-  });
-
-  // Send message
-  app.post("/api/connections/:id/messages", async (req, res) => {
-    try {
-      const connectionId = parseInt(req.params.id);
-      const { to, message } = sendMessageSchema.parse(req.body);
-
+      const { connectionId, to, message } = result.data;
+      
       const connection = await storage.getConnection(connectionId);
+      
       if (!connection) {
         return res.status(404).json({ error: "Connection not found" });
       }
@@ -291,7 +239,6 @@ export function setupRoutes(app: Express): Server {
         return res.status(400).json({ error: "Connection session not found" });
       }
 
-      // Store message in database
       const messageRecord = await storage.createMessage({
         connectionId,
         from: connection.phoneNumber || "system",
@@ -300,13 +247,11 @@ export function setupRoutes(app: Express): Server {
         direction: "sent",
       });
 
-      // Send real message via Evolution API
       try {
         const result = await evolutionAPI.sendMessage(instanceName, to, message);
-
+        
         await storage.updateMessage(messageRecord.id, { status: "sent" });
-
-        // Update connection stats
+        
         await storage.updateConnection(connectionId, { 
           lastActivity: new Date()
         });
@@ -320,26 +265,25 @@ export function setupRoutes(app: Express): Server {
         });
 
         console.log(`✅ Mensagem real enviada com sucesso via Evolution API!`, result);
-
-        res.json(messageRecord);
-
+        
       } catch (error) {
         console.error(`❌ Erro ao enviar mensagem via Evolution API:`, error);
         await storage.updateMessage(messageRecord.id, { status: "failed" });
-        res.status(500).json({ error: "Failed to send message" });
       }
 
+      res.json({ success: true, message: messageRecord });
     } catch (error) {
       console.error("Error sending message:", error);
       res.status(500).json({ error: "Failed to send message" });
     }
   });
 
-  // Get messages for a connection
   app.get("/api/connections/:id/messages", async (req, res) => {
     try {
-      const connectionId = parseInt(req.params.id);
-      const messages = await storage.getMessages(connectionId);
+      const id = parseInt(req.params.id);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      
+      const messages = await storage.getMessagesByConnection(id, limit);
       res.json(messages);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -347,10 +291,50 @@ export function setupRoutes(app: Express): Server {
     }
   });
 
-  // Get stats
+  app.delete("/api/connections/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const session = sessions.get(id);
+      if (session) {
+        if (session.qrTimer) {
+          clearTimeout(session.qrTimer);
+        }
+        sessions.delete(id);
+      }
+      
+      const deleted = await storage.deleteConnection(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+      
+      console.log(`🗑️ Conexão deletada: ID ${id}`);
+      
+      broadcast({ type: "connectionDeleted", data: { id } });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting connection:", error);
+      res.status(500).json({ error: "Failed to delete connection" });
+    }
+  });
+
   app.get("/api/stats", async (req, res) => {
     try {
-      const stats = await storage.getStats();
+      const connections = await storage.getAllConnections();
+      const activeConnections = connections.filter(c => c.status === "connected").length;
+      const todayMessages = await storage.getTodayMessageCount();
+      
+      const stats = {
+        totalConnections: connections.length,
+        activeConnections,
+        todayMessages,
+        lastActivity: connections.reduce((latest, conn) => {
+          if (!conn.lastActivity) return latest;
+          if (!latest || conn.lastActivity > latest) return conn.lastActivity;
+          return latest;
+        }, null as Date | null)
+      };
+      
       res.json(stats);
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -358,5 +342,33 @@ export function setupRoutes(app: Express): Server {
     }
   });
 
-  return server;
+  const httpServer = createServer(app);
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/api/ws',
+    perMessageDeflate: false 
+  });
+
+  wss.on('connection', (ws) => {
+    clients.add(ws);
+    console.log('🔌 Cliente conectado ao WebSocket');
+
+    ws.on('close', () => {
+      clients.delete(ws);
+      console.log('🔌 Cliente desconectado do WebSocket');
+    });
+
+    ws.on('error', (error) => {
+      console.error('❌ Erro WebSocket:', error);
+      clients.delete(ws);
+    });
+
+    ws.send(JSON.stringify({ 
+      type: "connected", 
+      data: { message: "WebSocket connected successfully" },
+      timestamp: new Date().toISOString()
+    }));
+  });
+
+  return httpServer;
 }

@@ -1,5 +1,5 @@
 import express from "express";
-import { setupRoutes } from "./routes";
+import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 async function main() {
@@ -23,7 +23,7 @@ async function main() {
   });
 
   // Register API routes
-  const server = setupRoutes(app);
+  const server = await registerRoutes(app);
 
   // Set up Vite or serve static files
   if (app.get("env") === "development") {

@@ -1,2 +1,2 @@
-// This file has been moved to components/modals/qr-code-modal.tsx
-export {};
+import { QRCodeModal } from "./modals/qr-code-modal";
+export default QRCodeModal;
