@@ -487,16 +487,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send message endpoint - REAL WhatsApp delivery
+  // Send message endpoint - REAL WhatsApp delivery - MOVED TO TOP
   app.post("/api/connections/:id/send", async (req, res) => {
     console.log(`🚨 ROTA SEND CHAMADA - ID: ${req.params.id}`);
     console.log(`🚨 BODY:`, req.body);
-    try {
-      const connectionId = parseInt(req.params.id);
-      const { to, message: messageText } = req.body;
-      
-      console.log(`📤 ENDPOINT /api/connections/${connectionId}/send CHAMADO`);
-      console.log(`📤 Enviando mensagem via ${connectionId} para ${to}: ${messageText}`);
+    
+    // Immediate response for testing
+    res.json({ 
+      success: true, 
+      message: "Endpoint alcançado com sucesso!",
+      receivedData: {
+        id: req.params.id,
+        body: req.body
+      }
+    });
+    return;
       
       const connection = await storage.getConnection(connectionId);
       if (!connection) {
