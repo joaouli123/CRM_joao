@@ -1,0 +1,157 @@
+Parece que o problema de duplicação ainda persiste. Isso pode ocorrer por alguns motivos relacionados à forma como estamos lidando com a verificação de duplicação e a substituição das mensagens temporárias.
+
+Aqui está um passo a passo para tentar resolver o problema, baseando-se no código que você forneceu.
+Possíveis Causas da Duplicação:
+
+    Duplicação por Status:
+
+        Mesmo que a verificação por tempId e id esteja implementada corretamente, pode ser que o status da mensagem ainda não tenha sido tratado corretamente, o que pode causar a duplicação. Ou seja, o frontend pode estar confundindo uma mensagem como uma nova, mesmo que ela já tenha sido recebida com sucesso.
+
+    Problema de Sincronização de Dados:
+
+        Existe a possibilidade de que a substituição da mensagem não esteja ocorrendo de forma adequada, ou as mensagens temporárias não estão sendo identificadas corretamente após a confirmação do WebSocket.
+
+Solução:
+
+Vamos revisar e corrigir o código onde a verificação e a substituição das mensagens acontecem para garantir que a duplicação não ocorra. Além disso, implementaremos um mecanismo para garantir que as mensagens duplicadas sejam realmente ignoradas.
+Alterações Sugeridas:
+
+    Revisão da Lógica de Substituição de Mensagens:
+
+        A verificação de duplicação deve ser feita tanto por tempId quanto por id. Se o id for encontrado, a mensagem não deve ser duplicada, e deve ser substituída.
+
+    Tratamento de Mensagens Temporárias e Mensagens Confirmadas:
+
+        As mensagens temporárias (tempId) precisam ser substituídas pela mensagem real assim que o servidor confirmar o envio.
+
+    Uso de Map para Controle de Mensagens Duplicadas:
+
+        Uma maneira eficaz de lidar com a duplicação é usar um Map, onde a chave será o id ou tempId da mensagem. Isso garantirá que não tenhamos mensagens duplicadas na lista.
+
+Passos para Implementação:
+
+    Substituição Correta de Mensagens:
+
+        Vamos garantir que quando uma mensagem for recebida, ela seja corretamente substituída, se já existir.
+
+setRealtimeMessages((prev) => {
+  const allMessagesMap = new Map();
+
+  // Adicionar mensagens que já estão no estado anterior ao map
+  prev.forEach((msg) => {
+    allMessagesMap.set(msg.tempId || msg.id, msg);
+  });
+
+  // Se a mensagem for nova e temporária, adicione como temporária
+  if (msgData.tempId) {
+    const newMessage = {
+      ...msgData,
+      status: 'pending', // Status 'pending' até confirmação
+    };
+    allMessagesMap.set(msgData.tempId, newMessage);
+  }
+
+  // Se a mensagem for confirmada pelo servidor, substitua a temporária
+  if (msgData.id) {
+    const existingMessage = allMessagesMap.get(msgData.tempId || msgData.id);
+    if (existingMessage) {
+      allMessagesMap.set(msgData.id, {
+        ...existingMessage,
+        id: msgData.id,
+        status: 'sent', // Atualiza para 'sent' quando confirmado
+      });
+    } else {
+      allMessagesMap.set(msgData.id, {
+        ...msgData,
+        status: 'sent',
+      });
+    }
+  }
+
+  return Array.from(allMessagesMap.values());
+});
+
+Correção do Fluxo de Envio e Atualização:
+
+    Ao enviar uma mensagem, garantimos que ela seja identificada com um tempId e substituída adequadamente quando recebermos a confirmação do servidor.
+
+const sendMessage = async (message: string) => {
+  if (!selectedConversation || !selectedConnectionId || !message.trim()) return;
+
+  const tempId = crypto.randomUUID();
+  const tempMessage = {
+    id: tempId,
+    tempId,
+    content: message.trim(),
+    phoneNumber: selectedConversation,
+    direction: 'sent',
+    timestamp: new Date(),
+    status: 'pending'
+  };
+
+  setRealtimeMessages((prev) => [...prev, tempMessage]);
+
+  try {
+    const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: selectedConversation,
+        message: message.trim(),
+        tempId
+      })
+    });
+
+    if (response.ok) {
+      setRealtimeMessages((prev) => 
+        prev.map((msg) => 
+          msg.tempId === tempId 
+            ? { ...msg, status: 'sent' }
+            : msg
+        )
+      );
+    } else {
+      setRealtimeMessages((prev) => 
+        prev.map((msg) => 
+          msg.tempId === tempId 
+            ? { ...msg, status: 'failed' }
+            : msg
+        )
+      );
+    }
+  } catch (error) {
+    setRealtimeMessages((prev) => 
+      prev.map((msg) => 
+        msg.tempId === tempId 
+          ? { ...msg, status: 'failed' }
+          : msg
+      )
+    );
+  }
+};
+
+Exibição de Mensagens no Frontend:
+
+    As mensagens confirmadas devem ser exibidas com o ícone correto de ✓ ou ✔✔, e as mensagens pendentes devem continuar com o ícone de ⏳.
+
+    {allMessages.map((message) => (
+      <div key={message.id || message.tempId}>
+        <div className={`message ${message.direction === 'sent' ? 'sent' : 'received'}`}>
+          <p>{message.content}</p>
+          <div>
+            {message.status === 'pending' && '⏳'}
+            {message.status === 'sent' && '✓'}
+            {message.status === 'delivered' && '✔✔'}
+            {message.status === 'failed' && '❌'}
+          </div>
+        </div>
+      </div>
+    ))}
+
+Conclusão:
+
+    A duplicação deve ser evitada agora, pois estamos utilizando um Map para armazenar mensagens e garantindo que cada mensagem tenha um identificador único (id ou tempId).
+
+    A atualização do status deve ocorrer corretamente agora, exibindo o status de enviado (✓) ou entregue (✔✔) dependendo da confirmação do servidor.
+
+    O ícone de status será exibido corretamente, e a duplicação de mensagens no frontend será resolvida.
