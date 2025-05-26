@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageCircle, Send, Phone, Clock, User, Search, ChevronDown } from "lucide-react";
 import { Connection, Conversation, Message } from "@/lib/api";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
-import { io } from "socket.io-client";
 
 interface MessageInterfaceProps {
   connections: Connection[];
@@ -38,68 +37,76 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket DIRETO da Evolution API - TEMPO REAL PERFEITO!
+  // WebSocket nativo para mensagens em tempo real
   useEffect(() => {
-    if (!selectedConnectionId || !instanceKey) return;
+    if (!selectedConnectionId || !selectedConversation || !instanceKey) return;
 
-    console.log("🔌 Conectando ao WebSocket da Evolution API...");
+    console.log("🔌 Conectando WebSocket nativo...");
     
-    // Conectar diretamente ao WebSocket da Evolution API
-    const evolutionSocket = io('wss://evolution.lowfy.com.br/whatsapp_36_lowfy', {
-      transports: ['websocket']
-    });
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+    const socket = new WebSocket(wsUrl);
 
-    evolutionSocket.on('connect', () => {
-      console.log("🟢 Conectado ao WebSocket da Evolution API!");
-    });
+    socket.onopen = () => {
+      console.log("🟢 WebSocket conectado!");
+    };
 
-    evolutionSocket.on('newMessage', (data) => {
-      console.log("🟢 Nova mensagem via Evolution WebSocket:", data);
-      
-      // Só processa se for para o chat ativo
-      if (data.phoneNumber === selectedConversation) {
-        setMessagesByInstance(prev => {
-          const currentMessages = prev[instanceKey]?.[selectedConversation] || [];
+    socket.onmessage = (event) => {
+      try {
+        const messageData = JSON.parse(event.data);
+        console.log("🔥 WebSocket recebeu:", messageData);
+
+        if (messageData.type === 'newMessage' && messageData.data) {
+          const data = messageData.data;
           
-          // Verifica duplicação por ID
-          const exists = currentMessages.some(m => m.id === data.id);
-          if (exists) {
-            console.log("🔁 Mensagem duplicada ignorada:", data);
-            return prev;
+          // Só processa se for para o chat ativo e connectionId correto
+          if (data.phoneNumber === selectedConversation && data.connectionId === selectedConnectionId) {
+            setMessagesByInstance(prev => {
+              const currentMessages = prev[instanceKey]?.[selectedConversation] || [];
+              
+              // Verifica duplicação por ID
+              const exists = currentMessages.some((m: any) => m.id === data.id);
+              if (exists) {
+                console.log("🔁 Mensagem duplicada ignorada:", data);
+                return prev;
+              }
+
+              // Adiciona mensagem nova
+              const newMessage = {
+                id: data.id,
+                connectionId: data.connectionId,
+                direction: data.direction,
+                phoneNumber: data.phoneNumber,
+                content: data.content,
+                status: data.status || 'delivered',
+                timestamp: new Date(data.timestamp)
+              };
+
+              console.log("✅ Mensagem adicionada em tempo real:", newMessage);
+
+              return {
+                ...prev,
+                [instanceKey]: {
+                  ...prev[instanceKey],
+                  [selectedConversation]: [...currentMessages, newMessage]
+                }
+              };
+            });
           }
-
-          // Adiciona mensagem nova
-          const newMessage = {
-            id: data.id,
-            connectionId: selectedConnectionId,
-            direction: data.direction,
-            phoneNumber: data.phoneNumber,
-            content: data.content,
-            status: data.status || 'delivered',
-            timestamp: new Date(data.timestamp)
-          };
-
-          console.log("✅ Mensagem adicionada em tempo real:", newMessage);
-
-          return {
-            ...prev,
-            [instanceKey]: {
-              ...prev[instanceKey],
-              [selectedConversation]: [...currentMessages, newMessage]
-            }
-          };
-        });
+        }
+      } catch (error) {
+        console.error("Erro ao processar mensagem WebSocket:", error);
       }
-    });
+    };
 
-    evolutionSocket.on('disconnect', () => {
-      console.log("🔴 Desconectado do WebSocket da Evolution API");
-    });
+    socket.onclose = () => {
+      console.log("🔴 WebSocket desconectado");
+    };
 
     // Cleanup ao desmontar
     return () => {
-      console.log("🔌 Desconectando WebSocket da Evolution API...");
-      evolutionSocket.disconnect();
+      console.log("🔌 Fechando WebSocket...");
+      socket.close();
     };
   }, [selectedConnectionId, selectedConversation, instanceKey]);
   
