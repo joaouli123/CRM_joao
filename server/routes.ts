@@ -805,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Store the received message in database
           try {
             const newMessage = await storage.createMessage({
-              connectionId: 1, // We know it's connection 1 for whatsapp_36_lowfy
+              connectionId: 36, // CORRECTED: Use the actual connection ID
               from: chatId,
               to: "me",
               body: messageContent,
@@ -818,7 +818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type: "newMessage",
               data: {
                 id: newMessage.id,
-                connectionId: 1,
+                connectionId: 36, // CORRECTED: Use the actual connection ID
                 direction: "received",
                 phoneNumber: chatId,
                 content: messageContent,
