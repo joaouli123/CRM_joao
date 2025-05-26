@@ -61,7 +61,7 @@ export function setupSendMessageRoute(app: Express) {
         direction: "sent"
       });
 
-      // Broadcast FORÇADO via WebSocket for real-time UI update
+      // Broadcast ÚNICO via WebSocket for real-time UI update
       const messageData = { 
         id: newMessage.id,
         connectionId, 
@@ -72,14 +72,8 @@ export function setupSendMessageRoute(app: Express) {
         timestamp: new Date().toISOString()
       };
 
-      // MÚLTIPLOS BROADCASTS para garantir recebimento
-      broadcast({ type: "newMessage", data: messageData });
+      // APENAS UM BROADCAST para evitar duplicação
       broadcast({ type: "messageSent", data: messageData });
-
-      // BROADCAST ADICIONAL após delay
-      setTimeout(() => {
-        broadcast({ type: "messageReceived", data: messageData });
-      }, 100);
 
       res.json({ 
         success: true, 

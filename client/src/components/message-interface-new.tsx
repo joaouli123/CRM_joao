@@ -87,52 +87,44 @@ export default function MessageInterface({
             const data = JSON.parse(event.data);
             console.log(`📨 WEBSOCKET SUPER AGRESSIVO RECEBEU:`, data);
 
-            // PROCESSA TODOS OS TIPOS DE MENSAGEM POSSÍVEIS - SUPER AGRESSIVO
-            const messageTypes = [
-              "newMessage", "messageSent", "messageReceived", 
-              "incomingMessage", "realTimeMessage", "messageUpdate",
-              "message", "chat", "notification"
-            ];
+            // PROCESSA MENSAGENS WebSocket - CONTROLE DE DUPLICAÇÃO
+            const messageTypes = ["messageSent", "messageReceived", "newMessage"];
 
             if (messageTypes.includes(data.type) && data.data) {
               const msgData = data.data;
 
-              // ACEITA QUALQUER connectionId ou força para a conexão ativa
-              const isValidConnection = !msgData.connectionId || 
-                                      msgData.connectionId === selectedConnectionId || 
-                                      selectedConnectionId;
+              // Verifica se é para esta conexão
+              if (msgData.connectionId === selectedConnectionId) {
+                console.log(`🎯 PROCESSANDO MENSAGEM: "${msgData.content}" para chat ${msgData.phoneNumber}`);
 
-              if (isValidConnection) {
-                console.log(`🎯 PROCESSANDO MENSAGEM SUPER AGRESSIVA: "${msgData.content || msgData.message || msgData.body}" para chat ${msgData.phoneNumber || msgData.to || msgData.from}`);
-
-                // CRIA mensagem com MÚLTIPLAS fontes de dados
+                // CRIA mensagem com dados únicos
                 const newMsg: RealtimeMessage = {
-                  id: msgData.id || msgData.messageId || `msg_${Date.now()}_${Math.random()}`,
-                  content: msgData.content || msgData.message || msgData.body || msgData.text || "Nova mensagem recebida",
-                  phoneNumber: msgData.phoneNumber || msgData.to || msgData.from || msgData.chatId || "unknown",
-                  direction: msgData.direction || (msgData.fromMe ? "sent" : "received") || "received",
-                  timestamp: new Date(msgData.timestamp || msgData.time || Date.now()),
+                  id: msgData.id || `msg_${Date.now()}_${Math.random()}`,
+                  content: msgData.content || "Nova mensagem",
+                  phoneNumber: msgData.phoneNumber || "unknown",
+                  direction: msgData.direction || "received",
+                  timestamp: new Date(msgData.timestamp || Date.now()),
                   status: msgData.status || 'delivered'
                 };
 
                 console.log(`🚀 MENSAGEM CRIADA:`, newMsg);
 
-                // FORÇA ADIÇÃO sem verificações excessivas
+                // VERIFICAÇÃO RIGOROSA para evitar duplicação
                 setRealtimeMessages(prev => {
-                  // Verificação MENOS rígida para duplicação
                   const existsExact = prev.some(m => 
                     m.id === newMsg.id || 
                     (m.content === newMsg.content && 
                      m.phoneNumber === newMsg.phoneNumber && 
-                     Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000)
+                     m.direction === newMsg.direction &&
+                     Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 2000)
                   );
 
                   if (existsExact) {
-                    console.log("⚠️ Mensagem já existe, ignorando");
+                    console.log("⚠️ Mensagem já existe, ignorando duplicata");
                     return prev;
                   }
 
-                  console.log(`🚀 ADICIONANDO MENSAGEM SUPER AGRESSIVA: "${newMsg.content}" de ${newMsg.phoneNumber}`);
+                  console.log(`✅ ADICIONANDO MENSAGEM: "${newMsg.content}" de ${newMsg.phoneNumber}`);
                   return [...prev, newMsg];
                 });
 
@@ -261,21 +253,9 @@ export default function MessageInterface({
     setNewMessage(''); // Limpa input imediatamente
 
     try {
-      console.log(`📤 ENVIANDO MENSAGEM FORÇADA para ${selectedConversation}: ${messageText}`);
+      console.log(`📤 ENVIANDO MENSAGEM para ${selectedConversation}: ${messageText}`);
 
-      // ADICIONA mensagem IMEDIATAMENTE na UI (feedback visual instantâneo)
-      const sentMessage: RealtimeMessage = {
-        id: `sent_${Date.now()}_${Math.random()}`,
-        content: messageText,
-        phoneNumber: selectedConversation,
-        direction: 'sent',
-        timestamp: new Date(),
-        status: 'sending'
-      };
-
-      setRealtimeMessages(prev => [...prev, sentMessage]);
-
-      // ENVIA para o servidor
+      // ENVIA para o servidor (o WebSocket irá adicionar a mensagem)
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -288,15 +268,6 @@ export default function MessageInterface({
       if (response.ok) {
         console.log(`✅ SUCESSO! Mensagem "${messageText}" enviada!`);
 
-        // ATUALIZA status da mensagem para "sent"
-        setRealtimeMessages(prev => 
-          prev.map(msg => 
-            msg.id === sentMessage.id 
-              ? { ...msg, status: 'sent' }
-              : msg
-          )
-        );
-
         // ATUALIZA lista de conversas
         setConversationsList(prev => 
           prev.map(conv => 
@@ -307,14 +278,10 @@ export default function MessageInterface({
         );
       } else {
         console.error(`❌ Erro ao enviar mensagem:`, response.status);
-        // Remove mensagem em caso de erro
-        setRealtimeMessages(prev => prev.filter(msg => msg.id !== sentMessage.id));
         setNewMessage(messageText); // Restaura texto
       }
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error);
-      // Remove mensagem em caso de erro
-      setRealtimeMessages(prev => prev.filter(msg => msg.id !== sentMessage.id));
       setNewMessage(messageText); // Restaura texto
     }
   };
