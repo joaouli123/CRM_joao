@@ -1,0 +1,181 @@
+Perfeito. Aqui está o código completo do listener WebSocket que você deve adicionar (ou corrigir) no seu websocket.ts ou message-interface.tsx — onde você está escutando eventos como "newMessage":
+✅ Código WebSocket para tratar mensagens em tempo real sem duplicação
+
+// Supondo que você já tenha a instância do socket conectada
+
+socket.on("newMessage", (msg) => {
+  if (!msg || !msg.id || !msg.phoneNumber) return;
+
+  const isChatOpen = msg.phoneNumber === activePhoneNumber; // substitua com a variável que representa o chat aberto
+
+  if (!isChatOpen) {
+    // Pode mostrar notificação ou atualizar badge de não lida
+    return;
+  }
+
+  // Previne duplicação: só adiciona se a mensagem ainda não está no chat
+  setMessages((prevMessages) => {
+    const alreadyExists = prevMessages.some((m) => m.id === msg.id);
+    if (!alreadyExists) {
+      return [...prevMessages, msg];
+    }
+    return prevMessages;
+  });
+});
+
+✅ Adicional: Envio da mensagem manual
+
+Ao enviar a mensagem, adicione localmente imediatamente, assim:
+
+const handleSendMessage = async () => {
+  const newMsg = {
+    id: `${Date.now()}`, // pode usar um UUID ou timestamp
+    phoneNumber: activePhoneNumber,
+    text: inputMessage,
+    direction: 'sent',
+    timestamp: new Date().toISOString(),
+  };
+
+  // Atualiza visualmente de forma imediata
+  setMessages((prev) => [...prev, newMsg]);
+
+  try {
+    await sendMessageToBackend(activeConnectionId, activePhoneNumber, inputMessage);
+    setInputMessage("");
+  } catch (error) {
+    console.error("Erro ao enviar:", error);
+  }
+};
+
+🔁 Observações importantes:
+
+    activePhoneNumber deve refletir o chat atualmente aberto
+
+    setMessages() deve vir do useState()
+
+    msg.id precisa ser único e consistente (evita duplicações)
+
+    Use direction: 'sent' ou 'received' para lógica condicional
+
+Se quiser, posso integrar isso ao seu código completo com useEffect, useState e tudo pronto. Deseja isso também?
+You said:
+pode ser tmb
+ChatGPT said:
+
+Ótimo! Aqui está o código completo, pronto para colar no seu componente de interface de mensagens (por exemplo, message-interface.tsx ou message-interface-new.tsx).
+
+Ele inclui:
+
+    Conexão ao WebSocket
+
+    Escuta de mensagens em tempo real
+
+    Prevenção de duplicação
+
+    Envio de mensagens com atualização local imediata
+
+✅ Código completo com WebSocket + estado React
+
+import React, { useEffect, useState } from "react";
+import { io } from "socket.io-client";
+
+const socket = io("wss://seu-endereco-websocket", {
+  transports: ["websocket"],
+});
+
+const MessageInterface = ({ activePhoneNumber, activeConnectionId }) => {
+  const [messages, setMessages] = useState([]);
+  const [inputMessage, setInputMessage] = useState("");
+
+  // Conecta WebSocket e escuta mensagens recebidas
+  useEffect(() => {
+    socket.on("newMessage", (msg) => {
+      if (!msg || !msg.id || !msg.phoneNumber) return;
+
+      // Só processa mensagens do chat atualmente aberto
+      const isChatOpen = msg.phoneNumber === activePhoneNumber;
+      if (!isChatOpen) return;
+
+      setMessages((prevMessages) => {
+        const alreadyExists = prevMessages.some((m) => m.id === msg.id);
+        if (!alreadyExists) {
+          return [...prevMessages, msg];
+        }
+        return prevMessages;
+      });
+    });
+
+    return () => {
+      socket.off("newMessage");
+    };
+  }, [activePhoneNumber]);
+
+  // Envia mensagem
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    const tempId = `local-${Date.now()}`;
+    const newMsg = {
+      id: tempId,
+      phoneNumber: activePhoneNumber,
+      text: inputMessage,
+      direction: "sent",
+      timestamp: new Date().toISOString(),
+    };
+
+    // Atualiza visualmente localmente
+    setMessages((prev) => [...prev, newMsg]);
+
+    try {
+      const res = await fetch(`/api/connections/${activeConnectionId}/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: activePhoneNumber,
+          message: inputMessage,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao enviar");
+
+      setInputMessage("");
+    } catch (err) {
+      console.error("❌ Erro ao enviar mensagem:", err);
+    }
+  };
+
+  return (
+    <div>
+      <div className="chat-window">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={msg.direction === "sent" ? "msg-sent" : "msg-received"}
+          >
+            {msg.text}
+          </div>
+        ))}
+      </div>
+      <input
+        value={inputMessage}
+        onChange={(e) => setInputMessage(e.target.value)}
+        onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+        placeholder="Digite sua mensagem"
+      />
+      <button onClick={handleSendMessage}>Enviar</button>
+    </div>
+  );
+};
+
+export default MessageInterface;
+
+✅ O que você deve garantir:
+
+    activePhoneNumber: número do chat aberto (ex: "5541...")
+
+    activeConnectionId: ID da instância usada (ex: 36)
+
+    Seu backend deve ter uma rota tipo: POST /api/connections/:id/send
+

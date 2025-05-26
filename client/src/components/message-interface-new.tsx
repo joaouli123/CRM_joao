@@ -38,37 +38,32 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket for REAL-TIME messages - FINAL BRUTAL FIX!
+  // WebSocket DEFINITIVO - SEM DUPLICAÇÃO + TEMPO REAL!
   useWebSocket({
     onMessageReceived: (messageData) => {
       console.log("🔥 WEBSOCKET RECEBEU:", messageData);
       
-      // ONLY process messages for current connection
-      if (messageData.connectionId === selectedConnectionId && instanceKey) {
-        const phoneNumber = messageData.phoneNumber;
+      // ONLY process messages for current connection and chat
+      if (messageData.connectionId === selectedConnectionId && 
+          messageData.phoneNumber === selectedConversation && 
+          instanceKey) {
         
-        // 🎯 CRITICAL FIX: Handle BOTH sent and received but avoid duplicates
-        if (selectedConversation === phoneNumber) {
-          console.log(`📥 PROCESSANDO MENSAGEM PARA CHAT ATIVO (${messageData.direction}):`, messageData);
+        console.log(`📥 MENSAGEM PARA CHAT ATIVO (${messageData.direction}):`, messageData);
+        
+        setMessagesByInstance(prev => {
+          const currentMessages = prev[instanceKey]?.[selectedConversation] || [];
           
-          setMessagesByInstance(prev => {
-            const currentMessages = prev[instanceKey]?.[phoneNumber] || [];
-            
-            // ROBUST duplicate check by ID
-            const isDuplicate = currentMessages.some(msg => msg.id === messageData.id);
-            
-            if (isDuplicate) {
-              console.log("🛑 MENSAGEM JÁ EXISTE - IGNORANDO DUPLICATA");
-              return prev;
-            }
-            
-            // For RECEIVED messages: Always add to chat
-            // For SENT messages: Only add if not already in state (to avoid duplication)
-            if (messageData.direction === 'received') {
-              console.log("✅ ADICIONANDO MENSAGEM RECEBIDA EM TEMPO REAL");
-            } else if (messageData.direction === 'sent') {
-              console.log("✅ ADICIONANDO MENSAGEM ENVIADA VIA WEBSOCKET");
-            }
+          // ULTRA-ROBUST duplicate check by ID
+          const alreadyExists = currentMessages.some(msg => msg.id === messageData.id);
+          
+          if (alreadyExists) {
+            console.log("🛑 MENSAGEM JÁ EXISTE - IGNORANDO DUPLICATA");
+            return prev;
+          }
+          
+          // CRITICAL: Only add RECEIVED messages to avoid sent duplicates
+          if (messageData.direction === 'received') {
+            console.log("✅ ADICIONANDO MENSAGEM RECEBIDA EM TEMPO REAL");
             
             const newMessage = {
               id: messageData.id,
@@ -76,7 +71,7 @@ export default function MessageInterface({
               direction: messageData.direction,
               phoneNumber: messageData.phoneNumber,
               content: messageData.content,
-              status: messageData.status || (messageData.direction === 'sent' ? 'sent' : 'delivered'),
+              status: 'delivered',
               timestamp: new Date(messageData.timestamp)
             };
             
@@ -84,22 +79,27 @@ export default function MessageInterface({
               ...prev,
               [instanceKey]: {
                 ...prev[instanceKey],
-                [phoneNumber]: [...currentMessages, newMessage]
+                [selectedConversation]: [...currentMessages, newMessage]
               }
             };
-          });
-        }
-        
-        // Always update conversation list for ALL messages
+          }
+          
+          console.log("🚫 MENSAGEM ENVIADA IGNORADA (evita duplicação)");
+          return prev;
+        });
+      }
+      
+      // Update conversation list for ALL messages
+      if (messageData.connectionId === selectedConnectionId && instanceKey) {
         setChatsByInstance(prev => {
           const currentChats = prev[instanceKey] || [];
           const updatedChats = currentChats.map(chat => {
-            if (chat.phoneNumber === phoneNumber) {
+            if (chat.phoneNumber === messageData.phoneNumber) {
               return {
                 ...chat,
                 lastMessage: messageData.content,
                 lastMessageTime: new Date(messageData.timestamp),
-                unreadCount: (selectedConversation === phoneNumber || messageData.direction === 'sent') ? 0 : (chat.unreadCount || 0) + 1
+                unreadCount: (selectedConversation === messageData.phoneNumber || messageData.direction === 'sent') ? 0 : (chat.unreadCount || 0) + 1
               };
             }
             return chat;
