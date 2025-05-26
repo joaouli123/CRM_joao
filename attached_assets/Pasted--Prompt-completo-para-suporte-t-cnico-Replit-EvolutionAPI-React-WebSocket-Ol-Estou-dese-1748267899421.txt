@@ -1,0 +1,91 @@
+📄 Prompt completo para suporte técnico (Replit + EvolutionAPI + React/WebSocket)
+
+Olá! Estou desenvolvendo uma aplicação em React hospedada no Replit, conectada à EvolutionAPI via WebSocket. Estou enfrentando alguns problemas críticos na aplicação e preciso de suporte para resolvê-los. Abaixo segue um relatório completo com todos os erros, comportamentos incorretos e o que precisa ser corrigido:
+✅ FUNCIONALIDADES PARCIALMENTE FUNCIONAIS
+
+    O WebSocket conecta com sucesso no endpoint:
+
+    wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/ws
+
+    As primeiras 12 conversas são carregadas com nome, telefone, e última mensagem.
+
+    Um botão "Carregar mais" aparece.
+
+❌ PROBLEMAS ATUAIS
+1. Erro de WebSocket com localhost:undefined
+
+Mesmo com a conexão funcionando, o console mostra o seguinte erro:
+
+WebSocket connection to 'wss://localhost:undefined/?token=...' failed
+Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=...' is invalid
+
+🛠 Correção esperada:
+
+    Corrigir esse fallback incorreto no código do frontend.
+
+    Garantir que o WebSocket use uma URL válida, idealmente via variável de ambiente:
+
+const WS_URL = import.meta.env.VITE_WS_URL || `wss://${window.location.host}/api/ws`;
+
+2. Paginação de conversas está incompleta
+
+    A aplicação carrega apenas 12 conversas inicialmente.
+
+    O botão "Carregar mais" existe, mas carrega somente mais 4 contatos, e para de carregar mesmo com mais de 60 conversas disponíveis.
+
+🛠 Funcionalidade esperada:
+
+    Carregar 8 conversas por vez.
+
+    Continuar carregando até que todas as conversas disponíveis no backend sejam exibidas.
+
+    O botão “Carregar mais” só deve desaparecer quando não houver mais nada para carregar.
+
+3. Histórico de conversas e envio de mensagens não funcionam
+
+    Ao clicar em qualquer contato:
+
+        Nenhuma mensagem antiga da conversa aparece no chat.
+
+        Não é exibido o histórico, mesmo para contatos com mensagens anteriores.
+
+        Envio de mensagem não apresenta erro, mas nada aparece na interface, mesmo com o console exibindo:
+
+✅ Conversas carregadas do backend: (12) [ { phoneNumber: '554187038339', contactName: 'Joao Lucas', ... }, ... ]
+📊 Total de 12 conversas encontradas
+Enviando mensagem: {connectionId: 34, to: '556791311050', message: 'sdsd'}
+Enviando mensagem: {connectionId: 34, to: '556791311050', message: 'sdfsdf'}
+Enviando mensagem: {connectionId: 34, to: '556791311050', message: 'dfsdfs'}
+
+🛠 Correções esperadas:
+
+    Ao selecionar um contato, a aplicação deve:
+
+        Carregar e exibir o histórico completo da conversa com esse número.
+
+        Mostrar as mensagens em tempo real recebidas via WebSocket.
+
+        Permitir o envio de mensagens e exibir essas mensagens no chat imediatamente (com confirmação de entrega, se possível).
+
+4. Filtro de pesquisa não funciona globalmente
+
+    O campo de pesquisa atual só busca entre os contatos já carregados.
+
+    Ele não pesquisa nas conversas que ainda não foram exibidas, mesmo que existam dezenas no backend.
+
+🛠 Funcionalidade esperada:
+
+    A busca deve funcionar em todas as conversas disponíveis na API.
+
+    Deve permitir buscar por nome ou número.
+
+    Idealmente, deve usar debounce para evitar múltiplas chamadas desnecessárias à API.
+
+🔄 RESUMO DAS CORREÇÕES NECESSÁRIAS
+Item	Descrição	Status
+1️⃣	Corrigir fallback localhost:undefined no WebSocket	❌
+2️⃣	Corrigir o botão "Carregar mais" para carregar em blocos de 8 e até o fim	❌
+3️⃣	Exibir histórico de conversa + mostrar/enviar mensagens corretamente	❌
+4️⃣	Fazer com que o filtro de busca funcione globalmente em todos os contatos	❌
+
+Posso enviar prints, código ou logs adicionais se precisarem. Obrigado pela atenção e aguardo retorno!
