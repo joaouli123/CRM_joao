@@ -48,47 +48,52 @@ export default function MessageInterface({
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log("📨 WebSocket evento recebido:", data);
 
-      // MENSAGENS EM TEMPO REAL
-      if (data.type === "newMessage") {
+      // MENSAGENS EM TEMPO REAL - FORÇAR ATUALIZAÇÃO INSTANTÂNEA
+      if (data.type === "newMessage" && data.data) {
         console.log("Nova mensagem recebida:", data);
         const messageData = data.data;
         
-        // Só processa se for da conexão ativa
-        if (messageData.connectionId === selectedConnectionId) {
+        // Só processa se for da conexão ativa e chat selecionado
+        if (messageData.connectionId === selectedConnectionId && 
+            messageData.phoneNumber === selectedConversation) {
+          
+          console.log(`🔥 PROCESSANDO MENSAGEM PARA CHAT ATIVO: ${selectedConversation}`);
           
           setMessages((prevMessages) => {
-            // Verifica duplicação por ID única
+            // Evitar duplicação com base no ID
             const exists = prevMessages.some((m: any) => m.id === messageData.id);
             if (exists) {
-              console.log("Mensagem duplicada ignorada");
+              console.log("🔁 Mensagem duplicada ignorada");
               return prevMessages;
             }
             
-            // Adiciona nova mensagem
+            // Adiciona nova mensagem FORÇANDO RENDER
             const newMessage = {
               id: messageData.id,
               content: messageData.content,
               phoneNumber: messageData.phoneNumber,
               direction: messageData.direction,
               timestamp: new Date(messageData.timestamp),
-              status: messageData.status || 'delivered'
+              status: messageData.direction === 'sent' ? 'sent' : 'received'
             };
             
-            console.log(`✅ TEMPO REAL: Adicionando "${messageData.content}" para ${messageData.phoneNumber}`);
+            console.log(`✅ TEMPO REAL INSTANTÂNEO: "${messageData.content}" adicionada!`);
+            console.log(`🚀 FORÇANDO RENDER - Nova lista terá ${prevMessages.length + 1} mensagens`);
             
-            return [...prevMessages, newMessage];
+            // FORÇA ATUALIZAÇÃO IMEDIATA
+            const newList = [...prevMessages, newMessage];
+            return newList;
           });
         }
       }
 
-      // STATUS "DIGITANDO..."
-      if (data.type === "typing") {
-        console.log(`${data.phoneNumber} está digitando...`);
-        if (data.phoneNumber === selectedConversation) {
-          setTyping(true);
-          setTimeout(() => setTyping(false), 2000);
-        }
+      // STATUS "DIGITANDO..." EM TEMPO REAL
+      if (data.type === "typing" && data.phoneNumber === selectedConversation) {
+        console.log(`✍️ ${data.phoneNumber} está digitando...`);
+        setTyping(true);
+        setTimeout(() => setTyping(false), 2000);
       }
     };
 

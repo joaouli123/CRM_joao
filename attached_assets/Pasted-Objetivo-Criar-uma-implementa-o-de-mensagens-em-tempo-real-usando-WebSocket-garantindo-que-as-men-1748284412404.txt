@@ -1,0 +1,174 @@
+Objetivo: Criar uma implementação de mensagens em tempo real usando WebSocket, garantindo que as mensagens recebidas sejam mostradas instantaneamente no chat, sem a necessidade de atualizar a página ou trocar de conversa. Além disso, adicionar o recurso de exibir a mensagem "digitando..." para o contato enquanto ele estiver digitando.
+
+Requisitos:
+
+    WebSocket para tempo real: O WebSocket deve ser configurado para ouvir novas mensagens e atualizá-las instantaneamente no chat.
+
+    Atualização do estado: Quando uma nova mensagem for recebida, o estado do React (setMessages) deve ser atualizado imediatamente.
+
+    Mensagem "Digitando...": Quando o contato começar a digitar, a interface deve mostrar "Digitando..." de forma eficiente.
+
+    Prevenção de duplicação: A duplicação de mensagens deve ser evitada verificando o ID único da mensagem.
+
+    Exibição instantânea de mensagens: Assim que a mensagem é recebida, ela deve ser adicionada ao estado e imediatamente refletida na interface sem precisar trocar de conversa ou atualizar a página.
+
+Passo a Passo:
+
+    Configuração do WebSocket:
+
+        Quando o chat é selecionado, conecte o WebSocket à API Evolution.
+
+        Escute eventos de novas mensagens e de "digitando...".
+
+        Atualize o estado do React (setMessages) com as mensagens recebidas.
+
+    Evitar duplicação de mensagens:
+
+        Verifique se a mensagem já existe no estado (currentMessages) antes de adicionar uma nova. Use o message.id para garantir que não haja duplicações.
+
+    Forçar atualização da interface:
+
+        Quando o WebSocket receber uma mensagem nova, altere o estado do React para garantir que a interface seja re-renderizada imediatamente.
+
+        Quando o contato estiver digitando, mostre o status "digitando..." na interface.
+
+    Mostrar as mensagens:
+
+        Cada mensagem deve ser exibida com o status "enviando" enquanto está sendo enviada e "enviada" assim que for confirmada como recebida.
+
+        Para mensagens recebidas, marque-as como "recebidas".
+
+Exemplo de código (React):
+
+import React, { useState, useEffect } from "react";
+
+// Estado para armazenar mensagens
+const [messages, setMessages] = useState<any[]>([]);
+
+// Estado para o WebSocket
+const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+const [selectedConversation, setSelectedConversation] = useState<string>("");
+
+// Conectar ao WebSocket quando o chat é selecionado
+useEffect(() => {
+  if (selectedConversation) {
+    const socket = new WebSocket(`wss://api.seusite.com/${selectedConversation}`);
+    
+    socket.onopen = () => {
+      console.log(`WebSocket conectado para o chat ${selectedConversation}`);
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      // Evitar duplicação de mensagens com base no ID
+      const exists = messages.some((m: any) => m.id === data.id);
+      
+      if (exists) return;
+
+      // Se a mensagem for nova e para o chat ativo
+      if (data.type === "newMessage" && data.phoneNumber === selectedConversation) {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: data.id,
+            content: data.content,
+            phoneNumber: data.phoneNumber,
+            timestamp: new Date(data.timestamp),
+            status: "received", // Marcar como "recebida"
+          },
+        ]);
+      }
+
+      // Se o contato estiver digitando, mostrar o status "Digitando..."
+      if (data.type === "typing" && data.phoneNumber === selectedConversation) {
+        console.log(`${data.phoneNumber} está digitando...`);
+        // Aqui, você pode atualizar o estado para mostrar o status de digitação
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket desconectado.");
+    };
+
+    setWebSocket(socket);
+
+    // Cleanup na troca de conversa
+    return () => socket.close();
+  }
+}, [selectedConversation]);
+
+// Função para enviar mensagens
+const sendMessage = (message: string) => {
+  if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+    const messageData = {
+      type: "newMessage",
+      phoneNumber: selectedConversation,
+      content: message,
+    };
+
+    webSocket.send(JSON.stringify(messageData));
+
+    // Adiciona a mensagem no estado com status "sending"
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      {
+        content: message,
+        phoneNumber: selectedConversation,
+        timestamp: new Date(),
+        status: "sending", // Marca como "enviando"
+      },
+    ]);
+  }
+};
+
+// Componente para exibir as mensagens
+const MessageInterface = () => {
+  return (
+    <div>
+      <div className="chat-box">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`message ${msg.status}`}>
+            <p>{msg.content}</p>
+            <span>{msg.timestamp.toLocaleTimeString()}</span>
+            {msg.status === "sending" && <span className="reloginho">🕒</span>}
+            {msg.status === "received" && <span className="checkmark">✔</span>}
+          </div>
+        ))}
+      </div>
+
+      <div className="message-input">
+        <input
+          type="text"
+          placeholder="Digite sua mensagem..."
+          onKeyPress={(e) => e.key === "Enter" && sendMessage(e.target.value)}
+        />
+        <button onClick={() => sendMessage("Teste de mensagem")}>Enviar</button>
+      </div>
+    </div>
+  );
+};
+
+Instruções Importantes:
+
+    Estado: O estado messages é atualizado sempre que uma nova mensagem é recebida, ou quando uma mensagem é enviada.
+
+    WebSocket: O WebSocket escuta novas mensagens e atualiza o estado quando necessário.
+
+    Anti-duplicação: A verificação message.id evita duplicação de mensagens no estado.
+
+    Mensagem Digitando: O estado de digitação pode ser mostrado com um simples log ou um componente específico para o status "digitando".
+
+    Status da Mensagem: Cada mensagem pode ter três status possíveis: sending, sent, received.
+
+Testes
+
+    Enviar uma mensagem: Verifique se a mensagem aparece imediatamente sem precisar atualizar ou trocar de conversa.
+
+    Receber uma resposta: Peça a alguém para responder à mensagem e veja se ela aparece instantaneamente no chat.
+
+    Verificação do status "Digitando...": Teste o comportamento quando alguém estiver digitando.
+
+Conclusão
+
+Esse código garantirá que as mensagens apareçam em tempo real no chat sem a necessidade de atualização manual ou troca de conversa. Ele também mantém o comportamento de "digitando..." enquanto o contato estiver escrevendo.
