@@ -1,0 +1,97 @@
+Resolver o problema de duplicação de mensagens e garantir que as mensagens sejam exibidas em tempo real sem a necessidade de atualizar a página. A IA deve usar a documentação da Evolution API e fazer ajustes na lógica de WebSocket e nos endpoints da API.
+Passo 1: Conexão WebSocket e Configuração
+
+    Configuração do WebSocket:
+
+        O WebSocket precisa ser configurado corretamente para ouvir eventos em tempo real.
+
+        Usar o endpoint set-websocket da Evolution API para garantir que o WebSocket seja inicializado corretamente para a instância ativa.
+
+        Assegure que a variável de ambiente WEBSOCKET_ENABLED=true esteja configurada corretamente para permitir a comunicação via WebSocket.
+
+    Monitoramento do Status do WebSocket:
+
+        Usar o endpoint find-websocket para monitorar o status do WebSocket e garantir que a conexão esteja ativa e sem falhas.
+
+Passo 2: Identificação e Tratamento das Mensagens
+
+    Evitar Duplicação de Mensagens:
+
+        Certifique-se de que as mensagens enviadas e recebidas não se repitam na interface.
+
+        Modifique o código que define as chaves das mensagens no React, passando de key={message.id || index} para algo mais robusto como:
+
+        key={`msg-${message.id}-${message.direction}-${message.timestamp}-${index}`}
+
+        Isso assegura que a chave seja única para cada mensagem, mesmo que o conteúdo seja igual.
+
+    Verificação de Mensagens Duplicadas via WebSocket:
+
+        Implemente uma lógica que verifica o conteúdo, ID, direção e timestamp da mensagem antes de adicioná-la ao estado. Se a mensagem já estiver presente, ela não deve ser adicionada novamente.
+
+        Utilize uma janela de 2 segundos para verificar se a mensagem foi recebida dentro desse intervalo, evitando duplicações causadas por sincronização de tempo.
+
+Passo 3: Sincronização em Tempo Real
+
+    Atualização Automática do Estado com WebSocket:
+
+        Ao receber uma mensagem via WebSocket, a lógica deve atualizar o estado do React automaticamente para refletir a nova mensagem no chat ativo, sem que o usuário precise atualizar a página ou trocar de conversa.
+
+        O estado deve ser atualizado utilizando algo como setMessagesByInstance, o que garante que as mensagens serão corretamente renderizadas na interface sem a necessidade de uma atualização manual.
+
+        Certifique-se de que a mensagem seja inserida apenas no chat ativo, o que pode ser garantido verificando se o phoneNumber da mensagem é igual ao número do chat selecionado (selectedConversation).
+
+    Envio de Mensagens:
+
+        Para enviar mensagens, use o endpoint send-message da API da Evolution para garantir que as mensagens enviadas sejam processadas corretamente.
+
+        Após o envio, a interface deve refletir a mensagem no chat ativo sem duplicação.
+
+Passo 4: Recuperação de Dados e Sincronização de Chats
+
+    Obter Chats Ativos:
+
+        Use o endpoint find-chats para obter a lista de chats disponíveis e garantir que o chat ativo seja identificado corretamente.
+
+        Ao abrir um chat, o sistema deve carregar todas as mensagens já enviadas e recebidas para esse chat, garantindo que o histórico esteja sempre atualizado.
+
+    Sincronização de Mensagens:
+
+        Use o endpoint find-messages para obter o histórico completo de mensagens sempre que um chat for aberto, especialmente se a aplicação for reiniciada ou se houver algum atraso na exibição das mensagens.
+
+    Fotos de Perfil:
+
+        Use o endpoint fetch-profilepic-url para carregar e exibir as fotos de perfil dos contatos sempre que um chat for aberto ou quando uma nova mensagem for recebida.
+
+Passo 5: Detalhamento e Logs
+
+    Adicionar Logs Detalhados:
+
+        Implemente logs para cada evento importante, como a conexão ao WebSocket, o recebimento de novas mensagens, e a atualização do estado.
+
+        Por exemplo:
+
+        console.log('🔌 Conectando WebSocket para chat 554187038339...');
+        console.log('🟢 WebSocket conectado para 554187038339!');
+        console.log('🔥 Mensagem WebSocket recebida para 554187038339: sua mensagem');
+        console.log('✅ Nova mensagem recebida adicionada para 554187038339: sua mensagem');
+
+    Evitar Erros de WebSocket:
+
+        Garanta que o WebSocket esteja fechado corretamente ao mudar de chat ou ao desconectar. O código deve gerenciar corretamente a abertura e o fechamento das conexões WebSocket.
+
+Passo 6: Testes e Validação
+
+    Testar Atualização em Tempo Real:
+
+        Após implementar as mudanças, abra o chat "Joao Lucas" e envie uma mensagem.
+
+        A mensagem deve aparecer instantaneamente na interface sem duplicação.
+
+        Verifique se a mensagem aparece corretamente quando a resposta do seu celular for recebida. O sistema deve processar e exibir a mensagem imediatamente.
+
+    Testar com Diferentes Mensagens:
+
+        Envie mensagens de diferentes contatos e garanta que o histórico de mensagens seja sempre carregado corretamente ao abrir um chat.
+
+        Verifique se as mensagens enviadas e recebidas estão sincronizadas sem problemas.

@@ -75,13 +75,8 @@ export default function MessageInterface({
                 const targetChat = data.phoneNumber;
                 const currentMessages = prev[instanceKey]?.[targetChat] || [];
                 
-                // ANTI-DUPLICAÇÃO ROBUSTA
-                const exists = currentMessages.some((m: any) => 
-                  m.id === data.id || 
-                  (m.content === data.content && 
-                   m.direction === data.direction &&
-                   Math.abs(new Date(m.timestamp).getTime() - new Date(data.timestamp).getTime()) < 3000)
-                );
+                // ANTI-DUPLICAÇÃO APENAS POR ID ÚNICO (conforme sugestão)
+                const exists = currentMessages.some((m: any) => m.id === data.id);
                 
                 if (exists) {
                   console.log(`🔁 Mensagem duplicada ignorada para ${targetChat}`);
@@ -553,7 +548,7 @@ export default function MessageInterface({
               <div className="space-y-4">
                 {currentMessages.map((message, index) => (
                   <div
-                    key={`${message.id}-${Date.now()}-${index}-${Math.random()}`}
+                    key={`msg-${message.id}-${message.direction}-${message.timestamp}-${index}`}
                     className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
