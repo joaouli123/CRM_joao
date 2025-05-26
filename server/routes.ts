@@ -211,11 +211,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get conversations for a connection - FIXED VERSION
+  // Get conversations for a connection with pagination
   app.get("/api/connections/:id/conversations", async (req, res) => {
     try {
       const connectionId = parseInt(req.params.id);
-      console.log(`🔍 GET /api/connections/${connectionId}/conversations`);
+      const limit = parseInt(req.query.limit as string) || 12;
+      const skip = parseInt(req.query.skip as string) || 0;
+      
+      console.log(`🔍 GET /api/connections/${connectionId}/conversations?limit=${limit}&skip=${skip}`);
       
       const connection = await storage.getConnection(connectionId);
       
@@ -224,19 +227,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       
-      const instanceName = `whatsapp_${connectionId}_${connection.name}`;
-      console.log(`🎯 Buscando contatos reais para ${instanceName}...`);
-      
       try {
         // Force use the actual connected instance name
         const activeInstanceName = "whatsapp_36_lowfy";
         
-        console.log(`🎯 Usando instância real conectada: ${activeInstanceName}`);
-        const chats = await evolutionAPI.getAllChats(activeInstanceName);
-        console.log(`✅ Encontrados ${chats.length} contatos autênticos de ${activeInstanceName}!`);
+        console.log(`🎯 Usando instância real conectada: ${activeInstanceName} - Skip: ${skip}, Limit: ${limit}`);
+        const allChats = await evolutionAPI.getAllChats(activeInstanceName);
         
-        // Create conversations from ALL your real WhatsApp contacts
-        const realConversations = chats.map((chat, index) => {
+        // Apply pagination to the chats
+        const paginatedChats = allChats.slice(skip, skip + limit);
+        console.log(`✅ Encontrados ${paginatedChats.length} contatos paginados de ${activeInstanceName}! (Total: ${allChats.length})`);
+        
+        // Create conversations from paginated real WhatsApp contacts
+        const realConversations = paginatedChats.map((chat, index) => {
           const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
           if (!phoneNumber) return null;
           

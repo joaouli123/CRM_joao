@@ -1,0 +1,82 @@
+✅ PROMPT COMPLETO PARA A IA — PAGINAÇÃO E MENSAGENS EM TEMPO REAL POR INSTÂNCIA
+
+    ⚠️ O sistema é multi-instância: cada conta conectada via QR Code tem seus próprios contatos, mensagens e WebSocket.
+
+    Preciso agora que você implemente o seguinte, respeitando o isolamento por instância:
+
+🔁 1. Paginação dos contatos por instância
+
+    Use o endpoint:
+
+POST /chat/findChats/{{instanceName}}
+
+Faça a paginação por limit: 12 e skip: N por instância:
+
+{
+  "where": {},
+  "limit": 12,
+  "skip": 0
+}
+
+Armazene os contatos separados por instância, exemplo:
+
+    const [chatsByInstance, setChatsByInstance] = useState<Record<string, Chat[]>>({});
+
+    Quando o usuário clicar em “Carregar mais”, incremente skip += 12 dessa instância específica.
+
+💬 2. Carregamento de mensagens sob demanda (chat aberto)
+
+    Só carregue mensagens quando um chat for aberto.
+
+    Use:
+
+POST /chat/findMessages/{{instanceName}}
+
+Com:
+
+{
+  "where": {
+    "key": {
+      "remoteJid": "55XXXXXXXXXXX@s.whatsapp.net"
+    }
+  },
+  "limit": 50,
+  "sort": { "messageTimestamp": -1 }
+}
+
+Depois:
+
+setMessages(data.messages.records.reverse());
+
+Também aqui, as mensagens devem ser separadas por instância, ex:
+
+    const [messagesByInstance, setMessagesByInstance] = useState<Record<string, Message[]>>({});
+
+📡 3. WebSocket de mensagens em tempo real por instância
+
+    Cada instância tem seu próprio WebSocket:
+
+wss://evolution.lowfy.com.br/instance/{{instanceId}}
+
+Ao conectar, escute eventos como:
+
+    socket.on("messages.upsert", (data) => {
+      const instance = data.instanceName;
+      const chatId = data.key.remoteJid;
+
+      if (chatId === chatAtivo && instance === instanceAtual) {
+        // Mostrar no chat aberto
+        setMessages((prev) => [...prev, data]);
+      } else {
+        // Atualizar lista com preview
+        atualizarChatList(instance, chatId, data);
+      }
+    });
+
+🎯 Resultado esperado
+
+    Cada instância carrega e mantém seu próprio contexto de contatos e mensagens
+
+    Mensagens só são carregadas quando o usuário acessa a conversa (evita lentidão)
+
+    WebSocket mantém o chat atualizado em tempo real, separado por conexão

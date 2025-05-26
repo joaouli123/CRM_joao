@@ -26,33 +26,119 @@ export default function MessageInterface({
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
-  const [conversationsPage, setConversationsPage] = useState(1);
-  const conversationsPerPage = 8;
+  
+  // Multi-instance state management
+  const [chatsByInstance, setChatsByInstance] = useState<Record<string, Conversation[]>>({});
+  const [messagesByInstance, setMessagesByInstance] = useState<Record<string, Record<string, Message[]>>>({});
+  const [skipByInstance, setSkipByInstance] = useState<Record<string, number>>({});
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreChats, setHasMoreChats] = useState<Record<string, boolean>>({});
 
-  // Reset pagination when search changes
-  useEffect(() => {
-    setConversationsPage(1);
-  }, [searchFilter, selectedConnectionId]);
-
-  // Get connected connections only
-  const connectedConnections = connections.filter(conn => conn.status === "connected");
-
-  // Fetch conversations for selected connection
-  const { data: conversations = [], isLoading: conversationsLoading, error: conversationsError } = useQuery<Conversation[]>({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations`],
-    enabled: !!selectedConnectionId,
+  // Get current instance info
+  const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
+  const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
+  
+  // Load initial chats for current instance
+  const { isLoading: conversationsLoading } = useQuery({
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations`, 0],
+    queryFn: async () => {
+      if (!selectedConnectionId || !instanceKey) return [];
+      
+      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations?limit=12&skip=0`);
+      const chats = await response.json();
+      
+      // Initialize chats for this instance
+      setChatsByInstance(prev => ({
+        ...prev,
+        [instanceKey]: chats
+      }));
+      
+      // Initialize skip counter
+      setSkipByInstance(prev => ({
+        ...prev,
+        [instanceKey]: 0
+      }));
+      
+      // Check if there are more chats
+      setHasMoreChats(prev => ({
+        ...prev,
+        [instanceKey]: chats.length === 12
+      }));
+      
+      console.log(`✅ ${chats.length} contatos carregados para instância ${instanceKey}`);
+      return chats;
+    },
+    enabled: !!selectedConnectionId && !!instanceKey,
   });
 
-  // Debug log for conversations
-  useEffect(() => {
-    if (conversations && conversations.length > 0) {
-      console.log('✅ Conversas carregadas do backend:', conversations);
-      console.log(`📊 Total de ${conversations.length} conversas encontradas`);
+  // Load more chats for current instance
+  const loadMoreChats = async () => {
+    if (!selectedConnectionId || !instanceKey || loadingMore) return;
+    
+    setLoadingMore(true);
+    try {
+      const currentSkip = skipByInstance[instanceKey] || 0;
+      const newSkip = currentSkip + 12;
+      
+      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations?limit=12&skip=${newSkip}`);
+      const newChats = await response.json();
+      
+      // Accumulate chats for this instance
+      setChatsByInstance(prev => ({
+        ...prev,
+        [instanceKey]: [...(prev[instanceKey] || []), ...newChats]
+      }));
+      
+      // Update skip for this instance
+      setSkipByInstance(prev => ({
+        ...prev,
+        [instanceKey]: newSkip
+      }));
+      
+      // Check if there are more chats
+      setHasMoreChats(prev => ({
+        ...prev,
+        [instanceKey]: newChats.length === 12
+      }));
+      
+      console.log(`✅ Carregados mais ${newChats.length} contatos para instância ${instanceKey}`);
+      
+    } catch (error) {
+      console.error('Erro ao carregar mais contatos:', error);
+    } finally {
+      setLoadingMore(false);
     }
-    if (conversationsError) {
-      console.error('❌ Erro ao carregar conversas:', conversationsError);
+  };
+
+  // Load messages for specific chat on demand
+  const loadChatMessages = async (phoneNumber: string) => {
+    if (!selectedConnectionId || !instanceKey) return;
+    
+    try {
+      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${phoneNumber}/messages`);
+      const messages = await response.json();
+      
+      // Store messages for this instance and chat
+      setMessagesByInstance(prev => ({
+        ...prev,
+        [instanceKey]: {
+          ...prev[instanceKey],
+          [phoneNumber]: messages
+        }
+      }));
+      
+      console.log(`✅ ${messages.length} mensagens carregadas para ${phoneNumber} na instância ${instanceKey}`);
+      
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error);
     }
-  }, [conversations, conversationsError]);
+  };
+
+  // Get conversations for current instance
+  const conversations = chatsByInstance[instanceKey] || [];
+  const currentMessages = selectedConversation && instanceKey 
+    ? messagesByInstance[instanceKey]?.[selectedConversation] || []
+    : [];
 
   // Fetch messages for selected conversation
   const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
