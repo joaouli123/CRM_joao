@@ -26,6 +26,13 @@ export default function MessageInterface({
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
+  const [conversationsPage, setConversationsPage] = useState(1);
+  const conversationsPerPage = 8;
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setConversationsPage(1);
+  }, [searchFilter, selectedConnectionId]);
 
   // Get connected connections only
   const connectedConnections = connections.filter(conn => conn.status === "connected");
@@ -66,6 +73,10 @@ export default function MessageInterface({
            phoneNumber.includes(searchFilter) ||
            lastMessage.toLowerCase().includes(searchLower);
   });
+
+  // Paginate filtered conversations - show 8 per page
+  const paginatedConversations = filteredConversations.slice(0, conversationsPage * conversationsPerPage);
+  const hasMoreConversations = filteredConversations.length > conversationsPage * conversationsPerPage;
 
   const formatTime = (date: Date | string) => {
     try {
@@ -219,7 +230,7 @@ export default function MessageInterface({
               </div>
             ) : (
               <div className="space-y-0">
-                {filteredConversations.map((conversation, index) => (
+                {paginatedConversations.map((conversation, index) => (
                   <button
                     key={conversation.phoneNumber || `conversation-${index}`}
                     onClick={() => setSelectedConversation(conversation.phoneNumber)}
@@ -264,6 +275,20 @@ export default function MessageInterface({
                     </div>
                   </button>
                 ))}
+                
+                {/* Botão Carregar Mais */}
+                {hasMoreConversations && (
+                  <div className="p-4 border-t border-gray-200">
+                    <Button
+                      onClick={() => setConversationsPage(prev => prev + 1)}
+                      variant="outline"
+                      className="w-full"
+                      disabled={conversationsLoading}
+                    >
+                      {conversationsLoading ? "Carregando..." : `Carregar mais (+${Math.min(conversationsPerPage, filteredConversations.length - paginatedConversations.length)})`}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </ScrollArea>

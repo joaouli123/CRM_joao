@@ -1,0 +1,87 @@
+Olá! Estou enfrentando os seguintes problemas técnicos com minha aplicação baseada em Replit + EvolutionAPI + React, que utiliza WebSocket para comunicação em tempo real:
+✅ FUNCIONALIDADES ATUAIS (PARCIALMENTE FUNCIONANDO)
+
+    O WebSocket conecta corretamente no endpoint:
+
+    wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/ws
+
+    A lista de conversas é carregada com sucesso, mas apenas 12 contatos são exibidos.
+
+    Os dados carregados incluem apenas nome e telefone.
+
+❌ ERROS QUE PRECISAM SER CORRIGIDOS
+1. Erro de WebSocket adicional com localhost:undefined
+
+Há um erro no console apontando que o WebSocket também está tentando conectar em:
+
+wss://localhost:undefined/?token=xxxxx
+
+    Erro:
+
+Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=xxxxx' is invalid.
+
+✅ Correção esperada:
+
+    Remover qualquer fallback para localhost ou undefined.
+
+    Garantir que a URL do WebSocket seja sempre definida corretamente, preferencialmente via .env ou baseada em window.location.host.
+
+🔧 FUNCIONALIDADES A IMPLEMENTAR / CORRIGIR
+2. 🔁 Paginação de conversas
+
+    Atualmente, a aplicação carrega somente os primeiros 12 contatos, sem opção de carregar mais.
+
+    Preciso que a aplicação carregue 8 conversas por vez.
+
+    Incluir um botão "Carregar mais" que adiciona +8 conversas na tela a cada clique.
+
+✅ Exemplo de comportamento esperado:
+
+    Carregar 8 na tela inicial.
+
+    Ao clicar no botão, carregar os próximos 8, e assim por diante.
+
+    Evitar carregar todos de uma vez para melhorar desempenho.
+
+3. 🔍 Filtro de pesquisa global
+
+    O campo de pesquisa existente não está funcionando.
+
+    Quero poder buscar contatos por nome ou número dentro de todas as conversas disponíveis, não só as que já estão carregadas.
+
+✅ Comportamento esperado:
+
+    Ao digitar no campo de busca, deve consultar todas as conversas disponíveis via API/backend.
+
+    Pode aplicar debounce para evitar muitas requisições.
+
+4. 💬 Histórico de mensagens e envio de mensagens não está funcionando
+
+    Ao clicar em um contato da lista, nada acontece.
+
+        O histórico da conversa não é carregado.
+
+        As mensagens novas não aparecem.
+
+        O envio de mensagens não funciona.
+
+✅ Correções esperadas:
+
+    Ao clicar no contato, deve:
+
+        Carregar e exibir o histórico completo da conversa.
+
+        Mostrar mensagens em tempo real via WebSocket.
+
+        Permitir o envio de mensagens (com status de sucesso/falha visível no frontend).
+
+🔐 SUGESTÃO DE MELHORIA: Variável de ambiente para WebSocket
+
+Para evitar o erro localhost:undefined, sugiro padronizar o uso da variável de ambiente para o WebSocket. Exemplo:
+
+VITE_WS_URL=wss://<endpoint>/api/ws
+
+E no código:
+
+const WS_URL = import.meta.env.VITE_WS_URL;
+
