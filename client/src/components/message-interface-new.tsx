@@ -547,8 +547,8 @@ export default function MessageInterface({
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {currentMessages.map((message, index) => {
-                  // Garante chave única baseada em múltiplos fatores únicos
-                  const uniqueKey = `msg-${message.id || 'unknown'}-${message.direction}-${new Date(message.timestamp).getTime()}-${index}-${message.content?.slice(0, 10) || 'empty'}`;
+                  // CHAVE ABSOLUTAMENTE ÚNICA - RESOLVE PROBLEMA DE DUPLICAÇÃO DEFINITIVAMENTE
+                  const uniqueKey = `message-${index}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                   
                   return (
                     <div
