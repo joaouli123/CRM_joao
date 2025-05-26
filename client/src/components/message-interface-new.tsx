@@ -26,6 +26,11 @@ export default function MessageInterface({
   const [newMessage, setNewMessage] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   
+  // Estados para tempo real conforme especificação
+  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [typing, setTyping] = useState(false);
+  
   // Multi-instance state management
   const [chatsByInstance, setChatsByInstance] = useState<Record<string, Conversation[]>>({});
   const [messagesByInstance, setMessagesByInstance] = useState<Record<string, Record<string, Message[]>>>({});
@@ -37,22 +42,125 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket estável para mensagens em tempo real - UMA CONEXÃO POR VEZ
+  // WebSocket para Evolution API - Tempo Real conforme especificação
   useEffect(() => {
-    if (!selectedConnectionId || !selectedConversation || !instanceKey) return;
+    if (!selectedConversation || !selectedConnectionId) return;
 
-    console.log(`🔌 Conectando WebSocket para chat ${selectedConversation}...`);
+    console.log(`🔌 Conectando WebSocket para o chat ${selectedConversation}!`);
     
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
-    let socket: WebSocket | null = null;
-    let isConnecting = false;
+    const wsUrl = `wss://${window.location.host}/api/ws`;
+    const socket = new WebSocket(wsUrl);
 
-    const connectWebSocket = () => {
-      if (isConnecting || (socket && socket.readyState === WebSocket.OPEN)) return;
-      
-      isConnecting = true;
-      socket = new WebSocket(wsUrl);
+    socket.onopen = () => {
+      console.log(`✅ WebSocket conectado para o chat ${selectedConversation}!`);
+      setIsConnected(true);
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      // MENSAGENS EM TEMPO REAL
+      if (data.type === "newMessage") {
+        console.log("Nova mensagem recebida:", data);
+        const messageData = data.data;
+        
+        // Só processa se for da conexão ativa
+        if (messageData.connectionId === selectedConnectionId) {
+          
+          const targetChat = messageData.phoneNumber;
+          const instanceKey = `instance_${selectedConnectionId}`;
+          
+          setMessagesByInstance((prevMessages) => {
+            const currentMessages = prevMessages[instanceKey]?.[targetChat] || [];
+            
+            // Verifica duplicação por ID única
+            const exists = currentMessages.some((m: any) => m.id === messageData.id);
+            if (exists) {
+              console.log("Mensagem duplicada ignorada");
+              return prevMessages;
+            }
+            
+            // Adiciona nova mensagem
+            const newMessage = {
+              id: messageData.id,
+              content: messageData.content,
+              phoneNumber: messageData.phoneNumber,
+              direction: messageData.direction,
+              timestamp: new Date(messageData.timestamp),
+              status: messageData.status || 'delivered'
+            };
+            
+            console.log(`✅ TEMPO REAL: Adicionando "${messageData.content}" para ${targetChat}`);
+            
+            return {
+              ...prevMessages,
+              [instanceKey]: {
+                ...prevMessages[instanceKey],
+                [targetChat]: [...currentMessages, newMessage]
+              }
+            };
+          });
+        }
+      }
+
+      // STATUS "DIGITANDO..."
+      if (data.type === "typing") {
+        console.log(`${data.phoneNumber} está digitando...`);
+        if (data.phoneNumber === selectedConversation) {
+          setTyping(true);
+          setTimeout(() => setTyping(false), 2000);
+        }
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket desconectado.");
+      setIsConnected(false);
+    };
+
+    setWebSocket(socket);
+
+    return () => {
+      socket.close();
+    };
+  }, [selectedConversation, selectedConnectionId]);
+
+  // Função para enviar notificação de digitando
+  const sendTypingNotification = () => {
+    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+      webSocket.send(
+        JSON.stringify({
+          type: "typing",
+          phoneNumber: selectedConversation,
+        })
+      );
+    }
+  };
+
+  // Função para enviar mensagens em tempo real
+  const sendMessage = async (message: string) => {
+    if (!selectedConversation || !selectedConnectionId || !message.trim()) return;
+
+    try {
+      const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: selectedConversation,
+          message: message.trim()
+        })
+      });
+
+      if (response.ok) {
+        console.log(`✅ Mensagem "${message}" enviada com sucesso!`);
+        setNewMessage(''); // Limpa o input
+      } else {
+        console.error('Erro ao enviar mensagem');
+      }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+    }
+  };
 
       socket.onopen = () => {
         console.log(`🟢 WebSocket conectado para ${selectedConversation}!`);
