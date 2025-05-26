@@ -265,6 +265,74 @@ export default function MessageInterface({
     console.log(`📊 CONTAGEM MENSAGENS: API=${chatMessages.length}, Tempo Real=${realtimeMessages.length}, Total=${allMessages.length}`);
   }, [chatMessages.length, realtimeMessages.length, allMessages.length]);
 
+  // Funções de ação do chat
+  const handleArchiveChat = async (phoneNumber: string) => {
+    if (!selectedConnectionId) return;
+    
+    try {
+      const response = await fetch(`/api/connections/${selectedConnectionId}/archive-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber,
+          archiveReason: 'Arquivado pelo usuário',
+          archivedBy: 'Sistema'
+        })
+      });
+
+      if (response.ok) {
+        alert('✅ Conversa arquivada com sucesso!');
+        queryClient.invalidateQueries({ queryKey: ['conversations', selectedConnectionId] });
+        setSelectedConversation("");
+      } else {
+        alert('❌ Erro ao arquivar conversa. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro ao arquivar:', error);
+      alert('❌ Erro ao arquivar conversa. Tente novamente.');
+    }
+  };
+
+  const handleDeleteChat = async (phoneNumber: string) => {
+    if (!selectedConnectionId) return;
+    
+    try {
+      const response = await fetch(`/api/connections/${selectedConnectionId}/messages/${phoneNumber}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        alert('🗑️ Conversa deletada com sucesso!');
+        queryClient.invalidateQueries({ queryKey: ['conversations', selectedConnectionId] });
+        setSelectedConversation("");
+        setShowDeleteConfirm(false);
+      } else {
+        alert('❌ Erro ao deletar conversa. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro ao deletar:', error);
+      alert('❌ Erro ao deletar conversa. Tente novamente.');
+    }
+  };
+
+  const handleMuteChat = () => {
+    setChatMuted(!chatMuted);
+    const status = !chatMuted ? 'silenciada' : 'reativada';
+    alert(`🔕 Conversa ${status} com sucesso!`);
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !chatTags.includes(newTag.trim())) {
+      setChatTags([...chatTags, newTag.trim()]);
+      setNewTag("");
+      alert('🏷️ Etiqueta adicionada com sucesso!');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setChatTags(chatTags.filter(tag => tag !== tagToRemove));
+  };
+
   // Enviar mensagem
   const sendMessage = async (message: string) => {
     if (!selectedConversation || !selectedConnectionId || !message.trim()) return;
@@ -460,6 +528,31 @@ export default function MessageInterface({
                   
                   {/* Botões de Ação */}
                   <div className="flex items-center space-x-2">
+                    {/* Etiquetas */}
+                    {chatTags.length > 0 && (
+                      <div className="flex items-center space-x-1">
+                        {chatTags.map((tag, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary" 
+                            className="text-xs bg-blue-100 text-blue-700 cursor-pointer"
+                            onClick={() => handleRemoveTag(tag)}
+                          >
+                            {tag} ×
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Status de Silenciado */}
+                    {chatMuted && (
+                      <Badge variant="outline" className="text-xs text-gray-500">
+                        <VolumeX className="h-3 w-3 mr-1" />
+                        Silenciado
+                      </Badge>
+                    )}
+
+                    {/* Botão Arquivar */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -469,14 +562,57 @@ export default function MessageInterface({
                       <Archive className="h-4 w-4" />
                       <span>Arquivar</span>
                     </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center space-x-1"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
+
+                    {/* Menu de Ações */}
+                    <div className="relative">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+                        className="flex items-center space-x-1"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+
+                      {showActionsDropdown && (
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                handleMuteChat();
+                                setShowActionsDropdown(false);
+                              }}
+                              className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              {chatMuted ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                              <span>{chatMuted ? 'Reativar' : 'Silenciar'}</span>
+                            </button>
+                            
+                            <button
+                              onClick={() => {
+                                setShowTagModal(true);
+                                setShowActionsDropdown(false);
+                              }}
+                              className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              <Tag className="h-4 w-4" />
+                              <span>Adicionar Etiqueta</span>
+                            </button>
+                            
+                            <button
+                              onClick={() => {
+                                setShowDeleteConfirm(true);
+                                setShowActionsDropdown(false);
+                              }}
+                              className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Excluir Conversa</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -567,6 +703,114 @@ export default function MessageInterface({
           </Card>
         )}
       </div>
+
+      {/* Modal de Etiquetas */}
+      {showTagModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              🏷️ Adicionar Etiqueta
+            </h3>
+            <div className="space-y-4">
+              <Input
+                type="text"
+                placeholder="Nome da etiqueta..."
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddTag();
+                  }
+                }}
+                className="w-full"
+              />
+              
+              {/* Etiquetas existentes */}
+              {chatTags.length > 0 && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Etiquetas atuais:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {chatTags.map((tag, index) => (
+                      <Badge 
+                        key={index} 
+                        variant="secondary" 
+                        className="bg-blue-100 text-blue-700 cursor-pointer"
+                        onClick={() => handleRemoveTag(tag)}
+                      >
+                        {tag} ×
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <Button
+                onClick={() => {
+                  setShowTagModal(false);
+                  setNewTag("");
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAddTag}
+                disabled={!newTag.trim()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                Adicionar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Excluir Conversa
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Esta ação não pode ser desfeita
+                </p>
+              </div>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Tem certeza que deseja excluir permanentemente todas as mensagens desta conversa com{' '}
+              <span className="font-medium">
+                {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
+              </span>?
+            </p>
+            
+            <div className="flex space-x-3">
+              <Button
+                onClick={() => setShowDeleteConfirm(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => handleDeleteChat(selectedConversation)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Excluir Permanentemente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
