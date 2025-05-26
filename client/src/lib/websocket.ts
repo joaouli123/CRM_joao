@@ -85,6 +85,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
               queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
               break;
               
+            case "newMessage":
+              console.log("📩 Nova mensagem via WebSocket:", message.data);
+              options.onMessageReceived?.(message.data);
+              // Refresh messages for real-time updates
+              queryClient.invalidateQueries({ 
+                queryKey: ["/api/connections", message.data.connectionId, "conversations"] 
+              });
+              queryClient.invalidateQueries({ 
+                queryKey: ["/api/connections", message.data.connectionId, "messages"] 
+              });
+              break;
+              
             case "connectionCreated":
             case "connectionDeleted":
               queryClient.invalidateQueries({ queryKey: ["/api/connections"] });
