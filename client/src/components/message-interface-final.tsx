@@ -72,12 +72,27 @@ export default function MessageInterface({
                   }
 
                   // 2. PROCURAR MENSAGEM TEMPORÁRIA para substituir
-                  const tempIndex = prev.findIndex((m: any) => 
-                    m.tempId && 
-                    m.content === msgData.content &&
-                    m.phoneNumber === msgData.phoneNumber &&
-                    Math.abs(new Date(m.timestamp).getTime() - new Date(msgData.timestamp).getTime()) < 10000
-                  );
+                  console.log(`🔍 BUSCANDO mensagem temporária para "${msgData.content}"`);
+                  console.log(`📋 Mensagens atuais:`, prev.map(m => ({
+                    id: m.id,
+                    tempId: m.tempId,
+                    content: m.content,
+                    status: m.status,
+                    direction: m.direction
+                  })));
+
+                  const tempIndex = prev.findIndex((m: any) => {
+                    // Buscar por tempId OU por conteúdo/direção/timestamp similar
+                    const hasMatchingTempId = m.tempId && m.content === msgData.content && m.direction === msgData.direction;
+                    const hasMatchingContent = m.content === msgData.content && 
+                                             m.phoneNumber === msgData.phoneNumber && 
+                                             m.direction === msgData.direction &&
+                                             m.status === 'pending' &&
+                                             Math.abs(new Date(m.timestamp).getTime() - new Date(msgData.timestamp).getTime()) < 5000;
+                    
+                    console.log(`🔍 Verificando mensagem: ${m.content} | tempId: ${!!m.tempId} | status: ${m.status} | match: ${hasMatchingTempId || hasMatchingContent}`);
+                    return hasMatchingTempId || hasMatchingContent;
+                  });
 
                   if (tempIndex !== -1) {
                     // SUBSTITUIR mensagem temporária pela oficial
