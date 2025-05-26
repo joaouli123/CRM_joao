@@ -273,8 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     direction: msg.key?.fromMe ? "sent" : "received",
                     from: msg.key?.fromMe ? "" : phoneNumber,
                     to: msg.key?.fromMe ? phoneNumber : "",
-                    body: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "Mensagem de mídia",
-                    status: "delivered"
+                    body: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "Mensagem de mídia"
                   });
                 }
               }
@@ -293,8 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           direction: "received",
           from: "+5511999000000",
           to: "",
-          body: "Bem-vindo! Este é um exemplo de conversa. Suas conversas reais do WhatsApp aparecerão aqui.",
-          status: "delivered"
+          body: "Bem-vindo! Este é um exemplo de conversa. Suas conversas reais do WhatsApp aparecerão aqui."
         });
       }
     } catch (error) {
