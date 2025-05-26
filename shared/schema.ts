@@ -51,3 +51,13 @@ export type Connection = typeof connections.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type SendMessage = z.infer<typeof sendMessageSchema>;
+
+// Conversation type for organizing messages by contact/group
+export interface Conversation {
+  phoneNumber: string;
+  contactName?: string;
+  lastMessage: string;
+  lastMessageTime: Date;
+  unreadCount: number;
+  messageCount: number;
+}

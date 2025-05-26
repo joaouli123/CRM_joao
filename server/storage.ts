@@ -1,4 +1,4 @@
-import { Connection, Message, InsertConnection, InsertMessage, connections, messages } from "@shared/schema";
+import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation } from "@shared/schema";
 
 export interface IStorage {
   // Connection methods
@@ -12,6 +12,8 @@ export interface IStorage {
   // Message methods
   getMessage(id: number): Promise<Message | undefined>;
   getMessagesByConnection(connectionId: number, limit?: number): Promise<Message[]>;
+  getConversationsByConnection(connectionId: number): Promise<Conversation[]>;
+  getMessagesByConversation(connectionId: number, phoneNumber: string, limit?: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: number, updates: Partial<Message>): Promise<Message | undefined>;
   getTodayMessageCount(): Promise<number>;
@@ -128,6 +130,41 @@ export class MemStorage implements IStorage {
     return Array.from(this.messages.values()).filter(msg => {
       return msg.timestamp >= today;
     }).length;
+  }
+
+  async getConversationsByConnection(connectionId: number): Promise<Conversation[]> {
+    const connectionMessages = Array.from(this.messages.values())
+      .filter(msg => msg.connectionId === connectionId)
+      .sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime());
+
+    const conversationsMap = new Map<string, Conversation>();
+    
+    for (const message of connectionMessages) {
+      const phoneNumber = message.phoneNumber;
+      if (!conversationsMap.has(phoneNumber)) {
+        conversationsMap.set(phoneNumber, {
+          phoneNumber,
+          contactName: phoneNumber,
+          lastMessage: message.content,
+          lastMessageTime: new Date(message.timestamp!),
+          unreadCount: 0,
+          messageCount: 1
+        });
+      } else {
+        const conv = conversationsMap.get(phoneNumber)!;
+        conv.messageCount++;
+      }
+    }
+
+    return Array.from(conversationsMap.values())
+      .sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime());
+  }
+
+  async getMessagesByConversation(connectionId: number, phoneNumber: string, limit: number = 50): Promise<Message[]> {
+    return Array.from(this.messages.values())
+      .filter(msg => msg.connectionId === connectionId && msg.phoneNumber === phoneNumber)
+      .sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime())
+      .slice(0, limit);
   }
 }
 
