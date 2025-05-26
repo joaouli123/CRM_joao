@@ -140,9 +140,70 @@ export default function MessageInterface({
     ? messagesByInstance[instanceKey]?.[selectedConversation] || []
     : [];
 
-  // Fetch messages for selected conversation
-  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`],
+  // Handle conversation selection - load messages on demand
+  const handleConversationSelect = (phoneNumber: string) => {
+    setSelectedConversation(phoneNumber);
+    // Load messages only when chat is opened
+    loadChatMessages(phoneNumber);
+  };
+
+  // WebSocket for real-time messages per instance
+  useEffect(() => {
+    if (!selectedConnection || selectedConnection.status !== "connected") return;
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log(`🔌 WebSocket conectado para instância ${instanceKey}`);
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle real-time messages
+        if (data.type === "newMessage" && data.data.connectionId === selectedConnectionId) {
+          const message = data.data;
+          const chatId = message.phoneNumber;
+          
+          // If this chat is currently open, add message to current view
+          if (chatId === selectedConversation && instanceKey) {
+            setMessagesByInstance(prev => ({
+              ...prev,
+              [instanceKey]: {
+                ...prev[instanceKey],
+                [chatId]: [...(prev[instanceKey]?.[chatId] || []), message]
+              }
+            }));
+          }
+          
+          // Update chat list preview with new message
+          setChatsByInstance(prev => ({
+            ...prev,
+            [instanceKey]: (prev[instanceKey] || []).map(chat => 
+              chat.phoneNumber === chatId 
+                ? { ...chat, lastMessage: message.content, lastMessageTime: new Date(message.timestamp) }
+                : chat
+            )
+          }));
+          
+          console.log(`📨 Nova mensagem em tempo real para ${chatId}: ${message.content}`);
+        }
+      } catch (error) {
+        console.error('Erro ao processar mensagem WebSocket:', error);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log(`🔌 WebSocket desconectado para instância ${instanceKey}`);
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [selectedConnectionId, instanceKey, selectedConversation]);
     enabled: !!selectedConnectionId && !!selectedConversation,
   });
 
@@ -316,10 +377,10 @@ export default function MessageInterface({
               </div>
             ) : (
               <div className="space-y-0">
-                {paginatedConversations.map((conversation, index) => (
+                {filteredConversations.map((conversation, index) => (
                   <button
                     key={conversation.phoneNumber || `conversation-${index}`}
-                    onClick={() => setSelectedConversation(conversation.phoneNumber)}
+                    onClick={() => handleConversationSelect(conversation.phoneNumber)}
                     className={`w-full p-4 text-left hover:bg-gray-50 border-b border-gray-100 transition-colors ${
                       selectedConversation === conversation.phoneNumber ? 'bg-green-50 border-r-4 border-r-green-500' : ''
                     }`}
