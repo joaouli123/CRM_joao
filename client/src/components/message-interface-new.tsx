@@ -109,17 +109,30 @@ export default function MessageInterface({
 
                 console.log(`🚀 MENSAGEM CRIADA:`, newMsg);
 
-                // VERIFICAÇÃO RIGOROSA contra duplicação
+                // VERIFICAÇÃO ANTI-DUPLICAÇÃO RIGOROSA
                 setRealtimeMessages(prev => {
-                  // Verificar por ID único (mais confiável)
+                  // Verificar por ID único
                   const existsById = prev.some(m => m.id === newMsg.id);
+                  
+                  // Verificar por conteúdo + timestamp (para mensagens muito próximas)
+                  const existsByContentAndTime = prev.some(m => 
+                    m.content === newMsg.content &&
+                    m.phoneNumber === newMsg.phoneNumber &&
+                    m.direction === newMsg.direction &&
+                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000 // 5 segundos
+                  );
 
                   if (existsById) {
-                    console.log("⚠️ Mensagem duplicada detectada por ID, ignorando:", newMsg.id);
+                    console.log("⚠️ Mensagem duplicada (ID já existe):", newMsg.id);
                     return prev;
                   }
 
-                  console.log(`✅ ADICIONANDO MENSAGEM: "${newMsg.content}" de ${newMsg.phoneNumber}`);
+                  if (existsByContentAndTime) {
+                    console.log("⚠️ Mensagem duplicada (conteúdo similar):", newMsg.content);
+                    return prev;
+                  }
+
+                  console.log(`✅ NOVA MENSAGEM ADICIONADA: "${newMsg.content}" (ID: ${newMsg.id})`);
                   return [...prev, newMsg];
                 });
 
@@ -248,7 +261,7 @@ export default function MessageInterface({
     ...realtimeMessages.filter(msg => msg.phoneNumber === selectedConversation)
   ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  // FUNÇÃO PARA ENVIAR MENSAGEM SEM DUPLICAÇÃO
+  // FUNÇÃO PARA ENVIAR MENSAGEM - APENAS ENVIO, SEM ADICIONAR MANUALMENTE
   const sendMessageForced = async () => {
     if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
 
@@ -257,7 +270,7 @@ export default function MessageInterface({
     try {
       console.log(`📤 ENVIANDO MENSAGEM para ${selectedConversation}: ${messageText}`);
 
-      // ENVIA para o servidor (o WebSocket irá adicionar a mensagem via webhook)
+      // ENVIA para o servidor - O WebSocket irá receber a mensagem e adicionar automaticamente
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -268,13 +281,10 @@ export default function MessageInterface({
       });
 
       if (response.ok) {
-        console.log(`✅ SUCESSO! Mensagem "${messageText}" enviada!`);
-
-        // Limpa input apenas após confirmação de sucesso
+        console.log(`✅ Mensagem enviada com sucesso! Aguardando WebSocket processar...`);
+        
+        // Limpa input imediatamente (a mensagem aparecerá via WebSocket)
         setNewMessage('');
-
-        // NÃO atualizar lista de conversas aqui - o WebSocket fará isso
-        console.log(`🔄 Aguardando WebSocket atualizar interface...`);
       } else {
         console.error(`❌ Erro ao enviar mensagem:`, response.status);
         // Mantém a mensagem no input em caso de erro
