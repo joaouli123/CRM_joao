@@ -1,0 +1,80 @@
+Pelo erro que você está recebendo, o problema parece estar relacionado à conexão WebSocket sendo fechada antes de ser estabelecida. Aqui estão alguns passos para investigar e corrigir o problema:
+Possíveis causas do problema:
+
+    Conexão WebSocket sendo fechada prematuramente:
+
+        O erro "WebSocket is closed before the connection is established" indica que a conexão com o WebSocket está sendo fechada antes mesmo de ser totalmente estabelecida. Isso pode ocorrer devido a uma falha na configuração da URL do WebSocket ou problemas no próprio servidor.
+
+    Problemas no WebSocket Event Handler:
+
+        Você está recebendo um evento de erro (type: 'error'), o que sugere que há algum tipo de falha na comunicação.
+
+    WebSocket desconectado inesperadamente:
+
+        O WebSocket desconectado após um erro também sugere que, após uma tentativa de conexão, o WebSocket é fechado de forma inesperada.
+
+Soluções possíveis:
+
+    Verificar a URL de conexão do WebSocket:
+
+        A URL do WebSocket parece estar correta, mas vamos confirmar se a URL wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/ws é válida e está sendo configurada corretamente.
+
+        Tente testar a URL do WebSocket em uma ferramenta como Postman ou Insomnia para garantir que o servidor está aceitando conexões WebSocket.
+
+    Verificar a lógica de conexão e reconexão:
+
+        Implemente uma lógica de tentativa de reconexão quando o WebSocket falhar na conexão inicial, utilizando um intervalo para tentar novamente.
+
+    Implementar verificação de estado do WebSocket:
+
+        Verifique o estado do WebSocket antes de tentar enviar ou receber mensagens. Se o estado não for OPEN, tente reconectar.
+
+    Ajustar o tratamento de erro do WebSocket:
+
+        O código de erro do WebSocket pode ser mais bem tratado. Verifique se você está lidando corretamente com o evento onerror e tente reconectar ao WebSocket quando ele falhar.
+
+Exemplo de código para reconexão e verificação do estado WebSocket:
+
+const socket = new WebSocket('wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/ws');
+
+// Função de reconexão
+const reconnectWebSocket = () => {
+  if (socket.readyState !== WebSocket.OPEN) {
+    console.log("Tentando reconectar...");
+    socket = new WebSocket('wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/ws');
+  }
+};
+
+// Quando o WebSocket for aberto com sucesso
+socket.onopen = () => {
+  console.log("WebSocket conectado com sucesso!");
+};
+
+// Quando houver um erro no WebSocket
+socket.onerror = (event) => {
+  console.error("Erro no WebSocket:", event);
+  reconnectWebSocket();  // Tenta reconectar automaticamente
+};
+
+// Quando o WebSocket for fechado
+socket.onclose = () => {
+  console.log("WebSocket fechado. Tentando reconectar...");
+  setTimeout(reconnectWebSocket, 5000);  // Espera 5 segundos para tentar reconectar
+};
+
+// Recebendo mensagens do WebSocket
+socket.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log("Mensagem recebida:", message);
+  // Aqui você pode processar as mensagens recebidas
+};
+
+O que testar agora:
+
+    Tente reconectar automaticamente se a conexão WebSocket falhar.
+
+    Implemente tratamento de erro para garantir que o WebSocket seja tratado corretamente em caso de falha.
+
+    Verifique a URL do WebSocket para garantir que está sendo configurada corretamente no servidor.
+
+Se o problema persistir após esses ajustes, verifique as configurações do servidor ou entre em contato com o provedor da Evolution API para garantir que não há limitações ou falhas no servidor que possam estar causando a desconexão prematura.

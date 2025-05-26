@@ -32,98 +32,137 @@ export default function MessageInterface({
   const [typing, setTyping] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
 
-  // WebSocket para Evolution API - Tempo Real conforme especificação
+  // WebSocket para Evolution API - COM RECONEXÃO AUTOMÁTICA
   useEffect(() => {
     if (!selectedConversation || !selectedConnectionId) return;
 
-    console.log(`🔌 Conectando WebSocket para o chat ${selectedConversation}!`);
-    
-    const wsUrl = `wss://${window.location.host}/api/ws`;
-    const socket = new WebSocket(wsUrl);
+    let socket: WebSocket | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let shouldReconnect = true;
 
-    socket.onopen = () => {
-      console.log(`✅ WebSocket conectado para o chat ${selectedConversation}!`);
-      setIsConnected(true);
-    };
+    // FUNÇÃO DE CONEXÃO ROBUSTA
+    const connectWebSocket = () => {
+      if (!shouldReconnect) return;
 
-    socket.onmessage = (event) => {
+      console.log(`🔌 CONECTANDO WebSocket para chat ${selectedConversation}...`);
+      
       try {
-        const data = JSON.parse(event.data);
-        console.log("📨 EVENTO WEBSOCKET RECEBIDO:", data);
+        const wsUrl = `wss://${window.location.host}/api/ws`;
+        socket = new WebSocket(wsUrl);
 
-        // FORÇA PROCESSAMENTO DE QUALQUER MENSAGEM RECEBIDA
-        if (data.type === "newMessage" && data.data) {
-          console.log("🎯 PROCESSANDO NOVA MENSAGEM:", data);
+        socket.onopen = () => {
+          console.log(`✅ WEBSOCKET CONECTADO COM SUCESSO para ${selectedConversation}!`);
+          setIsConnected(true);
           
-          const msgData = data.data;
-          console.log(`📍 Conexão: ${msgData.connectionId}, Chat: ${msgData.phoneNumber}, Conteúdo: "${msgData.content}"`);
-          
-          // PROCESSA SE FOR DA CONEXÃO ATIVA
-          if (msgData.connectionId === selectedConnectionId) {
-            console.log(`✅ MENSAGEM DA CONEXÃO ATIVA ${selectedConnectionId}!`);
-            
-            // ADICIONA MENSAGEM IMEDIATAMENTE
-            setMessages((prev) => {
-              // Verificar duplicação
-              const exists = prev.some((m: any) => m.id === msgData.id);
-              if (exists) {
-                console.log("🔄 Mensagem já existe, ignorando duplicação");
-                return prev;
+          // Limpa timer de reconexão se existir
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+          }
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("📨 WEBSOCKET - EVENTO RECEBIDO:", data);
+
+            // PROCESSAR MENSAGENS EM TEMPO REAL
+            if (data.type === "newMessage" && data.data) {
+              console.log("🎯 NOVA MENSAGEM DETECTADA:", data);
+              
+              const msgData = data.data;
+              console.log(`📍 Conexão: ${msgData.connectionId}, Chat: ${msgData.phoneNumber}`);
+              console.log(`📍 Estado atual - Conexão: ${selectedConnectionId}, Chat: ${selectedConversation}`);
+              
+              // PROCESSAR SE FOR DA CONEXÃO ATIVA
+              if (msgData.connectionId === selectedConnectionId) {
+                console.log(`✅ PROCESSANDO MENSAGEM DA CONEXÃO ATIVA!`);
+                
+                setMessages((prevMessages) => {
+                  // Anti-duplicação
+                  const exists = prevMessages.some((m: any) => m.id === msgData.id);
+                  if (exists) {
+                    console.log("🔄 Mensagem duplicada ignorada");
+                    return prevMessages;
+                  }
+                  
+                  // Nova mensagem
+                  const newMsg = {
+                    id: msgData.id,
+                    content: msgData.content,
+                    phoneNumber: msgData.phoneNumber,
+                    direction: msgData.direction,
+                    timestamp: new Date(msgData.timestamp),
+                    status: msgData.status || 'received'
+                  };
+                  
+                  console.log(`🚀 ADICIONANDO MENSAGEM: "${msgData.content}" de ${msgData.phoneNumber}`);
+                  console.log(`📊 Total de mensagens: ${prevMessages.length} → ${prevMessages.length + 1}`);
+                  
+                  return [...prevMessages, newMsg];
+                });
+                
+                // SE FOR DO CHAT ATIVO, força interface
+                if (msgData.phoneNumber === selectedConversation) {
+                  console.log(`🎉 MENSAGEM DO CHAT ATIVO - INTERFACE ATUALIZADA!`);
+                }
               }
-              
-              // Criar nova mensagem
-              const novaMensagem = {
-                id: msgData.id,
-                content: msgData.content,
-                phoneNumber: msgData.phoneNumber,
-                direction: msgData.direction,
-                timestamp: new Date(msgData.timestamp),
-                status: msgData.status || 'received'
-              };
-              
-              console.log(`🚀 ADICIONANDO MENSAGEM EM TEMPO REAL: "${msgData.content}"`);
-              console.log(`📊 Total de mensagens será: ${prev.length + 1}`);
-              
-              // RETORNA NOVA LISTA
-              const novaLista = [...prev, novaMensagem];
-              return novaLista;
-            });
-            
-            // SE FOR DO CHAT ATIVO, força interface
-            if (msgData.phoneNumber === selectedConversation) {
-              console.log(`🎉 MENSAGEM DO CHAT ATIVO ${selectedConversation} - ATUALIZANDO INTERFACE!`);
+            }
+
+            // STATUS DIGITANDO
+            if (data.type === "typing" && data.phoneNumber === selectedConversation) {
+              console.log(`✍️ ${data.phoneNumber} está digitando...`);
+              setTyping(true);
+              setTimeout(() => setTyping(false), 2000);
             }
             
-          } else {
-            console.log(`⚠️ Mensagem ignorada - conexão diferente (${msgData.connectionId} vs ${selectedConnectionId})`);
+          } catch (error) {
+            console.error("❌ Erro ao processar mensagem WebSocket:", error);
           }
-        }
+        };
 
-        // DIGITANDO...
-        if (data.type === "typing" && data.phoneNumber === selectedConversation) {
-          console.log(`✍️ ${data.phoneNumber} está digitando...`);
-          setTyping(true);
-          setTimeout(() => setTyping(false), 2000);
-        }
-        
+        socket.onerror = (error) => {
+          console.error("❌ ERRO WebSocket:", error);
+          setIsConnected(false);
+        };
+
+        socket.onclose = () => {
+          console.log("🔴 WebSocket desconectado");
+          setIsConnected(false);
+          
+          // RECONEXÃO AUTOMÁTICA
+          if (shouldReconnect) {
+            console.log("🔄 Tentando reconectar em 3 segundos...");
+            reconnectTimer = setTimeout(connectWebSocket, 3000);
+          }
+        };
+
+        setWebSocket(socket);
+
       } catch (error) {
-        console.error("❌ ERRO WEBSOCKET:", error);
+        console.error("❌ Erro ao criar WebSocket:", error);
+        
+        // Tenta reconectar em caso de erro
+        if (shouldReconnect) {
+          reconnectTimer = setTimeout(connectWebSocket, 3000);
+        }
       }
     };
 
-    socket.onclose = () => {
-      console.log("WebSocket desconectado.");
-      setIsConnected(false);
-    };
+    // INICIAR CONEXÃO
+    connectWebSocket();
 
-    socket.onerror = (error) => {
-      console.error("❌ Erro no WebSocket:", error);
-    };
-
-    setWebSocket(socket);
-
+    // CLEANUP
     return () => {
-      socket.close();
+      shouldReconnect = false;
+      
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      
+      if (socket) {
+        socket.close();
+      }
     };
   }, [selectedConversation, selectedConnectionId]);
 
