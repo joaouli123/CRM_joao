@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export default function MessageInterface({
   const [realtimeMessages, setRealtimeMessages] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [typing, setTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // WebSocket para mensagens em tempo real
   useEffect(() => {
@@ -138,6 +139,16 @@ export default function MessageInterface({
     ...chatMessages,
     ...realtimeMessages.filter((m) => m.phoneNumber === selectedConversation)
   ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  // Função para rolar automaticamente para o final do chat
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Rolar automaticamente quando mensagens mudarem
+  useEffect(() => {
+    scrollToBottom();
+  }, [allMessages]);
 
   // Debug - mostrar contagem de mensagens
   useEffect(() => {
@@ -359,6 +370,9 @@ export default function MessageInterface({
                     </div>
                   </div>
                 )}
+                
+                {/* Referência para scroll automático */}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 

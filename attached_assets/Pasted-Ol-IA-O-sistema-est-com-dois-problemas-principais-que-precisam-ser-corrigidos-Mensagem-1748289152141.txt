@@ -1,0 +1,65 @@
+Olá IA,
+
+O sistema está com dois problemas principais que precisam ser corrigidos:
+
+    Mensagem repetida no frontend:
+
+        Descrição: As mensagens enviadas aparecem duas vezes no chat, mas apenas no frontend. No backend, as mensagens estão sendo processadas corretamente, e o cliente não recebe a mensagem duplicada. Porém, o frontend está exibindo a mesma mensagem duas vezes.
+
+        Solução esperada: Implementar uma verificação para garantir que cada mensagem seja adicionada ao estado do frontend apenas uma vez. Isso pode ser feito verificando o message.id ou uma combinação de timestamp, phoneNumber e content para garantir que não há duplicações antes de adicionar a nova mensagem.
+
+    Exemplo de código:
+
+setMessages(prev => {
+  const exists = prev.some(message => message.id === data.id);
+  if (exists) return prev;
+
+  return [...prev, {
+    id: data.id,
+    content: data.content,
+    timestamp: new Date(data.timestamp),
+    phoneNumber: data.phoneNumber,
+    direction: data.direction,
+  }];
+});
+
+Problema do scroll não descer automaticamente:
+
+    Descrição: Quando uma nova mensagem chega, o chat não rola automaticamente até a última mensagem. O usuário tem que manualmente rolar até o final para ver as mensagens mais recentes. Esse comportamento precisa ser corrigido.
+
+    Solução esperada: Adicionar lógica de rolagem automática para garantir que o chat desça automaticamente quando uma nova mensagem for adicionada. Podemos fazer isso usando a referência do DOM (useRef) e a função scrollIntoView para mover o scroll até a última mensagem.
+
+Exemplo de código:
+
+    Criando a referência para o container de mensagens:
+
+const messagesEndRef = useRef(null);
+const scrollToBottom = () => {
+  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+};
+
+    Garantindo que o scroll desça automaticamente:
+
+useEffect(() => {
+  scrollToBottom(); // Move o scroll para o final sempre que o estado de mensagens mudar
+}, [messages]);
+
+    Adicionando a referência ao final do chat:
+
+    <div className="messages-container">
+      {messages.map((message) => (
+        <div key={message.id} className="message">
+          <p>{message.content}</p>
+        </div>
+      ))}
+      {/* Referência para o final do chat */}
+      <div ref={messagesEndRef} />
+    </div>
+
+Objetivo final:
+
+    As mensagens não devem mais aparecer duplicadas no frontend.
+
+    O chat deve rolar automaticamente para o final sempre que uma nova mensagem for recebida.
+
+Faça essas alterações no frontend para garantir que as mensagens sejam processadas corretamente e que o scroll funcione como esperado.
