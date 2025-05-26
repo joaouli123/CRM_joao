@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MessageCircle, Send, Phone, Clock, User, Search } from "lucide-react";
+import { MessageCircle, Send, Phone, Clock, User, Search, Archive, MoreVertical, Trash2, Volume, VolumeX, Tag, Bell, BellOff } from "lucide-react";
 import { Connection, Conversation, Message } from "@/lib/api";
 import { format, isToday, isYesterday } from "date-fns";
 
@@ -27,7 +27,14 @@ export default function MessageInterface({
   const [realtimeMessages, setRealtimeMessages] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const [chatMuted, setChatMuted] = useState(false);
+  const [chatTags, setChatTags] = useState<string[]>([]);
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [newTag, setNewTag] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   
   // SET para controlar IDs únicos e evitar duplicação
   const processedMessageIds = useRef(new Set<string>());
@@ -428,25 +435,48 @@ export default function MessageInterface({
             {/* Header do Chat */}
             <Card className="rounded-none border-0 border-b">
               <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-base">
-                      {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
-                    </CardTitle>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Phone className="h-3 w-3" />
-                      <span>{selectedConversation}</span>
-                      {isConnected && (
-                        <Badge variant="outline" className="text-xs">
-                          Online
-                        </Badge>
-                      )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar>
+                      <AvatarFallback>
+                        <User className="h-4 w-4" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <CardTitle className="text-base">
+                        {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
+                      </CardTitle>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <Phone className="h-3 w-3" />
+                        <span>{selectedConversation}</span>
+                        {isConnected && (
+                          <Badge variant="outline" className="text-xs">
+                            Online
+                          </Badge>
+                        )}
+                      </div>
                     </div>
+                  </div>
+                  
+                  {/* Botões de Ação */}
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleArchiveChat(selectedConversation)}
+                      className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
+                    >
+                      <Archive className="h-4 w-4" />
+                      <span>Arquivar</span>
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-1"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
