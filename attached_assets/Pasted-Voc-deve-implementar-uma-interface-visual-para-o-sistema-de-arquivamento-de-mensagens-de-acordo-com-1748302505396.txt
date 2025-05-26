@@ -1,0 +1,149 @@
+Você deve implementar uma interface visual para o sistema de arquivamento de mensagens de acordo com a API já funcional. A interface permitirá que os usuários arquivem, visualizem e desarquivem conversas. A ideia é criar uma experiência intuitiva e fácil de usar, interagindo com as rotas da API que já foram configuradas.
+Funcionalidades da API já Implementadas:
+
+A API já possui as seguintes rotas e funcionalidades disponíveis:
+
+    POST /api/connections/:connectionId/archive-chat
+
+        Função: Arquiva uma conversa.
+
+        Parâmetros: connectionId (ID da conexão de onde a conversa será arquivada).
+
+    GET /api/connections/:connectionId/archived-chats
+
+        Função: Lista as conversas arquivadas para uma determinada conexão.
+
+        Parâmetros: connectionId (ID da conexão para listar as conversas arquivadas).
+
+    GET /api/archived-chats/:chatId/messages
+
+        Função: Visualiza as mensagens arquivadas de uma conversa específica.
+
+        Parâmetros: chatId (ID da conversa que será visualizada).
+
+    PUT /api/archived-chats/:chatId/unarchive
+
+        Função: Desarquiva uma conversa.
+
+        Parâmetros: chatId (ID da conversa a ser desarquivada).
+
+    DELETE /api/archived-chats/:chatId
+
+        Função: Deleta permanentemente uma conversa arquivada.
+
+        Parâmetros: chatId (ID da conversa a ser deletada).
+
+Descrição da Interface Visual de Arquivamento:
+
+A interface deve ser clara e objetiva, oferecendo acessibilidade e facilidade de uso. A ideia é criar uma seção de arquivamento onde os usuários poderão interagir diretamente com as conversas arquivadas.
+1. Seção de Conversas Arquivadas:
+
+Objetivo: Exibir todas as conversas que foram arquivadas para o usuário conectado.
+
+    Listagem das Conversas Arquivadas: A interface deve exibir as conversas arquivadas, mostrando as informações essenciais, como:
+
+        Nome do contato ou título da conversa.
+
+        Data de arquivamento.
+
+        Status da conversa (arquivada ou desarquivada).
+
+    Ações Disponíveis para cada conversa:
+
+        Visualizar Mensagens: Ao clicar em uma conversa, o usuário pode visualizar todas as mensagens arquivadas dessa conversa (chamando a rota GET /api/archived-chats/:chatId/messages).
+
+        Desarquivar Conversa: Um botão para desarquivar a conversa, chamando a rota PUT /api/archived-chats/:chatId/unarchive.
+
+        Deletar Conversa: Um botão para deletar permanentemente a conversa arquivada, chamando a rota DELETE /api/archived-chats/:chatId.
+
+Exemplo de Layout:
+
+    Título da Seção: "Conversas Arquivadas"
+
+    Tabela/Listagem com as colunas:
+
+        Nome do Contato / Título da Conversa
+
+        Data de Arquivamento
+
+        Status: Arquivada / Desarquivada
+
+        Ações: Visualizar, Desarquivar, Deletar
+
+2. Barra de Pesquisa e Filtro:
+
+Objetivo: Permitir ao usuário buscar e filtrar conversas arquivadas rapidamente.
+
+    Campo de Pesquisa: O usuário pode buscar por nome do contato ou por palavras-chave.
+
+    Filtros: Filtros para visualizar conversas arquivadas por data de arquivamento, status (arquivada ou desarquivada), etc.
+
+3. Botão de Arquivamento de Nova Conversa:
+
+Objetivo: Permitir ao usuário arquivar uma nova conversa diretamente da interface.
+
+    Botão de Arquivamento: Um botão que aciona o processo de arquivamento de uma conversa ativa.
+
+        O botão "Arquivar Conversa" deve estar disponível na seção de conversas ativas.
+
+        Ao clicar, chama a rota POST /api/connections/:connectionId/archive-chat e arquiva a conversa selecionada.
+
+4. Visualização de Mensagens Arquivadas:
+
+Objetivo: Exibir as mensagens de uma conversa arquivada.
+
+    Quando o usuário clicar em uma conversa arquivada, a interface deve mostrar as mensagens dessa conversa, permitindo ao usuário visualizar o histórico completo.
+
+    Exibir a data e conteúdo das mensagens.
+
+    A interface pode ser uma lista simples ou um layout de "chat" com mensagens em ordem cronológica.
+
+Requisitos de Design da Interface Visual:
+
+    Design Responsivo: A interface deve ser responsiva, adaptando-se bem a diferentes dispositivos, como desktops, tablets e smartphones.
+
+    Layout Intuitivo: A navegação deve ser clara e fácil, com botões visíveis para arquivar, desarquivar e deletar conversas, além de uma lista de conversas bem organizada.
+
+    Feedback Visual:
+
+        Quando uma conversa for desarquivada, deve aparecer uma notificação informando que a conversa foi restaurada com sucesso.
+
+        Para exclusão permanente, um alerta de confirmação deve ser exibido para garantir que o usuário não delete uma conversa acidentalmente.
+
+    Acessibilidade: Garantir que a interface seja acessível a todos os usuários, com cores e fontes legíveis, além de alt tags para imagens, caso necessário.
+
+Fluxo da Interface Visual:
+
+    Página Principal - Dashboard:
+
+        A página inicial do usuário mostra um painel de conversas ativas.
+
+        Ao lado ou abaixo, exibe uma seção de Conversas Arquivadas, onde o usuário pode visualizar e interagir com suas conversas arquivadas.
+
+    Listagem de Conversas Arquivadas:
+
+        O usuário vê uma lista com informações essenciais das conversas arquivadas.
+
+        Cada item da lista tem botões para visualizar as mensagens, desarquivar ou deletar.
+
+    Visualização da Conversa Arquivada:
+
+        Ao clicar na conversa arquivada, o usuário visualiza todas as mensagens enviadas e recebidas durante essa conversa.
+
+        Há opções de desarquivamento ou exclusão da conversa.
+
+Exemplo de Texto para Interface Visual:
+
+    Seção: Conversas Arquivadas
+    Aqui você pode ver todas as conversas que foram arquivadas. Clique em qualquer conversa para visualizar as mensagens. Você também pode desarquivar ou excluir permanentemente as conversas se necessário.
+
+    Botões de Ação:
+
+        Desarquivar: Restaura a conversa para o estado ativo.
+
+        Excluir: Deleta permanentemente a conversa arquivada.
+
+    Campo de Pesquisa: Encontre rapidamente conversas arquivadas por nome do contato ou palavras-chave.
+
+    Mensagem de Sucesso: "A conversa foi desarquivada com sucesso."
+    Mensagem de Erro: "Ocorreu um erro ao tentar desarquivar a conversa. Tente novamente."
