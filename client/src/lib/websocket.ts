@@ -60,8 +60,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
               break;
               
             case "messageReceived":
+              console.log("📨 Nova mensagem recebida:", message.data);
               options.onMessageReceived?.(message.data);
-              // Invalidate messages for the specific connection
+              // Invalidate both messages and conversations for the specific connection
+              queryClient.invalidateQueries({ 
+                queryKey: ["/api/connections", message.data.connectionId, "conversations"] 
+              });
               queryClient.invalidateQueries({ 
                 queryKey: ["/api/connections", message.data.connectionId, "messages"] 
               });
@@ -69,8 +73,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
               break;
               
             case "messageSent":
+              console.log("📤 Mensagem enviada:", message.data);
               options.onMessageSent?.(message.data);
-              // Invalidate messages for the specific connection
+              // Invalidate both messages and conversations for the specific connection
+              queryClient.invalidateQueries({ 
+                queryKey: ["/api/connections", message.data.connectionId, "conversations"] 
+              });
               queryClient.invalidateQueries({ 
                 queryKey: ["/api/connections", message.data.connectionId, "messages"] 
               });

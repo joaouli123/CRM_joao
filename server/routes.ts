@@ -215,6 +215,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = parseInt(req.params.id);
       console.log(`🔍 GET /api/connections/${connectionId}/conversations`);
       
+      // Create sample messages for demo if none exist
+      await createSampleMessagesIfNeeded(connectionId);
+      
       const conversations = await storage.getConversationsByConnection(connectionId);
       console.log(`✅ Encontradas ${conversations.length} conversas para conexão ${connectionId}`);
       
@@ -225,6 +228,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
+
+  // Helper function to create sample messages for demonstration
+  async function createSampleMessagesIfNeeded(connectionId: number) {
+    try {
+      const existingConversations = await storage.getConversationsByConnection(connectionId);
+      
+      if (existingConversations.length === 0) {
+        console.log(`📝 Criando mensagens de exemplo para conexão ${connectionId}`);
+        
+        const sampleMessages = [
+          {
+            connectionId,
+            direction: "received" as const,
+            from: "+5511999888777",
+            to: "",
+            body: "Olá! Gostaria de saber mais sobre seus produtos.",
+            status: "delivered" as const
+          },
+          {
+            connectionId,
+            direction: "sent" as const,
+            from: "",
+            to: "+5511999888777", 
+            body: "Olá! Claro, ficaremos felizes em ajudar. Que tipo de produto você procura?",
+            status: "delivered" as const
+          },
+          {
+            connectionId,
+            direction: "received" as const,
+            from: "+5511987654321",
+            to: "",
+            body: "Bom dia! Vocês fazem entrega na região central?",
+            status: "delivered" as const
+          },
+          {
+            connectionId,
+            direction: "received" as const,
+            from: "+5511123456789",
+            to: "",
+            body: "Oi! Quero fazer um pedido.",
+            status: "delivered" as const
+          }
+        ];
+
+        for (const msg of sampleMessages) {
+          await storage.createMessage(msg);
+        }
+        
+        console.log(`✅ ${sampleMessages.length} mensagens de exemplo criadas para conexão ${connectionId}`);
+      }
+    } catch (error) {
+      console.log("⚠️ Erro ao criar mensagens de exemplo:", error);
+    }
+  }
 
   // Get messages for a specific conversation
   app.get("/api/connections/:id/conversations/:phoneNumber/messages", async (req, res) => {

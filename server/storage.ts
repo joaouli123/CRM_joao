@@ -373,4 +373,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
+// Use database storage for persistence
 export const storage = new DatabaseStorage();
