@@ -1,0 +1,111 @@
+    Quando envio uma mensagem, ela aparece com status: "pending" (como deveria).
+
+    Porém, ao ser confirmada pelo WebSocket, a mensagem não substitui a local.
+
+    Isso resulta em mensagens duplicadas no chat (uma pendente e outra oficial).
+
+🎯 Solução que quero implementar corretamente:
+
+1. No momento do envio:
+
+    Gere um tempId com crypto.randomUUID() e atribua à mensagem local.
+
+    Adicione status: "pending" e exiba imediatamente no frontend.
+
+    Exemplo de estrutura:
+
+{
+  tempId: 'uuid-aqui',
+  content: 'mensagem',
+  phoneNumber: '5541...',
+  direction: 'sent',
+  timestamp: new Date(),
+  status: 'pending'
+}
+
+2. Quando receber confirmação da Evolution API (WebSocket):
+
+    A mensagem recebida do servidor virá com um id real.
+
+    Faça a verificação:
+
+        Se existe mensagem no chat local com o mesmo tempId, ou
+
+        Se existe mensagem com o mesmo content + direction + phoneNumber dentro de 5 segundos do timestamp
+
+🛠️ Ação correta:
+
+    Remover a temporária (tempId)
+
+    Adicionar a versão oficial (id) com status: 'sent'
+
+🧠 Observações para a IA:
+
+    O erro está no fato de que a verificação if (exists) está funcionando com id, mas as mensagens locais não têm id ainda — elas usam tempId.
+
+    Portanto, a lógica de deduplicação atual está ignorando as pendentes.
+
+    A lógica de substituição precisa acontecer na função de recebimento de WebSocket, não apenas no envio.
+
+📌 Código sugerido (parte relevante):
+
+setMessagesByInstance(prev => {
+  const currentMessages = prev[instanceKey]?.[phoneNumber] || [];
+
+  // Tente encontrar a mensagem temporária por tempId ou conteúdo + timestamp similar
+  const tempMessageIndex = currentMessages.findIndex(
+    msg =>
+      msg.tempId &&
+      msg.content === data.content &&
+      Math.abs(new Date(msg.timestamp).getTime() - new Date(data.timestamp).getTime()) < 5000
+  );
+
+  if (tempMessageIndex !== -1) {
+    // Substituir pela versão oficial do servidor
+    const newMessages = [...currentMessages];
+    newMessages.splice(tempMessageIndex, 1); // remove a temporária
+    newMessages.push({
+      id: data.id,
+      content: data.content,
+      direction: 'sent',
+      timestamp: new Date(data.timestamp),
+      status: 'sent',
+    });
+
+    return {
+      ...prev,
+      [instanceKey]: {
+        ...prev[instanceKey],
+        [phoneNumber]: newMessages,
+      },
+    };
+  }
+
+  // Se não encontrou temporária, apenas adiciona
+  return {
+    ...prev,
+    [instanceKey]: {
+      ...prev[instanceKey],
+      [phoneNumber]: [
+        ...currentMessages,
+        {
+          id: data.id,
+          content: data.content,
+          direction: 'sent',
+          timestamp: new Date(data.timestamp),
+          status: 'sent',
+        },
+      ],
+    },
+  };
+});
+
+✅ Resultado esperado:
+
+    Nenhuma duplicação
+
+    Envio imediato com ⏳
+
+    Ao confirmar, substitui pela oficial com ✓
+
+    Experiência fluida como WhatsApp Web

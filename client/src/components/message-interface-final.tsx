@@ -64,23 +64,47 @@ export default function MessageInterface({
                 console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
                 
                 setRealtimeMessages((prev) => {
-                  // ANTI-DUPLICAÇÃO: verificar se mensagem já existe
-                  const exists = prev.some((m: any) => m.id === msgData.id);
-                  if (exists) {
+                  // 1. Verificar se já existe por ID
+                  const existsById = prev.some((m: any) => m.id === msgData.id);
+                  if (existsById) {
                     console.log(`⚠️ Mensagem ${msgData.id} JÁ EXISTE, ignorando duplicação`);
                     return prev;
                   }
-                  
+
+                  // 2. PROCURAR MENSAGEM TEMPORÁRIA para substituir
+                  const tempIndex = prev.findIndex((m: any) => 
+                    m.tempId && 
+                    m.content === msgData.content &&
+                    m.phoneNumber === msgData.phoneNumber &&
+                    Math.abs(new Date(m.timestamp).getTime() - new Date(msgData.timestamp).getTime()) < 10000
+                  );
+
+                  if (tempIndex !== -1) {
+                    // SUBSTITUIR mensagem temporária pela oficial
+                    console.log(`🔄 SUBSTITUINDO mensagem temporária pela oficial: ${msgData.id}`);
+                    const newMessages = [...prev];
+                    newMessages[tempIndex] = {
+                      id: msgData.id,
+                      content: msgData.content,
+                      phoneNumber: msgData.phoneNumber,
+                      direction: msgData.direction,
+                      timestamp: new Date(msgData.timestamp),
+                      status: 'sent'
+                    };
+                    return newMessages;
+                  }
+
+                  // 3. Se não encontrou temporária, adicionar normalmente
                   const newMsg = {
                     id: msgData.id,
                     content: msgData.content,
                     phoneNumber: msgData.phoneNumber,
                     direction: msgData.direction,
                     timestamp: new Date(msgData.timestamp),
-                    status: msgData.status || 'sent'
+                    status: msgData.direction === 'sent' ? 'sent' : 'received'
                   };
                   
-                  console.log(`✅ ADICIONANDO mensagem ${msgData.id}: "${msgData.content}"`);
+                  console.log(`✅ ADICIONANDO nova mensagem ${msgData.id}: "${msgData.content}"`);
                   return [...prev, newMsg];
                 });
               }
@@ -159,22 +183,23 @@ export default function MessageInterface({
   const sendMessage = async (message: string) => {
     if (!selectedConversation || !selectedConnectionId || !message.trim()) return;
 
+    // 1. Criar mensagem temporária com tempId
+    const tempId = crypto.randomUUID();
+    const tempMessage = {
+      tempId: tempId,
+      content: message.trim(),
+      phoneNumber: selectedConversation,
+      direction: 'sent',
+      timestamp: new Date(),
+      status: 'pending'
+    };
+
+    // 2. Adicionar mensagem temporária IMEDIATAMENTE
+    setRealtimeMessages((prev) => [...prev, tempMessage]);
+    setNewMessage('');
+    console.log(`⏳ MENSAGEM TEMPORÁRIA ADICIONADA: ${tempId}`);
+
     try {
-      console.log(`📤 ENVIANDO MENSAGEM: "${message}" para ${selectedConversation}`);
-      
-      // ADICIONAR MENSAGEM LOCALMENTE PRIMEIRO (para aparecer imediatamente)
-      const localMessage = {
-        id: `local-${Date.now()}`,
-        content: message.trim(),
-        phoneNumber: selectedConversation,
-        direction: 'sent',
-        timestamp: new Date(),
-        status: 'sending'
-      };
-      
-      setRealtimeMessages((prev) => [...prev, localMessage]);
-      console.log(`🚀 MENSAGEM LOCAL ADICIONADA: ${message}`);
-      
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,27 +209,27 @@ export default function MessageInterface({
         })
       });
 
-      if (response.ok) {
-        console.log(`✅ MENSAGEM ENVIADA COM SUCESSO!`);
-        setNewMessage('');
-        
-        // Atualizar status da mensagem local para 'sent'
+      if (!response.ok) {
+        // 3. Em caso de erro, marcar como falha
         setRealtimeMessages((prev) => 
           prev.map((msg) => 
-            msg.id === localMessage.id 
-              ? { ...msg, status: 'sent' }
+            msg.tempId === tempId 
+              ? { ...msg, status: 'failed' }
               : msg
           )
         );
-      } else {
         console.error('❌ Erro ao enviar mensagem');
-        // Remover mensagem local se falhou
-        setRealtimeMessages((prev) => 
-          prev.filter((msg) => msg.id !== localMessage.id)
-        );
       }
     } catch (error) {
-      console.error('❌ Erro ao enviar mensagem:', error);
+      // 4. Em caso de erro de rede, marcar como falha
+      setRealtimeMessages((prev) => 
+        prev.map((msg) => 
+          msg.tempId === tempId 
+            ? { ...msg, status: 'failed' }
+            : msg
+        )
+      );
+      console.error('❌ Erro de rede:', error);
     }
   };
 
@@ -357,6 +382,13 @@ export default function MessageInterface({
                         <span className="text-xs opacity-70">
                           {formatTime(new Date(message.timestamp))}
                         </span>
+                        {message.direction === 'sent' && (
+                          <span className="text-xs">
+                            {message.status === 'pending' && '⏳'}
+                            {message.status === 'sent' && '✓'}
+                            {message.status === 'failed' && '❌'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
