@@ -553,7 +553,7 @@ export default function MessageInterface({
               <div className="space-y-4">
                 {currentMessages.map((message, index) => (
                   <div
-                    key={`msg-${message.id}-${message.direction}-${message.timestamp}-${index}`}
+                    key={`${message.id}-${Date.now()}-${index}-${Math.random()}`}
                     className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
