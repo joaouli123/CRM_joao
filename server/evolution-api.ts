@@ -206,7 +206,8 @@ class EvolutionAPI {
             remoteJid: chatId
           }
         },
-        limit
+        limit,
+        sort: { messageTimestamp: -1 }
       });
       
       // Extract messages from the correct format: response.messages.records

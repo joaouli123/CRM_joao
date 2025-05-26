@@ -387,13 +387,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (realMessages && realMessages.length > 0) {
             console.log(`✅ Encontradas ${realMessages.length} mensagens reais para ${phoneNumber}`);
             
-            // Convert Evolution API messages to our format
-            const formattedMessages = realMessages.map((msg: any, index: number) => ({
-              id: index + 1,
+            // Convert Evolution API messages to our format (reverse for correct display order)
+            const formattedMessages = realMessages.reverse().map((msg: any, index: number) => ({
+              id: msg.key?.id || `msg_${index}`,
               connectionId,
               direction: msg.key?.fromMe ? "sent" : "received",
               phoneNumber: phoneNumber,
-              content: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "Mensagem de mídia",
+              content: msg.message?.conversation || 
+                      msg.message?.extendedTextMessage?.text || 
+                      msg.message?.imageMessage?.caption ||
+                      msg.message?.documentMessage?.caption ||
+                      "Mensagem de mídia",
               status: "delivered",
               timestamp: new Date(msg.messageTimestamp * 1000)
             }));
