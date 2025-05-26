@@ -208,7 +208,14 @@ class EvolutionAPI {
         },
         limit
       });
-      return response;
+      
+      // Extract messages from the correct format: response.messages.records
+      if (response && response.messages && response.messages.records) {
+        console.log(`✅ Extraindo ${response.messages.records.length} mensagens reais`);
+        return response.messages.records;
+      }
+      
+      return [];
     } catch (error) {
       console.log(`⚠️ Erro ao buscar mensagens do chat ${chatId}:`, error);
       return [];
