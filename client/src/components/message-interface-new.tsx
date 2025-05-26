@@ -250,13 +250,15 @@ export default function MessageInterface({
       });
 
       let result;
-      try {
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
         result = await response.json();
-      } catch (jsonError) {
+      } else {
         // If response is not JSON, get text for debugging
         const responseText = await response.text();
         console.error(`❌ Resposta não é JSON:`, responseText);
-        throw new Error(`Servidor retornou HTML: ${responseText.substring(0, 100)}...`);
+        throw new Error(`Servidor retornou HTML/texto: ${responseText.substring(0, 200)}...`);
       }
       
       if (response.ok) {
