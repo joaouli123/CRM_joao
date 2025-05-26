@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,17 +31,21 @@ export default function MessageInterface({
   const connectedConnections = connections.filter(conn => conn.status === "connected");
 
   // Fetch conversations for selected connection
-  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
+  const { data: conversations = [], isLoading: conversationsLoading, error: conversationsError } = useQuery<Conversation[]>({
     queryKey: [`/api/connections/${selectedConnectionId}/conversations`],
     enabled: !!selectedConnectionId,
-    onSuccess: (data) => {
-      console.log('✅ Conversas carregadas do backend:', data);
-      console.log(`📊 Total de ${data.length} conversas encontradas`);
-    },
-    onError: (error) => {
-      console.error('❌ Erro ao carregar conversas:', error);
-    }
   });
+
+  // Debug log for conversations
+  useEffect(() => {
+    if (conversations && conversations.length > 0) {
+      console.log('✅ Conversas carregadas do backend:', conversations);
+      console.log(`📊 Total de ${conversations.length} conversas encontradas`);
+    }
+    if (conversationsError) {
+      console.error('❌ Erro ao carregar conversas:', conversationsError);
+    }
+  }, [conversations, conversationsError]);
 
   // Fetch messages for selected conversation
   const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({

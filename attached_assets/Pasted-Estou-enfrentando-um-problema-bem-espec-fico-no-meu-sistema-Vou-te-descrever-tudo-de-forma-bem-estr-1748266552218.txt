@@ -1,0 +1,108 @@
+Estou enfrentando um problema bem específico no meu sistema. Vou te descrever tudo de forma bem estruturada para que você possa entender, diagnosticar e me ajudar a resolver de forma rápida e eficaz.
+
+🔥 Contexto do Problema:
+O backend da API está funcionando corretamente.
+
+As requisições REST estão sendo executadas com sucesso, retornando status 200 OK.
+
+As conversas reais do WhatsApp estão sendo carregadas normalmente no backend.
+
+✅ API funcionando.
+
+🚨 Erro identificado no frontend:
+O console do navegador retorna o seguinte erro:
+
+plaintext
+Copiar
+Editar
+Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket':
+The URL 'wss://localhost:undefined/?token=...' is invalid.
+➡️ Causa direta:
+A URL do WebSocket está sendo montada de forma incorreta. O localhost:undefined indica que alguma variável de ambiente, configuração ou parâmetro necessário para construir o endereço do WebSocket está faltando ou não está sendo carregado corretamente.
+
+🔍 Análise Técnica Detalhada:
+O frontend está tentando abrir uma conexão WebSocket com um domínio inválido.
+
+O token é gerado corretamente, mas a URL base do WebSocket (host e/ou porta) está undefined.
+
+Isso normalmente é causado por uma variável de ambiente mal configurada ou não definida.
+
+📜 Possíveis causas e onde verificar:
+⚙️ Arquivo .env do frontend faltando ou mal configurado.
+
+Verificar se há algo como:
+
+plaintext
+Copiar
+Editar
+VITE_WS_HOST=7c6685d5-xxxx.riker.replit.dev
+VITE_WS_PORT=443
+⚙️ Verificar se no código fonte há algum trecho assim:
+
+javascript
+Copiar
+Editar
+const ws = new WebSocket(`wss://${process.env.WS_HOST}/?token=${token}`);
+ou
+
+javascript
+Copiar
+Editar
+const ws = new WebSocket(`wss://${import.meta.env.VITE_WS_HOST}/?token=${token}`);
+➡️ E verificar se VITE_WS_HOST está corretamente definido.
+
+⚙️ Se o projeto estiver rodando localmente, precisa garantir que:
+
+Está usando ws:// (sem SSL) e não wss:// (com SSL), a menos que haja certificado configurado.
+
+Exemplo para local:
+
+javascript
+Copiar
+Editar
+const ws = new WebSocket(`ws://localhost:5000/api/ws?token=${token}`);
+🧠 Checklist de Correções Sugeridas:
+Item	Verificar / Corrigir
+✔️ .env do frontend	Adicionar VITE_WS_HOST e VITE_WS_PORT
+✔️ Código de conexão WebSocket	Garantir que lê corretamente do import.meta.env
+✔️ Backend WebSocket ativo	Confirmar se o servidor WS está rodando corretamente
+✔️ HTTPS vs HTTP (wss vs ws)	Se local, usar ws://. Se produção, usar wss://.
+✔️ Porta correta	Certificar que porta e host estão batendo com o backend.
+
+🏗️ Exemplo de configuração correta:
+🔗 No .env do frontend:
+plaintext
+Copiar
+Editar
+VITE_WS_HOST=7c6685d5-xxxx.riker.replit.dev
+VITE_WS_PORT=443
+🔗 No código JS:
+javascript
+Copiar
+Editar
+const wsHost = import.meta.env.VITE_WS_HOST;
+const wsPort = import.meta.env.VITE_WS_PORT || '443';
+const ws = new WebSocket(`wss://${wsHost}:${wsPort}/api/ws?token=${token}`);
+
+ws.onopen = () => console.log('WebSocket conectado');
+ws.onmessage = (msg) => console.log('Mensagem recebida:', msg.data);
+ws.onclose = () => console.log('WebSocket desconectado');
+🔥 Se rodando local:
+Backend na porta 5000.
+
+Use:
+
+javascript
+Copiar
+Editar
+const ws = new WebSocket(`ws://localhost:5000/api/ws?token=${token}`);
+🧠 Resumo do que você precisa fazer:
+Conferir se as variáveis de ambiente (VITE_WS_HOST e VITE_WS_PORT) estão definidas no .env do frontend.
+
+Ajustar o código da conexão do WebSocket para usar essas variáveis corretamente.
+
+Garantir que o backend possui um servidor WebSocket funcional na rota /api/ws (ou similar).
+
+Se estiver rodando localmente, mudar de wss:// para ws://.
+
+🟢 Após isso, o problema da URL inválida será resolvido e o frontend conseguirá conectar ao backend via WebSocket corretamente.
