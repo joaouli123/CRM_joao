@@ -250,30 +250,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Processar apenas os primeiros 10 chats para não sobrecarregar
         const recentChats = chats.slice(0, 10);
         
-        // Forçar criação de conversas para contatos reais encontrados
-        let createdCount = 0;
+        // Criar conversas baseadas nos seus contatos reais do WhatsApp
+        console.log(`🎯 Processando ${recentChats.length} contatos reais da sua conta WhatsApp`);
+        
+        const contactsToCreate = [];
         for (const chat of recentChats) {
-          try {
-            const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
-            if (!phoneNumber) continue;
-
-            // Criar mensagem diretamente sem verificar se existe
-            const newMessage = await storage.createMessage({
-              connectionId,
-              direction: "received",
-              from: phoneNumber,
-              to: "",
-              body: `Conversa com ${chat.pushName || phoneNumber} - Sistema conectado e pronto!`
+          const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+          if (phoneNumber) {
+            contactsToCreate.push({
+              phoneNumber,
+              name: chat.pushName || phoneNumber,
+              hasProfilePic: !!chat.profilePicUrl
             });
-            
-            createdCount++;
-            console.log(`✅ Conversa criada: ${chat.pushName || phoneNumber} (${phoneNumber}) - ID: ${newMessage.id}`);
-          } catch (error) {
-            console.log(`❌ Erro ao criar conversa para ${chat.pushName}:`, error);
           }
         }
         
-        console.log(`📱 ${createdCount} conversas criadas dos seus contatos reais do WhatsApp!`)
+        console.log(`📱 Criando conversas para: ${contactsToCreate.map(c => c.name).join(', ')}`);
+        
+        // Criar mensagens para cada contato real encontrado
+        for (let i = 0; i < contactsToCreate.length; i++) {
+          const contact = contactsToCreate[i];
+          try {
+            // Tentar criar mensagem sem verificações extras
+            const insertData = {
+              connectionId: connectionId,
+              from: contact.phoneNumber,
+              to: "",
+              body: `Conversa com ${contact.name} - Sistema conectado!`,
+              direction: "received" as const
+            };
+            
+            console.log(`📝 Tentando criar mensagem para ${contact.name} com dados:`, insertData);
+            
+            const message = await storage.createMessage(insertData);
+            console.log(`✅ SUCESSO! Conversa ${i + 1}: ${contact.name} (${contact.phoneNumber}) - ID: ${message.id}`);
+          } catch (error) {
+            console.log(`❌ ERRO na conversa ${i + 1} (${contact.name}): ${error}`);
+            console.log(`❌ Detalhes do erro:`, JSON.stringify(error, null, 2));
+          }
+        }
+        
+        // Verificar se alguma conversa foi criada
+        const verificacao = await storage.getConversationsByConnection(connectionId);
+        console.log(`🔍 Verificação final: ${verificacao.length} conversas encontradas após criação`)
         
         console.log(`✅ Sincronização de conversas reais concluída para conexão ${connectionId}`);
       } else {
