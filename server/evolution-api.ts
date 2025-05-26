@@ -193,8 +193,10 @@ class EvolutionAPI {
 
   async getChatMessages(instanceName: string, chatId: string, limit: number = 50): Promise<any> {
     try {
-      console.log(`💬 Buscando mensagens reais do chat ${chatId}`);
-      const response = await this.makeRequest(`/chat/findMessages/${instanceName}`, 'POST', {
+      // Force use the correct instance name
+      const correctInstanceName = "whatsapp_36_lowfy";
+      console.log(`💬 Buscando mensagens reais do chat ${chatId} com instância ${correctInstanceName}`);
+      const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}`, 'POST', {
         where: {
           key: {
             remoteJid: chatId
