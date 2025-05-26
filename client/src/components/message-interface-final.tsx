@@ -28,6 +28,9 @@ export default function MessageInterface({
   const [isConnected, setIsConnected] = useState(false);
   const [typing, setTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // SET para controlar IDs únicos e evitar duplicação
+  const processedMessageIds = useRef(new Set<string>());
 
   // WebSocket para mensagens em tempo real
   useEffect(() => {
@@ -64,14 +67,18 @@ export default function MessageInterface({
                 console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
                 
                 setRealtimeMessages((prev) => {
-                  // 1. Evitar duplicação, verificando se já existe a mensagem por ID
-                  const existsById = prev.some((m: any) => m.id === msgData.id);
-                  if (existsById) {
-                    console.log(`⚠️ Mensagem ${msgData.id} já existe, ignorando duplicação`);
+                  const messageKey = `${msgData.id || msgData.tempId}`;
+                  
+                  // 1. VERIFICAÇÃO RIGOROSA - Se já foi processada, ignorar completamente
+                  if (processedMessageIds.current.has(messageKey)) {
+                    console.log(`🚫 DUPLICAÇÃO DETECTADA - Ignorando mensagem já processada: ${messageKey}`);
                     return prev;
                   }
 
-                  // 2. Substituição de mensagem temporária com tempId
+                  // 2. Marcar como processada ANTES de qualquer operação
+                  processedMessageIds.current.add(messageKey);
+
+                  // 3. Substituição de mensagem temporária com tempId
                   if (msgData.direction === 'sent' && msgData.tempId) {
                     console.log(`🔍 BUSCANDO mensagem temporária para ${msgData.content}`);
                     
@@ -79,6 +86,10 @@ export default function MessageInterface({
 
                     if (tempIndex !== -1) {
                       console.log(`🔄 SUBSTITUINDO mensagem temporária (tempId: ${msgData.tempId}) por oficial (id: ${msgData.id})`);
+                      // Remover tempId do conjunto e adicionar ID oficial
+                      processedMessageIds.current.delete(msgData.tempId);
+                      processedMessageIds.current.add(msgData.id);
+                      
                       const newMessages = [...prev];
                       newMessages[tempIndex] = {
                         id: msgData.id,
@@ -93,7 +104,7 @@ export default function MessageInterface({
                     }
                   }
 
-                  // 3. Se não encontrou mensagem temporária, adicionar normalmente
+                  // 4. Se não encontrou mensagem temporária, adicionar normalmente
                   const newMsg = {
                     id: msgData.id,
                     content: msgData.content,

@@ -1,0 +1,126 @@
+Corrigir a duplicação das mensagens no chat, especialmente quando as mensagens são recebidas via WebSocket. A duplicação acontece apenas enquanto o chat está sendo atualizado em tempo real. Quando a página é recarregada, a duplicação desaparece. Precisamos garantir que as mensagens não se duplicam quando o WebSocket envia dados ou quando a página é recarregada.
+
+1. Deduplicação via WebSocket e API
+
+    Use um Map para controlar as mensagens no estado e garantir que as duplicações sejam evitadas, tanto ao enviar novas mensagens quanto ao receber mensagens via WebSocket. A chave única do Map será id ou tempId das mensagens.
+
+    Quando uma mensagem chega via WebSocket, combine as mensagens já recebidas da API e as mensagens em tempo real de forma a evitar duplicação.
+
+2. Lógica de Substituição de Mensagens Temporárias
+
+    Ao enviar uma mensagem, adicione a mensagem com um tempId temporário. Quando a confirmação da mensagem oficial (com id real) chegar via WebSocket, substitua a mensagem temporária pela oficial.
+
+    A lógica de substituição de tempId deve ser feita de forma que, se a mensagem já foi marcada como pending e chegou uma confirmação, ela deve ser substituída pela mensagem com o id correto, e o status deve ser atualizado para "sent" ou "delivered".
+
+3. Uso de Map para Deduplicação
+
+    Ao processar as mensagens recebidas pelo WebSocket e as mensagens recebidas pela API, use um Map para armazenar as mensagens e garantir que não haja duplicação.
+
+Código para implementar a deduplicação:
+
+useEffect(() => {
+  if (!selectedConnectionId) return;
+
+  let socket: WebSocket | null = null;
+  let reconnectTimer: NodeJS.Timeout | null = null;
+
+  const connectWebSocket = () => {
+    try {
+      const wsUrl = `wss://${window.location.host}/api/ws`;
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        console.log(`✅ WEBSOCKET CONECTADO! Conexão: ${selectedConnectionId}`);
+        setIsConnected(true);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "newMessage" && data.data) {
+            const msgData = data.data;
+
+            // Só processar se for para a conexão ativa
+            if (msgData.connectionId === selectedConnectionId) {
+              console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
+
+              setRealtimeMessages((prev) => {
+                const messagesMap = new Map();
+                [...prev, ...chatMessages].forEach((msg) => {
+                  const key = msg.id || msg.tempId;
+                  // Priorizar mensagens com ID real sobre mensagens temporárias
+                  if (!messagesMap.has(key) || (msg.id && !messagesMap.get(key).id)) {
+                    messagesMap.set(key, msg);
+                  }
+                });
+
+                const uniqueMessages = Array.from(messagesMap.values()).sort(
+                  (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                );
+
+                return uniqueMessages;
+              });
+            }
+          }
+        } catch (error) {
+          console.error("❌ Erro ao processar WebSocket:", error);
+        }
+      };
+
+      socket.onerror = (error) => {
+        console.error("❌ WebSocket erro:", error);
+        setIsConnected(false);
+      };
+
+      socket.onclose = () => {
+        console.log("🔴 WebSocket fechado, tentando reconectar...");
+        setIsConnected(false);
+        reconnectTimer = setTimeout(connectWebSocket, 3000);
+      };
+    } catch (error) {
+      console.error("❌ Erro ao criar WebSocket:", error);
+      reconnectTimer = setTimeout(connectWebSocket, 3000);
+    }
+  };
+
+  connectWebSocket();
+
+  return () => {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (socket) socket.close();
+  };
+}, [selectedConnectionId]);
+
+4. Status Visual da Mensagem
+
+    Pendentes: Quando o usuário envia uma mensagem, ela aparece com o ícone ⏳ e status "pending".
+
+    Enviadas: Após a confirmação de envio via WebSocket, a mensagem deve ser marcada como "sent" e mudar o ícone para ✓.
+
+    Entregues: Caso o sistema informe que a mensagem foi entregue, o status deve ser "delivered" e o ícone deve ser ✓✓.
+
+    Falhas: Se a mensagem não puder ser enviada, o status será "failed" e o ícone será ❌.
+
+Exemplo de implementação para alteração do status:
+
+setRealtimeMessages((prev) => 
+  prev.map((msg) => 
+    msg.tempId === tempId 
+      ? { ...msg, status: 'sent' } // Atualiza para 'sent' quando confirmada
+      : msg
+  )
+);
+
+5. Teste de Funcionalidade:
+
+    Verifique se a duplicação foi corrigida: As mensagens devem ser exibidas uma única vez na interface, mesmo com o WebSocket atualizando constantemente.
+
+    Confirmar o funcionamento do status visual: Envie uma mensagem, ela deve aparecer com o ícone ⏳ e após a confirmação, mudar para ✓.
+
+    Verifique o comportamento ao atualizar a página: As mensagens devem ser recarregadas corretamente do backend sem duplicações e os status devem ser exibidos corretamente.
+
+    Confirmar que o status visual reflete corretamente a entrega da mensagem: Quando o WebSocket retornar que a mensagem foi entregue, o status deve mudar para ✓✓.
+
+Conclusão:
+Com essa implementação, as mensagens serão exibidas corretamente, sem duplicação, e os status de envio, falha e entrega serão atualizados corretamente em tempo real. A lógica de deduplicação usando o Map garante que, mesmo com múltiplos eventos WebSocket, as mensagens não se duplicam na interface, mesmo quando a página é recarregada.
