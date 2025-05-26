@@ -75,7 +75,7 @@ export default function MessageInterface({
                 const targetChat = data.phoneNumber;
                 const currentMessages = prev[instanceKey]?.[targetChat] || [];
                 
-                // ANTI-DUPLICAÇÃO APENAS POR ID ÚNICO (conforme sugestão)
+                // Verifica duplicação apenas por ID
                 const exists = currentMessages.some((m: any) => m.id === data.id);
                 
                 if (exists) {
@@ -83,7 +83,7 @@ export default function MessageInterface({
                   return prev;
                 }
 
-                // Adiciona mensagem em tempo real
+                // Nova mensagem em tempo real
                 const newMessage = {
                   id: data.id,
                   connectionId: data.connectionId,
@@ -94,10 +94,10 @@ export default function MessageInterface({
                   timestamp: new Date(data.timestamp)
                 };
 
-                console.log(`✅ TEMPO REAL: ${data.direction} adicionada para ${targetChat}: "${data.content}"`);
+                console.log(`✅ ADICIONANDO MENSAGEM EM TEMPO REAL: "${data.content}"`);
 
-                // Atualiza mensagens para o chat específico
-                const updatedInstance = {
+                // Força atualização imediata criando novo objeto
+                const newState = {
                   ...prev,
                   [instanceKey]: {
                     ...prev[instanceKey],
@@ -105,12 +105,12 @@ export default function MessageInterface({
                   }
                 };
                 
-                // Se for o chat ativo, força re-render
+                // Log para debug se é chat ativo
                 if (targetChat === selectedConversation) {
-                  console.log(`🔥 ATUALIZANDO CHAT ATIVO ${selectedConversation} EM TEMPO REAL!`);
+                  console.log(`🔥 MENSAGEM PARA CHAT ATIVO - FORÇANDO RENDER!`);
                 }
                 
-                return updatedInstance;
+                return newState;
               });
               
               // Atualiza também a lista de conversas com última mensagem

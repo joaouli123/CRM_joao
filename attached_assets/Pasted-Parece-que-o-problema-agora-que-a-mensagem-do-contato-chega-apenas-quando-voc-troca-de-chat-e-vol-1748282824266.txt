@@ -1,0 +1,98 @@
+Parece que o problema agora é que a mensagem do contato chega apenas quando você troca de chat e volta, e não em tempo real. Isso indica que o WebSocket está recebendo a mensagem corretamente, mas o estado no frontend não está sendo atualizado instantaneamente, ou a interface não está sendo re-renderizada quando a mensagem chega.
+
+Vamos focar nas seguintes causas possíveis e soluções para garantir que as mensagens apareçam em tempo real, sem a necessidade de trocar de chat:
+1. Atualização do Estado em Tempo Real
+
+A razão pela qual a mensagem não aparece até que você mude de chat é provavelmente porque a interface não está sendo atualizada em tempo real. A função setMessages ou a atualização do estado pode não estar sendo chamada corretamente para refletir a nova mensagem que chegou.
+
+Solução: Certifique-se de que a lógica de atualização de estado esteja sendo disparada corretamente sempre que uma nova mensagem for recebida, sem precisar alternar entre os chats.
+
+    Exemplo de como garantir que o estado seja atualizado:
+
+socket.on('newMessage', (message) => {
+  // Verifica se a mensagem recebida é do chat ativo
+  if (message.phoneNumber === selectedConversation) {
+    // Atualiza a lista de mensagens com a nova mensagem
+    setMessages(prevMessages => [...prevMessages, message]);
+  }
+});
+
+Aqui, a chave é garantir que, assim que a mensagem for recebida, a lista de mensagens do chat ativo seja atualizada imediatamente.
+2. Forçar Re-renderização quando uma Nova Mensagem Chegar
+
+O React pode não estar re-renderizando a interface corretamente, o que significa que a atualização do estado pode estar acontecendo, mas a interface não reflete essa mudança imediatamente.
+
+Solução: Ao utilizar o setMessages para atualizar o estado, também adicione uma verificação ou use um mecanismo que força o React a atualizar a interface. Além disso, certifique-se de que o WebSocket está emitindo o evento de forma que as mensagens sejam processadas corretamente em tempo real.
+
+    Exemplo:
+
+socket.on('newMessage', (message) => {
+  if (message.phoneNumber === selectedConversation) {
+    setMessages(prevMessages => [...prevMessages, message]); // Força o re-render
+  }
+});
+
+Esse código garante que, se o phoneNumber da mensagem for o mesmo que o chat ativo, a interface será atualizada automaticamente.
+3. WebSocket e Estado Local
+
+Verifique se você está utilizando o estado local de maneira eficiente para armazenar e atualizar as mensagens. Isso é especialmente importante se você estiver utilizando o WebSocket para enviar e receber as mensagens.
+
+Solução: Abaixo está uma forma eficiente de gerenciar o estado do WebSocket com React para garantir que as mensagens sejam transmitidas em tempo real, com o estado da interface sendo atualizado sempre que uma nova mensagem chega:
+
+useEffect(() => {
+  const socket = io('wss://api.seusite.com/nome_instancia'); // Altere para a URL do seu WebSocket
+  socket.on('newMessage', (message) => {
+    if (message.phoneNumber === selectedConversation) {
+      setMessages(prevMessages => [...prevMessages, message]); // Atualiza as mensagens ao vivo
+    }
+  });
+
+  return () => {
+    socket.disconnect(); // Limpeza da conexão WebSocket ao desmontar o componente
+  };
+}, [selectedConversation]); // Dependência para atualizar quando o chat ativo mudar
+
+Esse código garante que o WebSocket fique ativo enquanto o chat estiver sendo visualizado e que as novas mensagens sejam adicionadas diretamente ao estado de messages para exibição imediata.
+4. Verificação da Conexão WebSocket
+
+É importante garantir que a conexão WebSocket não esteja se desconectando ou não esteja sendo reiniciada, pois isso pode interromper a comunicação em tempo real.
+
+Solução: Verifique no console se a conexão WebSocket é estável e se não está sendo desconectada ou reiniciada quando não deveria.
+
+    Exemplo de logs para depuração:
+
+const socket = io('wss://api.seusite.com/nome_instancia');
+socket.on('connect', () => {
+  console.log('Conectado ao WebSocket');
+});
+
+socket.on('disconnect', () => {
+  console.log('Desconectado do WebSocket');
+});
+
+socket.on('newMessage', (message) => {
+  console.log('Nova mensagem recebida:', message);
+  // Atualiza o estado com a nova mensagem
+  if (message.phoneNumber === selectedConversation) {
+    setMessages(prevMessages => [...prevMessages, message]);
+  }
+});
+
+Isso ajudará a verificar se a conexão está sendo mantida e se as mensagens estão sendo processadas corretamente.
+5. Atualização Automática na Interface
+
+Quando a mensagem chega ao WebSocket, ela deve ser imediatamente refletida na interface, sem precisar de nenhuma ação do usuário, como trocar de chat. Isso pode ser feito utilizando a abordagem de atualização de estado diretamente dentro do evento WebSocket, como já discutido.
+6. Confirme a Existência do Chat Ativo no Estado
+
+Se o chat ativo (selectedConversation) não estiver sendo rastreado corretamente, a mensagem do contato pode não ser processada para o chat correto. Certifique-se de que o estado do chat ativo (selectedConversation) esteja sendo corretamente monitorado e atualizado.
+Conclusão
+
+Para resolver o problema de não exibir a mensagem ao vivo, a chave é garantir que:
+
+    O estado da lista de mensagens seja atualizado imediatamente sempre que uma nova mensagem for recebida.
+
+    O WebSocket esteja configurado para emitir as mensagens corretamente.
+
+    A interface reaja automaticamente sempre que o estado for alterado.
+
+Se as alterações feitas nas mensagens estiverem funcionando corretamente, mas ainda assim não estiverem sendo refletidas imediatamente, é possível que haja um problema com a atualização do estado ou com a renderização da interface.
