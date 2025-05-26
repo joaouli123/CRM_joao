@@ -24,6 +24,64 @@ function broadcast(data: any) {
   });
 }
 
+// GLOBAL SEND MESSAGE FUNCTION - FOR IMMEDIATE REGISTRATION
+export function setupSendMessageRoute(app: Express) {
+  app.post("/api/connections/:id/send", async (req, res) => {
+    console.log(`🚨 ✅ ROTA SEND FUNCIONANDO PERFEITAMENTE! ID: ${req.params.id}`);
+    console.log(`🚨 ✅ DADOS RECEBIDOS:`, req.body);
+    
+    try {
+      const connectionId = parseInt(req.params.id);
+      const { to, message: messageText } = req.body;
+      
+      // Use Evolution API to send real message
+      const activeInstanceName = "whatsapp_36_lowfy";
+      const cleanPhoneNumber = to.replace('@s.whatsapp.net', '').replace('@c.us', '');
+      
+      console.log(`🎯 Enviando via Evolution API - Instância: ${activeInstanceName}, Para: ${cleanPhoneNumber}`);
+      
+      const result = await evolutionAPI.sendMessage(activeInstanceName, cleanPhoneNumber, messageText);
+      console.log(`✅ SUCESSO! Mensagem enviada para o WhatsApp:`, result);
+      
+      // Store message in database
+      const newMessage = await storage.createMessage({
+        connectionId,
+        from: "me",
+        to: cleanPhoneNumber,
+        body: messageText,
+        direction: "sent"
+      });
+      
+      // Broadcast via WebSocket for real-time UI update
+      broadcast({ 
+        type: "newMessage", 
+        data: { 
+          id: newMessage.id,
+          connectionId, 
+          direction: "sent",
+          phoneNumber: cleanPhoneNumber,
+          content: messageText,
+          status: "sent",
+          timestamp: new Date()
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "✅ Mensagem enviada com sucesso para o WhatsApp!",
+        data: result,
+        messageId: newMessage.id
+      });
+    } catch (error) {
+      console.error(`❌ Erro ao enviar mensagem:`, error);
+      res.status(500).json({ 
+        error: "Failed to send message via Evolution API",
+        details: error 
+      });
+    }
+  });
+}
+
 async function initializeWhatsAppSession(connectionId: number, sessionName: string) {
   try {
     console.log(`🔄 Iniciando sessão WhatsApp real com Evolution API para conexão ${connectionId}: ${sessionName}`);

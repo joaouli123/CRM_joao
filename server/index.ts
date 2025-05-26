@@ -28,6 +28,10 @@ async function main() {
     next();
   });
 
+  // Register SEND MESSAGE route with absolute priority
+  const { setupSendMessageRoute } = await import("./routes");
+  setupSendMessageRoute(app);
+  
   // Register API routes FIRST
   const server = await registerRoutes(app);
 
