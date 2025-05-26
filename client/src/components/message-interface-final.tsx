@@ -189,16 +189,25 @@ export default function MessageInterface({
   // Combinar mensagens da API com mensagens em tempo real SEM DUPLICATAS
   const allMessagesMap = new Map();
 
-  [
-    ...(Array.isArray(chatMessages) ? chatMessages : []),
-    ...realtimeMessages.filter((m) => m.phoneNumber === selectedConversation)
-  ].forEach((msg) => {
-    const key = `${msg.id || msg.tempId}`;
-    // Priorizar mensagens com ID real sobre mensagens temporárias
-    if (!allMessagesMap.has(key) || (msg.id && !allMessagesMap.get(key).id)) {
-      allMessagesMap.set(key, msg);
+  // 1. PRIMEIRO: Adicionar todas as mensagens da API (prioridade)
+  (Array.isArray(chatMessages) ? chatMessages : []).forEach((msg) => {
+    if (msg.id) {
+      allMessagesMap.set(msg.id, msg);
     }
   });
+
+  // 2. SEGUNDO: Adicionar mensagens do WebSocket apenas se não existirem na API
+  realtimeMessages
+    .filter((m) => m.phoneNumber === selectedConversation)
+    .forEach((msg) => {
+      if (msg.id && !allMessagesMap.has(msg.id)) {
+        // Mensagem com ID oficial - adicionar se não existir
+        allMessagesMap.set(msg.id, msg);
+      } else if (msg.tempId && !msg.id) {
+        // Mensagem temporária - adicionar apenas se não há ID oficial
+        allMessagesMap.set(msg.tempId, msg);
+      }
+    });
 
   const allMessages = Array.from(allMessagesMap.values()).sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
