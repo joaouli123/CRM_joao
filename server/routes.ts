@@ -68,8 +68,7 @@ export function setupSendMessageRoute(app: Express) {
       res.json({ 
         success: true, 
         message: "✅ Mensagem enviada com sucesso para o WhatsApp!",
-        data: result,
-        messageId: newMessage.id
+        data: result
       });
     } catch (error) {
       console.error(`❌ Erro ao enviar mensagem:`, error);

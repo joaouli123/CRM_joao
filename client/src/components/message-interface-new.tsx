@@ -93,13 +93,13 @@ export default function MessageInterface({
             if (validTypes.includes(data.type) && data.data) {
               const msgData = data.data;
 
-              // Verifica se é para esta conexão
-              if (msgData.connectionId === selectedConnectionId) {
+              // Verifica se é para esta conexão E se é para a conversa atual
+              if (msgData.connectionId === selectedConnectionId && msgData.phoneNumber === selectedConversation) {
                 console.log(`🎯 PROCESSANDO ${data.type}: "${msgData.content}" para chat ${msgData.phoneNumber}`);
 
                 // CRIA mensagem com ID único baseado no banco de dados
                 const newMsg: RealtimeMessage = {
-                  id: msgData.id.toString(), // Usar ID do banco de dados
+                  id: msgData.id.toString(),
                   content: msgData.content,
                   phoneNumber: msgData.phoneNumber,
                   direction: msgData.direction,
@@ -111,30 +111,11 @@ export default function MessageInterface({
 
                 // VERIFICAÇÃO RIGOROSA contra duplicação
                 setRealtimeMessages(prev => {
-                  // Verificar por ID único
+                  // Verificar por ID único (mais confiável)
                   const existsById = prev.some(m => m.id === newMsg.id);
 
-                  // Verificar por conteúdo duplicado nos últimos 10 segundos
-                  const existsByContent = prev.some(m => 
-                    m.content === newMsg.content &&
-                    m.phoneNumber === newMsg.phoneNumber &&
-                    m.direction === newMsg.direction &&
-                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 10000
-                  );
-
-                  // Verificar por timestamp exato (mensagens idênticas)
-                  const existsByTimestamp = prev.some(m =>
-                    m.content === newMsg.content &&
-                    m.phoneNumber === newMsg.phoneNumber &&
-                    new Date(m.timestamp).getTime() === new Date(newMsg.timestamp).getTime()
-                  );
-
-                  if (existsById || existsByContent || existsByTimestamp) {
-                    console.log("⚠️ Mensagem duplicada detectada, ignorando:", {
-                      byId: existsById,
-                      byContent: existsByContent,
-                      byTimestamp: existsByTimestamp
-                    });
+                  if (existsById) {
+                    console.log("⚠️ Mensagem duplicada detectada por ID, ignorando:", newMsg.id);
                     return prev;
                   }
 
@@ -245,6 +226,14 @@ export default function MessageInterface({
     enabled: !!selectedConnectionId && !!selectedConversation,
     refetchOnWindowFocus: false
   });
+
+  // Limpar mensagens em tempo real quando trocar de conversa
+  useEffect(() => {
+    if (selectedConversation) {
+      console.log(`🔄 Trocando para conversa ${selectedConversation}, limpando mensagens em tempo real`);
+      setRealtimeMessages(prev => prev.filter(msg => msg.phoneNumber === selectedConversation));
+    }
+  }, [selectedConversation]);
 
   // COMBINAR mensagens da API com mensagens em tempo real
   const allMessages = [
