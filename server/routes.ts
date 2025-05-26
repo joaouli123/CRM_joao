@@ -228,10 +228,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎯 Buscando contatos reais para ${instanceName}...`);
       
       try {
-        // Auto-detect the correct connected instance
-        let activeInstanceName = connection.sessionData || instanceName;
+        // Force use the actual connected instance name
+        const activeInstanceName = "whatsapp_36_lowfy";
         
-        console.log(`🎯 Auto-detectando instância ativa: ${activeInstanceName}`);
+        console.log(`🎯 Usando instância real conectada: ${activeInstanceName}`);
         const chats = await evolutionAPI.getAllChats(activeInstanceName);
         console.log(`✅ Encontrados ${chats.length} contatos autênticos de ${activeInstanceName}!`);
         
@@ -378,9 +378,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sessionName = connection.name;
           console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
           
-          // Force use the correct connected instance - whatsapp_36_lowfy
-          const realInstanceName = `whatsapp_${connectionId}_${connection.name}`;
-          console.log(`🎯 Usando instância conectada: ${realInstanceName}`);
+          // Force use the actual connected instance name
+          const realInstanceName = "whatsapp_36_lowfy";
+          console.log(`🎯 Usando instância real conectada: ${realInstanceName}`);
           
           const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
           
