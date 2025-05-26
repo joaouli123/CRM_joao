@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertConnectionSchema, sendMessageSchema } from "@shared/schema";
-import * as WhatsApp from "./whatsapp";
+import { evolutionAPI } from "./evolution-api";
 
 interface WhatsAppSession {
   client: any;
@@ -77,7 +77,7 @@ function generateQRCode(): string {
 
 async function initializeWhatsAppSession(connectionId: number, sessionName: string) {
   try {
-    console.log(`🔄 Iniciando sessão WhatsApp para conexão ${connectionId}: ${sessionName}`);
+    console.log(`🔄 Iniciando sessão WhatsApp real com Evolution API para conexão ${connectionId}: ${sessionName}`);
     
     await storage.updateConnection(connectionId, { status: "connecting" });
     broadcast({ 
@@ -85,26 +85,28 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
       data: { id: connectionId, status: "connecting" }
     });
 
-    // Create WhatsApp client and generate real QR code
+    // Create Evolution API instance and generate real QR code
     setTimeout(async () => {
       try {
-        // Create WhatsApp Web client
-        const whatsappClient = WhatsApp.createWhatsAppClient(connectionId, sessionName);
-        const qrCode = WhatsApp.getQRCode(connectionId);
-        const qrExpiry = new Date(Date.now() + 120000); // 2 minutes expiration
+        const instanceName = `whatsapp_${connectionId}_${sessionName.replace(/\s+/g, '_')}`;
         
-        if (!qrCode) {
-          throw new Error("Failed to generate QR code");
-        }
+        // Create Evolution API instance
+        console.log(`🆕 Criando instância Evolution API: ${instanceName}`);
+        await evolutionAPI.createInstance(instanceName);
+        
+        // Generate real WhatsApp QR code
+        const qrCode = await evolutionAPI.generateQRCode(instanceName);
+        const qrExpiry = new Date(Date.now() + 180000); // 3 minutes expiration
         
         await storage.updateConnection(connectionId, { 
           status: "waiting_qr", 
           qrCode,
-          qrExpiry 
+          qrExpiry,
+          sessionData: instanceName
         });
         
-        console.log(`📱 QR Code real do WhatsApp gerado para conexão ${connectionId}`);
-        console.log(`📋 Dados do QR: ${WhatsApp.getWhatsAppQRData(connectionId)?.substring(0, 50)}...`);
+        console.log(`📱 QR Code REAL do WhatsApp gerado para conexão ${connectionId}!`);
+        console.log(`🔗 Instância Evolution API: ${instanceName}`);
         
         broadcast({ 
           type: "qrCodeReceived", 
@@ -120,85 +122,94 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           const connection = await storage.getConnection(connectionId);
           if (connection && connection.status === "waiting_qr") {
             console.log(`⏰ QR Code expirado para conexão ${connectionId}`);
-            WhatsApp.disconnectClient(connectionId);
+            try {
+              await evolutionAPI.deleteInstance(instanceName);
+            } catch (e) {
+              console.log(`ℹ️ Instância ${instanceName} já foi removida`);
+            }
             await storage.updateConnection(connectionId, { 
               status: "disconnected",
               qrCode: null,
-              qrExpiry: null 
+              qrExpiry: null,
+              sessionData: null
             });
             broadcast({ 
               type: "connectionStatusChanged", 
               data: { id: connectionId, status: "disconnected" }
             });
           }
-        }, 120000);
+        }, 180000);
 
         // Store session
         sessions.set(connectionId, {
-          client: whatsappClient,
+          client: { instanceName },
           connection: await storage.getConnection(connectionId),
           qrTimer,
           status: "waiting_qr"
         });
 
-        // Check for connection every 2 seconds
+        // Check for connection status every 3 seconds
         const connectionChecker = setInterval(async () => {
-          const status = WhatsApp.getClientStatus(connectionId);
-          const session = sessions.get(connectionId);
-          
-          if (status === "connected" && session && session.status === "waiting_qr") {
-            clearInterval(connectionChecker);
-            if (session.qrTimer) {
-              clearTimeout(session.qrTimer);
+          try {
+            const status = await evolutionAPI.getConnectionStatus(instanceName);
+            const session = sessions.get(connectionId);
+            
+            console.log(`🔍 Verificando status da instância ${instanceName}: ${status}`);
+            
+            if (status === "open" && session && session.status === "waiting_qr") {
+              clearInterval(connectionChecker);
+              if (session.qrTimer) {
+                clearTimeout(session.qrTimer);
+              }
+              
+              // Get connection info
+              const connectionInfo = await evolutionAPI.getInstanceInfo(instanceName);
+              const phoneNumber = connectionInfo.instance.phoneNumber;
+              
+              console.log(`✅ Conexão ${connectionId} estabelecida com sucesso! Telefone: ${phoneNumber}`);
+              
+              await storage.updateConnection(connectionId, { 
+                status: "connected",
+                qrCode: null,
+                qrExpiry: null,
+                lastActivity: new Date(),
+                phoneNumber: phoneNumber || null
+              });
+              
+              session.status = "connected";
+              sessions.set(connectionId, session);
+              
+              broadcast({ 
+                type: "connectionStatusChanged", 
+                data: { id: connectionId, status: "connected" }
+              });
+              
+            } else if ((status === "close" || status === "disconnected") && session && session.status !== "disconnected") {
+              clearInterval(connectionChecker);
+              if (session.qrTimer) {
+                clearTimeout(session.qrTimer);
+              }
+              
+              console.log(`❌ Conexão ${connectionId} foi desconectada`);
+              
+              await storage.updateConnection(connectionId, { 
+                status: "disconnected",
+                qrCode: null,
+                qrExpiry: null 
+              });
+              
+              broadcast({ 
+                type: "connectionStatusChanged", 
+                data: { id: connectionId, status: "disconnected" }
+              });
             }
-            
-            const phoneNumber = WhatsApp.getClientPhone(connectionId);
-            console.log(`✅ Conexão ${connectionId} estabelecida com sucesso! Telefone: ${phoneNumber}`);
-            
-            await storage.updateConnection(connectionId, { 
-              status: "connected",
-              qrCode: null,
-              qrExpiry: null,
-              lastActivity: new Date(),
-              phoneNumber: phoneNumber || null
-            });
-            
-            session.status = "connected";
-            sessions.set(connectionId, session);
-            
-            broadcast({ 
-              type: "connectionStatusChanged", 
-              data: { id: connectionId, status: "connected" }
-            });
-          } else if (status === "disconnected" && session) {
-            clearInterval(connectionChecker);
-            if (session.qrTimer) {
-              clearTimeout(session.qrTimer);
-            }
-            
-            await storage.updateConnection(connectionId, { 
-              status: "disconnected",
-              qrCode: null,
-              qrExpiry: null 
-            });
-            
-            broadcast({ 
-              type: "connectionStatusChanged", 
-              data: { id: connectionId, status: "disconnected" }
-            });
+          } catch (error) {
+            console.error(`❌ Erro ao verificar status da conexão ${connectionId}:`, error);
           }
-        }, 2000);
-        
-        // Auto-simulate scan after 20 seconds for demo purposes
-        setTimeout(() => {
-          if (WhatsApp.getClientStatus(connectionId) === "waiting_qr") {
-            console.log(`🤖 Auto-simulando scan do QR Code para conexão ${connectionId} (demo)`);
-            WhatsApp.simulateQRScan(connectionId);
-          }
-        }, 20000);
+        }, 3000);
         
       } catch (error) {
-        console.error(`❌ Erro ao gerar QR Code para conexão ${connectionId}:`, error);
+        console.error(`❌ Erro ao gerar QR Code real para conexão ${connectionId}:`, error);
         await storage.updateConnection(connectionId, { status: "disconnected" });
         broadcast({ 
           type: "connectionStatusChanged", 
@@ -208,7 +219,7 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
     }, 2000);
     
   } catch (error) {
-    console.error(`❌ Erro ao inicializar sessão WhatsApp para conexão ${connectionId}:`, error);
+    console.error(`❌ Erro ao inicializar sessão WhatsApp real para conexão ${connectionId}:`, error);
     
     await storage.updateConnection(connectionId, { status: "disconnected" });
     broadcast({ 
@@ -310,7 +321,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Connection is not active" });
       }
 
-      console.log(`📤 Enviando mensagem via conexão ${connectionId} para ${to}: ${message}`);
+      console.log(`📤 Enviando mensagem REAL via Evolution API conexão ${connectionId} para ${to}: ${message}`);
+
+      const instanceName = connection.sessionData;
+      if (!instanceName) {
+        return res.status(400).json({ error: "Connection session not found" });
+      }
 
       // Store message in database
       const messageRecord = await storage.createMessage({
@@ -321,8 +337,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         direction: "sent",
       });
 
-      // Simulate sending message
-      setTimeout(async () => {
+      // Send real message via Evolution API
+      try {
+        const result = await evolutionAPI.sendMessage(instanceName, to, message);
+        
         await storage.updateMessage(messageRecord.id, { status: "sent" });
         
         // Update connection stats
@@ -338,31 +356,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
 
-        console.log(`✅ Mensagem enviada com sucesso`);
-
-        // Simulate receiving a response after 3 seconds
-        setTimeout(async () => {
-          const responseMessage = await storage.createMessage({
-            connectionId,
-            from: to,
-            to: connection.phoneNumber || "system",
-            body: `Resposta automática para: "${message}"`,
-            direction: "received",
-          });
-
-          await storage.updateConnection(connectionId, { 
-            lastActivity: new Date()
-          });
-
-          broadcast({ 
-            type: "messageReceived", 
-            data: responseMessage
-          });
-
-          console.log(`📥 Resposta automática recebida`);
-        }, 3000);
+        console.log(`✅ Mensagem real enviada com sucesso via Evolution API!`, result);
         
-      }, 1000);
+      } catch (error) {
+        console.error(`❌ Erro ao enviar mensagem via Evolution API:`, error);
+        await storage.updateMessage(messageRecord.id, { status: "failed" });
+      }
 
       res.json({ success: true, message: messageRecord });
     } catch (error) {
