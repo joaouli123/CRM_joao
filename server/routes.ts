@@ -226,13 +226,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎯 Buscando contatos reais para ${instanceName}...`);
       
       try {
-        // Use your real Evolution API instance
-        const realInstanceId = process.env.EVOLUTION_INSTANCE_ID || "663d47ec-d490-4822-9c8d-c258cc46e0c1";
-        const chats = await evolutionAPI.getAllChats(realInstanceId);
-        console.log(`✅ Encontrados ${chats.length} contatos autênticos!`);
+        // Use your connected Evolution API instance
+        const realInstanceName = "whatsapp_34_lowfy";
+        console.log(`🎯 Conectando com sua instância real: ${realInstanceName}`);
+        const chats = await evolutionAPI.getAllChats(realInstanceName);
+        console.log(`✅ Encontrados ${chats.length} contatos autênticos de ${realInstanceName}!`);
         
-        // Create conversations from your real WhatsApp contacts
-        const realConversations = chats.slice(0, 12).map((chat, index) => {
+        // Create conversations from your real WhatsApp contacts - showing more contacts
+        const realConversations = chats.slice(0, 50).map((chat, index) => {
           const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
           if (!phoneNumber) return null;
           
@@ -374,10 +375,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sessionName = connection.name;
           console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
           
-          // Get real messages from Evolution API using your authentic instance
-          const realInstanceId = process.env.EVOLUTION_INSTANCE_ID || "663d47ec-d490-4822-9c8d-c258cc46e0c1";
-          console.log(`🔍 Usando instância real: ${realInstanceId}`);
-          const realMessages = await evolutionAPI.getChatMessages(realInstanceId, `${phoneNumber}@s.whatsapp.net`, limit);
+          // Get real messages from Evolution API using your connected instance
+          const realInstanceName = "whatsapp_34_lowfy";
+          console.log(`🔍 Usando instância conectada: ${realInstanceName}`);
+          const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
           
           if (realMessages && realMessages.length > 0) {
             console.log(`✅ Encontradas ${realMessages.length} mensagens reais para ${phoneNumber}`);
