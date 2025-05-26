@@ -23,6 +23,7 @@ interface RealtimeMessage {
   direction: 'sent' | 'received';
   timestamp: Date;
   status: string;
+  messageHash?: string;
 }
 
 export default function MessageInterface({ 
@@ -43,6 +44,9 @@ export default function MessageInterface({
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Conjunto para rastrear hashes de mensagens processadas
+  const [processedMessageHashes, setProcessedMessageHashes] = useState<Set<string>>(new Set());
+
   // SCROLL AUTOMÁTICO para última mensagem
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,6 +55,12 @@ export default function MessageInterface({
   useEffect(() => {
     scrollToBottom();
   }, [realtimeMessages]);
+
+    // Função para gerar um hash único para cada mensagem
+  const generateMessageHash = (content: string, phoneNumber: string, direction: string, timestamp: Date): string => {
+    const hash = `${content}-${phoneNumber}-${direction}-${timestamp.getTime()}`;
+    return btoa(hash); // Codifica em Base64 para garantir que seja uma string válida
+  };
 
   // WEBSOCKET FORÇADO - GARANTIDO PARA FUNCIONAR
   useEffect(() => {
@@ -87,54 +97,63 @@ export default function MessageInterface({
             const data = JSON.parse(event.data);
             console.log(`📨 WEBSOCKET RECEBEU:`, data);
 
-            // PROCESSA APENAS messageSent e messageReceived - SEM DUPLICAÇÃO
-            const validTypes = ["messageSent", "messageReceived"];
+              // PROCESSA APENAS messageSent e messageReceived - SEM DUPLICAÇÃO
+              const validTypes = ["messageSent", "messageReceived"];
 
-            if (validTypes.includes(data.type) && data.data) {
-              const msgData = data.data;
+              if (validTypes.includes(data.type) && data.data) {
+                const msgData = data.data;
 
-              // Verifica se é para esta conexão E se é para a conversa atual
-              if (msgData.connectionId === selectedConnectionId && msgData.phoneNumber === selectedConversation) {
-                console.log(`🎯 PROCESSANDO ${data.type}: "${msgData.content}" para chat ${msgData.phoneNumber}`);
+                // Verifica se é para esta conexão E se é para a conversa atual
+                if (msgData.connectionId === selectedConnectionId && msgData.phoneNumber === selectedConversation) {
+                  console.log(`🎯 PROCESSANDO ${data.type}: "${msgData.content}" para chat ${msgData.phoneNumber}`);
 
-                // CRIA mensagem com ID único baseado no banco de dados
-                const newMsg: RealtimeMessage = {
-                  id: msgData.id.toString(),
-                  content: msgData.content,
-                  phoneNumber: msgData.phoneNumber,
-                  direction: msgData.direction,
-                  timestamp: new Date(msgData.timestamp),
-                  status: msgData.status || 'delivered'
-                };
+                  // Gerar hash único para esta mensagem
+                  const messageTimestamp = new Date(msgData.timestamp);
+                  const messageHash = generateMessageHash(msgData.content, msgData.phoneNumber, msgData.direction, messageTimestamp);
 
-                console.log(`🚀 MENSAGEM CRIADA:`, newMsg);
-
-                // VERIFICAÇÃO ANTI-DUPLICAÇÃO RIGOROSA
-                setRealtimeMessages(prev => {
-                  // Verificar por ID único
-                  const existsById = prev.some(m => m.id === newMsg.id);
-                  
-                  // Verificar por conteúdo + timestamp (para mensagens muito próximas)
-                  const existsByContentAndTime = prev.some(m => 
-                    m.content === newMsg.content &&
-                    m.phoneNumber === newMsg.phoneNumber &&
-                    m.direction === newMsg.direction &&
-                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000 // 5 segundos
-                  );
-
-                  if (existsById) {
-                    console.log("⚠️ Mensagem duplicada (ID já existe):", newMsg.id);
-                    return prev;
+                  // Verificar se já processamos esta mensagem
+                  if (processedMessageHashes.has(messageHash)) {
+                    console.log(`⚠️ MENSAGEM JÁ PROCESSADA (hash: ${messageHash}), ignorando duplicata:`, msgData.content);
+                    return;
                   }
 
-                  if (existsByContentAndTime) {
-                    console.log("⚠️ Mensagem duplicada (conteúdo similar):", newMsg.content);
-                    return prev;
-                  }
+                  // CRIA mensagem com ID único baseado no banco de dados
+                  const newMsg: RealtimeMessage = {
+                    id: msgData.id.toString(),
+                    content: msgData.content,
+                    phoneNumber: msgData.phoneNumber,
+                    direction: msgData.direction,
+                    timestamp: messageTimestamp,
+                    status: msgData.status || 'delivered',
+                    messageHash: messageHash
+                  };
 
-                  console.log(`✅ NOVA MENSAGEM ADICIONADA: "${newMsg.content}" (ID: ${newMsg.id})`);
-                  return [...prev, newMsg];
-                });
+                  console.log(`🚀 NOVA MENSAGEM CRIADA (hash: ${messageHash}):`, newMsg);
+
+                  // Adicionar hash ao conjunto de mensagens processadas
+                  setProcessedMessageHashes(prev => new Set([...prev, messageHash]));
+
+                  // VERIFICAÇÃO FINAL ANTI-DUPLICAÇÃO
+                  setRealtimeMessages(prev => {
+                    // Verificar por ID único
+                    const existsById = prev.some(m => m.id === newMsg.id);
+
+                    // Verificar por hash
+                    const existsByHash = prev.some(m => m.messageHash === messageHash);
+
+                    if (existsById) {
+                      console.log("⚠️ Mensagem duplicada (ID já existe):", newMsg.id);
+                      return prev;
+                    }
+
+                    if (existsByHash) {
+                      console.log("⚠️ Mensagem duplicada (hash já existe):", messageHash);
+                      return prev;
+                    }
+
+                    console.log(`✅ MENSAGEM ADICIONADA COM SUCESSO: "${newMsg.content}" (ID: ${newMsg.id}, Hash: ${messageHash})`);
+                    return [...prev, newMsg];
+                  });
 
                 // ATUALIZA lista de conversas
                 setConversationsList(prevConvs => {
@@ -207,7 +226,7 @@ export default function MessageInterface({
         wsRef.current = null;
       }
     };
-  }, [selectedConnectionId]);
+  }, [selectedConnectionId, selectedConversation, generateMessageHash]);
 
   // BUSCAR CONVERSAS
   const { data: fetchedConversations = [], isLoading: conversationsLoading } = useQuery({
@@ -245,6 +264,7 @@ export default function MessageInterface({
     if (selectedConversation) {
       console.log(`🔄 Trocando para conversa ${selectedConversation}, limpando mensagens em tempo real`);
       setRealtimeMessages(prev => prev.filter(msg => msg.phoneNumber === selectedConversation));
+      setProcessedMessageHashes(new Set()); // Limpa os hashes ao trocar de conversa
     }
   }, [selectedConversation]);
 
@@ -282,7 +302,7 @@ export default function MessageInterface({
 
       if (response.ok) {
         console.log(`✅ Mensagem enviada com sucesso! Aguardando WebSocket processar...`);
-        
+
         // Limpa input imediatamente (a mensagem aparecerá via WebSocket)
         setNewMessage('');
       } else {
