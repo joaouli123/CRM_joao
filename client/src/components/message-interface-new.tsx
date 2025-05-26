@@ -114,16 +114,27 @@ export default function MessageInterface({
                   // Verificar por ID único
                   const existsById = prev.some(m => m.id === newMsg.id);
 
-                  // Verificar por conteúdo duplicado nos últimos 5 segundos
+                  // Verificar por conteúdo duplicado nos últimos 10 segundos
                   const existsByContent = prev.some(m => 
                     m.content === newMsg.content &&
                     m.phoneNumber === newMsg.phoneNumber &&
                     m.direction === newMsg.direction &&
-                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000
+                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 10000
                   );
 
-                  if (existsById || existsByContent) {
-                    console.log("⚠️ Mensagem duplicada detectada (ID ou conteúdo), ignorando");
+                  // Verificar por timestamp exato (mensagens idênticas)
+                  const existsByTimestamp = prev.some(m =>
+                    m.content === newMsg.content &&
+                    m.phoneNumber === newMsg.phoneNumber &&
+                    new Date(m.timestamp).getTime() === new Date(newMsg.timestamp).getTime()
+                  );
+
+                  if (existsById || existsByContent || existsByTimestamp) {
+                    console.log("⚠️ Mensagem duplicada detectada, ignorando:", {
+                      byId: existsById,
+                      byContent: existsByContent,
+                      byTimestamp: existsByTimestamp
+                    });
                     return prev;
                   }
 

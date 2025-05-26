@@ -15,6 +15,15 @@ interface WhatsAppSession {
 const sessions = new Map<number, WhatsAppSession>();
 const clients = new Set<WebSocket>();
 
+// Controle de mensagens processadas para evitar duplicatas
+const processedMessages = new Set<string>();
+
+// Limpar mensagens processadas antigas a cada 10 minutos
+setInterval(() => {
+  processedMessages.clear();
+  console.log("🧹 Cache de mensagens processadas limpo");
+}, 10 * 60 * 1000);
+
 function broadcast(data: any) {
   const message = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
   console.log(`📡 BROADCASTING para ${clients.size} clientes:`, data);
@@ -541,7 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = parseInt(req.params.id);
       const { to, message } = req.body;
 
-      console.log(`📤 Enviando mensagem via conexão ${connectionId} para ${to}: ${message}`);
+      console.log(`📤 ENVIANDO mensagem via conexão ${connectionId} para ${to}: ${message}`);
 
       // Get connection to verify it exists and is connected
       const connection = await storage.getConnection(connectionId);
@@ -556,61 +565,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Conexão não está ativa" });
       }
 
-      try {
-        // Try to send via Evolution API first
-        const sessionName = connection.name;
-        console.log(`📱 Enviando via Evolution API usando sessão: ${sessionName}`);
+      // SEMPRE usar a instância real conectada
+      const activeInstanceName = "whatsapp_36_lowfy";
+      const cleanPhoneNumber = to.replace('@s.whatsapp.net', '').replace('@c.us', '');
 
-        const result = await evolutionAPI.sendMessage(sessionName, to, message);
-        console.log(`✅ Mensagem enviada via Evolution API:`, result);
+      console.log(`🎯 Enviando via Evolution API - Instância: ${activeInstanceName}, Para: ${cleanPhoneNumber}`);
 
-        // ⚠️ NÃO SALVAR NO BANCO - O webhook da Evolution API fará isso
-        console.log(`🚫 SALVAMENTO removido - webhook da Evolution API irá salvar e fazer broadcast`);
+      const result = await evolutionAPI.sendMessage(activeInstanceName, cleanPhoneNumber, message);
+      console.log(`✅ SUCESSO! Mensagem enviada para o WhatsApp:`, result);
 
-        res.json({ 
-          success: true, 
-          evolutionResult: result,
-          message: "Mensagem enviada com sucesso"
-        });
+      // ⚠️ NÃO SALVAR NO BANCO - Deixar o webhook da Evolution API fazer tudo
+      console.log(`🚫 SALVAMENTO E BROADCAST removidos - webhook da Evolution API irá processar`);
+      console.log(`🎯 Aguardando webhook processar a mensagem enviada...`);
 
-      } catch (evolutionError) {
-        console.log(`⚠️ Erro Evolution API, usando fallback:`, evolutionError);
-
-        // Fallback - create message anyway for testing
-        const newMessage = await storage.createMessage({
-          connectionId,
-          phoneNumber: to,
-          direction: "sent" as const,
-          content: message,
-          status: "sent"
-        });
-
-        // Apenas 1 broadcast no fallback
-        const messageData = {
-          id: newMessage.id,
-          connectionId: connectionId,
-          phoneNumber: to,
-          direction: "sent",
-          content: message,
-          timestamp: new Date().toISOString(),
-          status: "sent"
-        };
-
-        console.log(`📡 Broadcasting mensagem fallback via WebSocket (ÚNICO):`, messageData);
-        broadcast({
-          type: "messageSent",
-          data: messageData
-        });
-
-        res.json({ 
-          success: true, 
-          messageId: newMessage.id,
-          message: "Mensagem enviada (fallback mode)"
-        });
-      }
+      res.json({ 
+        success: true, 
+        message: "✅ Mensagem enviada com sucesso para o WhatsApp!",
+        data: result
+      });
     } catch (error) {
-      console.error("❌ Erro geral:", error);
-      res.status(500).json({ error: "Erro interno do servidor" });
+      console.error(`❌ Erro ao enviar mensagem:`, error);
+      res.status(500).json({ 
+        error: "Failed to send message via Evolution API",
+        details: error 
+      });
     }
   });
 
@@ -783,8 +761,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Processar diferentes tipos de eventos da Evolution API
       if (webhookData.event === "messages.upsert" && webhookData.data?.key) {
         const messageData = webhookData.data;
+        const messageId = messageData.key.id;
 
         console.log("📨 Processando mensagem webhook:", messageData);
+
+        // CONTROLE DE DUPLICATAS - verificar se já processamos esta mensagem
+        if (processedMessages.has(messageId)) {
+          console.log(`⚠️ Mensagem ${messageId} já foi processada, ignorando webhook duplicado`);
+          return res.status(200).json({ success: true, message: "Mensagem já processada" });
+        }
 
         const phoneNumber = messageData.key.remoteJid.replace("@s.whatsapp.net", "");
         const messageContent = messageData.message.conversation || 
@@ -802,6 +787,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`📱 Processando mensagem ${direction.toUpperCase()} - ${phoneNumber}: ${messageContent}`);
 
+          // Verificar se mensagem similar já existe no banco (proteção extra)
+          const existingMessages = await storage.getMessagesByConversation(connection.id, phoneNumber, 10);
+          const isDuplicate = existingMessages.some(msg => 
+            msg.content === messageContent && 
+            msg.direction === direction &&
+            Math.abs(new Date(msg.timestamp).getTime() - Date.now()) < 5000
+          );
+
+          if (isDuplicate) {
+            console.log(`⚠️ Mensagem duplicada detectada no banco, ignorando: ${messageContent}`);
+            processedMessages.add(messageId);
+            return res.status(200).json({ success: true, message: "Mensagem duplicada ignorada" });
+          }
+
           // Criar registro da mensagem
           const newMessage = await storage.createMessage({
             connectionId: connection.id,
@@ -812,6 +811,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           console.log(`💾 Mensagem ${direction.toUpperCase()} salva no banco:`, newMessage);
+
+          // Marcar como processada
+          processedMessages.add(messageId);
 
           // ÚNICO BROADCAST para qualquer mensagem
           const messageToSend = {
