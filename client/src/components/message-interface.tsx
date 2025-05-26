@@ -31,14 +31,21 @@ export default function MessageInterface({
   const connectedConnections = connections.filter(conn => conn.status === "connected");
 
   // Fetch conversations for selected connection
-  const { data: conversations = [] } = useQuery<Conversation[]>({
-    queryKey: ["/api/connections", selectedConnectionId, "conversations"],
+  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations`],
     enabled: !!selectedConnectionId,
+    onSuccess: (data) => {
+      console.log('✅ Conversas carregadas do backend:', data);
+      console.log(`📊 Total de ${data.length} conversas encontradas`);
+    },
+    onError: (error) => {
+      console.error('❌ Erro ao carregar conversas:', error);
+    }
   });
 
   // Fetch messages for selected conversation
-  const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/connections", selectedConnectionId, "conversations", selectedConversation, "messages"],
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConnectionId && !!selectedConversation,
   });
 
