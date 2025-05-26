@@ -27,13 +27,24 @@ export default function Dashboard() {
       setShowQRModal(true);
     },
     onConnectionStatusChanged: (data) => {
+      console.log(`🔄 Status mudou:`, data);
+      console.log(`📱 QR Data atual:`, qrData);
+      
       // Refetch connections when status changes
       refetchConnections();
       
       // Check if connection was established successfully
-      if (data.status === 'connected' || data.status === 'open') {
+      if (data.status === 'connected') {
+        console.log(`✅ Conexão estabelecida! Fechando modal para conexão ${data.id}`);
+        
         // Close QR modal if it's open for this connection
         if (qrData && qrData.connectionId === data.id) {
+          console.log(`🚪 Fechando modal para conexão ${data.id}`);
+          setShowQRModal(false);
+          setQrData(null);
+        } else {
+          // Force close modal if any QR modal is open
+          console.log(`🚪 Forçando fechamento do modal`);
           setShowQRModal(false);
           setQrData(null);
         }
