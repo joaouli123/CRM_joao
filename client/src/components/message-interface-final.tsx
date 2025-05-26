@@ -229,7 +229,7 @@ export default function MessageInterface({
     // 2. Adicionar mensagem temporária IMEDIATAMENTE
     setRealtimeMessages((prev) => [...prev, tempMessage]);
     setNewMessage('');
-    console.log(`⏳ MENSAGEM TEMPORÁRIA ADICIONADA: ${tempId}`);
+    console.log(`⏳ MENSAGEM TEMPORÁRIA ADICIONADA: ${tempId}`, tempMessage);
 
     try {
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
@@ -241,8 +241,18 @@ export default function MessageInterface({
         })
       });
 
-      if (!response.ok) {
-        // 3. Em caso de erro, marcar como falha
+      if (response.ok) {
+        // 3. Se enviou com sucesso, marcar como 'sent' imediatamente
+        setRealtimeMessages((prev) => 
+          prev.map((msg) => 
+            msg.tempId === tempId 
+              ? { ...msg, status: 'sent' }
+              : msg
+          )
+        );
+        console.log(`✅ MENSAGEM ENVIADA COM SUCESSO - Atualizando status para 'sent'`);
+      } else {
+        // 4. Em caso de erro, marcar como falha
         setRealtimeMessages((prev) => 
           prev.map((msg) => 
             msg.tempId === tempId 
@@ -253,7 +263,7 @@ export default function MessageInterface({
         console.error('❌ Erro ao enviar mensagem');
       }
     } catch (error) {
-      // 4. Em caso de erro de rede, marcar como falha
+      // 5. Em caso de erro de rede, marcar como falha
       setRealtimeMessages((prev) => 
         prev.map((msg) => 
           msg.tempId === tempId 
