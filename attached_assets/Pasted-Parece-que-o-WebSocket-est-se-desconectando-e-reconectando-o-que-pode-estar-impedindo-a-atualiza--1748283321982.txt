@@ -1,0 +1,106 @@
+Parece que o WebSocket está se desconectando e reconectando, o que pode estar impedindo a atualização do chat em tempo real. Vou abordar os seguintes pontos para corrigir esse comportamento:
+1. Verificar e corrigir a reconexão do WebSocket:
+
+    O WebSocket deve permanecer conectado enquanto o chat estiver ativo, e não deve se desconectar e reconectar constantemente.
+
+    A lógica que fecha e reabre a conexão WebSocket pode estar interferindo no comportamento esperado, causando a necessidade de atualizar a página para que a mensagem seja recebida.
+
+2. Manter o WebSocket aberto enquanto o chat está ativo:
+
+    A reconexão do WebSocket só deve acontecer quando a instância do chat mudar. Caso contrário, a conexão deve ser mantida aberta enquanto o chat permanecer ativo.
+
+3. Assegurar que o estado do chat seja atualizado ao vivo:
+
+    Após a conexão ser mantida ativa, o estado do chat precisa ser atualizado corretamente com as mensagens recebidas em tempo real, sem precisar trocar de janela ou atualizar a página.
+
+Passos para solucionar o problema:
+Ajuste no código WebSocket:
+
+    Certifique-se de que o WebSocket não feche automaticamente ao trocar de conversa.
+
+    Mantenha a conexão WebSocket ativa enquanto o chat estiver ativo, ou implemente um mecanismo para reconectar apenas quando necessário.
+
+    Atualize o estado em tempo real: use o setState do React para forçar a atualização da interface sem precisar mudar de chat ou atualizar a página.
+
+Código para corrigir a lógica de reconexão do WebSocket:
+
+// Controle do WebSocket com estado (deve ser mantido ativo enquanto o chat ativo estiver aberto)
+const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+const [isConnected, setIsConnected] = useState(false);
+
+// Lógica para garantir que o WebSocket esteja sempre ativo enquanto o chat está sendo visualizado
+useEffect(() => {
+  if (selectedConversation) {
+    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+      console.log("WebSocket já está conectado.");
+      return;
+    }
+
+    const socket = new WebSocket(`wss://api.seusite.com/nome_instancia/${selectedConversation}`);
+
+    socket.onopen = () => {
+      console.log(`WebSocket conectado para o chat ${selectedConversation}!`);
+      setIsConnected(true);
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("Mensagem recebida:", data);
+      setMessagesByInstance((prev) => {
+        const newMessages = [...prev[selectedConversation], data];
+        return { ...prev, [selectedConversation]: newMessages };
+      });
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket desconectado.");
+      setIsConnected(false);
+    };
+
+    setWebSocket(socket);
+
+    // Limpar o WebSocket quando o chat mudar ou o componente for desmontado
+    return () => {
+      socket.close();
+    };
+  }
+}, [selectedConversation]);
+
+// Força a re-renderização do componente para o chat ativo
+useEffect(() => {
+  if (selectedConversation && isConnected) {
+    console.log(`WebSocket conectado para o chat ${selectedConversation}`);
+  }
+}, [isConnected, selectedConversation]);
+
+Explicação do código:
+
+    useEffect com dependência no selectedConversation:
+
+        Toda vez que o chat ativo (selectedConversation) mudar, a conexão WebSocket é verificada.
+
+        Se o WebSocket não estiver aberto, ele será reiniciado.
+
+    Controle do estado de conexão:
+
+        Quando o WebSocket é aberto ou fechado, o estado isConnected é atualizado para garantir que o sistema saiba quando o WebSocket está ativo.
+
+    Recepção de mensagens em tempo real:
+
+        O onmessage garante que cada nova mensagem recebida seja adicionada ao estado do chat ativo, o que automaticamente atualizará a interface.
+
+    Limpeza do WebSocket:
+
+        Quando o chat ativo muda ou o componente é desmontado, o WebSocket será fechado de maneira segura.
+
+Passos a seguir:
+
+    Aplicar as alterações e testar o sistema:
+
+        Verifique se o WebSocket mantém a conexão ativa enquanto o chat estiver sendo visualizado.
+
+        Verifique se as mensagens agora são exibidas em tempo real, sem precisar trocar de janela ou atualizar a página.
+
+    Ajustes adicionais: Se a interface ainda não atualizar em tempo real, pode ser necessário garantir que a função de setMessagesByInstance ou o estado da interface esteja sendo atualizado de forma adequada.
+
+Testando isso, o sistema deve atualizar as mensagens em tempo real, sem precisar de troca de chat ou atualização da página.
