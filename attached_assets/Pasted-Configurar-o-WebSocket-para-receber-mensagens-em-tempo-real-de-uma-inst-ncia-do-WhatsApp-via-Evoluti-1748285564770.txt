@@ -1,0 +1,150 @@
+Configurar o WebSocket para receber mensagens em tempo real de uma instância do WhatsApp via Evolution API e garantir que as mensagens sejam mostradas na interface de usuário sem a necessidade de troca de tela.
+
+Problema a ser Resolvido:
+
+    WebSocket não se conecta corretamente, resultando em mensagens não sendo recebidas em tempo real.
+
+    As mensagens não estão sendo exibidas na interface em tempo real, mesmo que o WebSocket seja conectado corretamente.
+
+    O status de "digitando..." não está funcionando corretamente.
+
+    As mensagens são exibidas apenas quando a tela é atualizada ou a troca de chat é feita.
+
+Passos para Implementação:
+
+    Verifique a Conexão WebSocket com a Evolution API:
+
+        Use a URL correta para conectar ao WebSocket da Evolution API.
+
+        A URL para o WebSocket deve ser configurada conforme a documentação da Evolution API:
+
+            Para modo global: wss://api.seusite.com
+
+            Para modo tradicional: wss://api.seusite.com/nome_instancia
+
+        O código de conexão deve incluir tratamento de erro e reconexão automática.
+
+    Exemplo de conexão com WebSocket:
+
+const socket = new WebSocket('wss://api.seusite.com/nome_instancia');
+
+socket.onopen = () => {
+  console.log('Conectado ao WebSocket');
+};
+
+socket.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Mensagem recebida:', data);
+  // Atualize o estado de mensagens do chat em tempo real
+};
+
+socket.onerror = (err) => {
+  console.error('Erro no WebSocket:', err);
+};
+
+socket.onclose = () => {
+  console.log('WebSocket fechado. Tentando reconectar...');
+  setTimeout(() => connectWebSocket(), 5000);  // Tenta reconectar após 5 segundos
+};
+
+Tratamento de Mensagens em Tempo Real:
+
+    A cada mensagem recebida, verifique se ela pertence ao chat ativo (o que está visível no momento).
+
+    Se for o chat ativo, deve-se forçar a atualização da interface, adicionando a nova mensagem no estado.
+
+Exemplo de atualização de estado em tempo real:
+
+const socket = new WebSocket('wss://api.seusite.com/nome_instancia');
+
+socket.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  
+  // Verifique se a mensagem é do chat ativo
+  if (data.phoneNumber === selectedChat) {
+    // Adicione a mensagem ao estado e force o re-render
+    setMessages(prevMessages => {
+      return [...prevMessages, data];  // Adicionando a nova mensagem ao estado
+    });
+  }
+};
+
+Exibição do Status "Digitando..." em Tempo Real:
+
+    Quando o contato começar a digitar, envie um evento específico para mostrar o status "Digitando...".
+
+    Use o evento "typing" para indicar que o contato está digitando.
+
+Exemplo de implementação do status "Digitando...":
+
+socket.on('typing', (data) => {
+  if (data.phoneNumber === selectedChat) {
+    setTypingStatus(`${data.phoneNumber} está digitando...`);
+  }
+});
+
+// Para resetar quando a digitação parar
+socket.on('stop-typing', (data) => {
+  if (data.phoneNumber === selectedChat) {
+    setTypingStatus('');
+  }
+});
+
+Prevenção de Duplicação de Mensagens:
+
+    Para evitar a duplicação das mensagens, compare o messageId e o timestamp para garantir que a mesma mensagem não seja renderizada duas vezes.
+
+Exemplo de código anti-duplicação:
+
+const addMessage = (data) => {
+  // Verifica se a mensagem já existe
+  const messageExists = messages.some(message => message.id === data.id);
+  if (!messageExists) {
+    setMessages(prevMessages => [...prevMessages, data]);
+  }
+};
+
+Evitar Problemas de Reconexão do WebSocket:
+
+    Ao detectar que o WebSocket foi desconectado, implemente uma estratégia de reconexão que garantirá a continuidade da comunicação.
+
+Exemplo de reconexão:
+
+const connectWebSocket = () => {
+  const socket = new WebSocket('wss://api.seusite.com/nome_instancia');
+  
+  socket.onopen = () => {
+    console.log('WebSocket conectado com sucesso');
+  };
+  
+  socket.onclose = () => {
+    console.log('WebSocket fechado. Tentando reconectar...');
+    setTimeout(connectWebSocket, 5000);  // Tenta reconectar após 5 segundos
+  };
+};
+
+connectWebSocket();
+
+Atualização Automática na Interface:
+
+    Quando uma nova mensagem for recebida, ela deve ser imediatamente exibida na interface, sem a necessidade de atualizar a página ou trocar de chat.
+
+Exemplo de atualização da interface:
+
+    const updateMessages = (message) => {
+      // Atualize diretamente o estado da interface
+      setMessages(prevMessages => [...prevMessages, message]);
+    };
+
+    Finalização e Testes:
+
+        Teste a funcionalidade para garantir que as mensagens apareçam em tempo real.
+
+        Verifique se o status de "digitando..." é exibido corretamente.
+
+        Assegure-se de que as mensagens não estão duplicadas.
+
+        Certifique-se de que a reconexão do WebSocket está funcionando de forma eficaz.
+
+Nota Final:
+Esse código deve ser implementado no frontend para garantir que as mensagens recebidas em tempo real sejam processadas e exibidas corretamente. Certifique-se de que a implementação esteja conectando corretamente com a Evolution API e que o WebSocket seja tratado de forma robusta, com reconexão e atualização de estado.

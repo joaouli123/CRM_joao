@@ -49,72 +49,65 @@ export default function MessageInterface({
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("📨 WebSocket evento recebido:", data);
+        console.log("📨 EVENTO WEBSOCKET RECEBIDO:", data);
 
-        // MENSAGENS EM TEMPO REAL - PROCESSAR QUALQUER TIPO DE MENSAGEM
-        if (data.type === "newMessage") {
-          console.log("🎯 NOVA MENSAGEM DETECTADA:", data);
+        // FORÇA PROCESSAMENTO DE QUALQUER MENSAGEM RECEBIDA
+        if (data.type === "newMessage" && data.data) {
+          console.log("🎯 PROCESSANDO NOVA MENSAGEM:", data);
           
-          const messageData = data.data;
-          if (!messageData) {
-            console.log("❌ Dados da mensagem não encontrados");
-            return;
-          }
+          const msgData = data.data;
+          console.log(`📍 Conexão: ${msgData.connectionId}, Chat: ${msgData.phoneNumber}, Conteúdo: "${msgData.content}"`);
           
-          console.log(`🔍 Conexão atual: ${selectedConnectionId}, Chat atual: ${selectedConversation}`);
-          console.log(`🔍 Mensagem da conexão: ${messageData.connectionId}, Chat: ${messageData.phoneNumber}`);
-          
-          // PROCESSA TODAS AS MENSAGENS DA CONEXÃO ATIVA (independente do chat)
-          if (messageData.connectionId === selectedConnectionId) {
-            console.log(`🔥 PROCESSANDO MENSAGEM DA CONEXÃO ATIVA!`);
+          // PROCESSA SE FOR DA CONEXÃO ATIVA
+          if (msgData.connectionId === selectedConnectionId) {
+            console.log(`✅ MENSAGEM DA CONEXÃO ATIVA ${selectedConnectionId}!`);
             
-            // Adiciona à lista de mensagens em tempo real
-            setMessages((prevMessages) => {
-              const messageId = messageData.id || `${messageData.content}-${Date.now()}`;
-              
-              // Evitar duplicação por ID
-              const exists = prevMessages.some((m: any) => m.id === messageId);
+            // ADICIONA MENSAGEM IMEDIATAMENTE
+            setMessages((prev) => {
+              // Verificar duplicação
+              const exists = prev.some((m: any) => m.id === msgData.id);
               if (exists) {
-                console.log("🔁 Mensagem duplicada ignorada");
-                return prevMessages;
+                console.log("🔄 Mensagem já existe, ignorando duplicação");
+                return prev;
               }
               
-              const newMessage = {
-                id: messageId,
-                content: messageData.content,
-                phoneNumber: messageData.phoneNumber,
-                direction: messageData.direction,
-                timestamp: new Date(messageData.timestamp),
-                status: messageData.status || 'received'
+              // Criar nova mensagem
+              const novaMensagem = {
+                id: msgData.id,
+                content: msgData.content,
+                phoneNumber: msgData.phoneNumber,
+                direction: msgData.direction,
+                timestamp: new Date(msgData.timestamp),
+                status: msgData.status || 'received'
               };
               
-              console.log(`✅ ADICIONANDO MENSAGEM: "${messageData.content}" de ${messageData.phoneNumber}`);
+              console.log(`🚀 ADICIONANDO MENSAGEM EM TEMPO REAL: "${msgData.content}"`);
+              console.log(`📊 Total de mensagens será: ${prev.length + 1}`);
               
-              return [...prevMessages, newMessage];
+              // RETORNA NOVA LISTA
+              const novaLista = [...prev, novaMensagem];
+              return novaLista;
             });
             
-            // SE FOR DO CHAT ATUALMENTE SELECIONADO, força scroll
-            if (messageData.phoneNumber === selectedConversation) {
-              console.log(`🚀 MENSAGEM DO CHAT ATIVO - FORÇANDO ATUALIZAÇÃO VISUAL!`);
-              
-              // Força re-render com timeout
-              setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-              }, 100);
+            // SE FOR DO CHAT ATIVO, força interface
+            if (msgData.phoneNumber === selectedConversation) {
+              console.log(`🎉 MENSAGEM DO CHAT ATIVO ${selectedConversation} - ATUALIZANDO INTERFACE!`);
             }
+            
           } else {
-            console.log(`⚠️ Mensagem de conexão diferente ignorada`);
+            console.log(`⚠️ Mensagem ignorada - conexão diferente (${msgData.connectionId} vs ${selectedConnectionId})`);
           }
         }
 
-        // STATUS "DIGITANDO..." EM TEMPO REAL
+        // DIGITANDO...
         if (data.type === "typing" && data.phoneNumber === selectedConversation) {
           console.log(`✍️ ${data.phoneNumber} está digitando...`);
           setTyping(true);
           setTimeout(() => setTyping(false), 2000);
         }
+        
       } catch (error) {
-        console.error("❌ Erro ao processar mensagem WebSocket:", error);
+        console.error("❌ ERRO WEBSOCKET:", error);
       }
     };
 
