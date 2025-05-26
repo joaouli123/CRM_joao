@@ -71,40 +71,37 @@ export default function MessageInterface({
                     return prev;
                   }
 
-                  // 2. SUBSTITUIR mensagem temporária se for mensagem enviada
-                  if (msgData.direction === 'sent' && msgData.id && msgData.timestamp) {
-                    console.log(`🔍 BUSCANDO mensagem temporária para "${msgData.content}"`);
+                  // 2. SUBSTITUIR mensagem temporária usando tempId (PRIORIDADE) ou fallback
+                  if (msgData.direction === 'sent' && msgData.id) {
+                    console.log(`🔍 BUSCANDO mensagem temporária para "${msgData.content}" | tempId: ${msgData.tempId}`);
                     
-                    const tempIndex = prev.findIndex((m: any) => {
-                      // Buscar mensagem com tempId E status pending
-                      const isTemporary = m.tempId && m.status === 'pending';
-                      const sameContent = m.content === msgData.content;
-                      const sameDirection = m.direction === 'sent'; // Só substituir mensagens enviadas
-                      const samePhoneNumber = m.phoneNumber === msgData.phoneNumber;
-                      
-                      // Calcular diferença de tempo mais precisa
-                      const msgTime = new Date(m.timestamp).getTime();
-                      const dataTime = new Date(msgData.timestamp).getTime();
-                      const timeDiff = Math.abs(msgTime - dataTime);
-                      const withinTimeWindow = timeDiff < 10000; // 10 segundos para ser mais flexível
-                      
-                      const isMatch = isTemporary && sameContent && sameDirection && samePhoneNumber && withinTimeWindow;
-                      
-                      console.log(`🔍 Verificando mensagem:`, {
-                        tempId: m.tempId,
-                        content: m.content,
-                        status: m.status,
-                        isTemporary,
-                        sameContent,
-                        sameDirection,
-                        samePhoneNumber,
-                        timeDiff: `${timeDiff}ms`,
-                        withinTimeWindow,
-                        isMatch
+                    let tempIndex = -1;
+                    
+                    // PRIMEIRO: Buscar por tempId exato (mais confiável)
+                    if (msgData.tempId) {
+                      tempIndex = prev.findIndex((m: any) => m.tempId === msgData.tempId);
+                      if (tempIndex !== -1) {
+                        console.log(`✅ ENCONTRADO por tempId: ${msgData.tempId}`);
+                      }
+                    }
+                    
+                    // FALLBACK: Buscar por conteúdo + direção + telefone se não encontrou por tempId
+                    if (tempIndex === -1) {
+                      tempIndex = prev.findIndex((m: any) => {
+                        const isTemporary = m.tempId && m.status === 'pending';
+                        const sameContent = m.content === msgData.content;
+                        const sameDirection = m.direction === 'sent';
+                        const samePhoneNumber = m.phoneNumber === msgData.phoneNumber;
+                        const timeDiff = Math.abs(new Date(m.timestamp).getTime() - new Date(msgData.timestamp).getTime());
+                        const withinTimeWindow = timeDiff < 10000;
+                        
+                        return isTemporary && sameContent && sameDirection && samePhoneNumber && withinTimeWindow;
                       });
                       
-                      return isMatch;
-                    });
+                      if (tempIndex !== -1) {
+                        console.log(`✅ ENCONTRADO por fallback (conteúdo+tempo)`);
+                      }
+                    }
 
                     if (tempIndex !== -1) {
                       const tempMsg = prev[tempIndex];
@@ -117,11 +114,12 @@ export default function MessageInterface({
                         phoneNumber: msgData.phoneNumber,
                         direction: msgData.direction,
                         timestamp: new Date(msgData.timestamp),
-                        status: 'sent'
+                        status: 'sent',
+                        tempId: undefined // Remover tempId da mensagem oficial
                       };
                       return newMessages;
                     } else {
-                      console.warn(`⚠️ Mensagem oficial recebida, mas não foi possível encontrar uma temporária para substituir: "${msgData.content}"`);
+                      console.warn(`⚠️ Mensagem oficial recebida, mas não foi possível encontrar uma temporária: "${msgData.content}"`);
                     }
                   }
 
@@ -249,7 +247,8 @@ export default function MessageInterface({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: selectedConversation,
-          message: message.trim()
+          message: message.trim(),
+          tempId: tempId
         })
       });
 
@@ -437,9 +436,10 @@ export default function MessageInterface({
                           {formatTime(new Date(message.timestamp))}
                         </span>
                         {message.direction === 'sent' && (
-                          <span className="text-xs">
+                          <span className="text-xs ml-1">
                             {message.status === 'pending' && '⏳'}
-                            {message.status === 'sent' && '✓'}
+                            {message.status === 'sent' && '✔'}
+                            {message.status === 'delivered' && '✔✔'}
                             {message.status === 'failed' && '❌'}
                           </span>
                         )}

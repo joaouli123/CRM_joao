@@ -50,7 +50,7 @@ export function setupSendMessageRoute(app: Express) {
 
     try {
       const connectionId = parseInt(req.params.id);
-      const { to, message: messageText } = req.body;
+      const { to, message: messageText, tempId } = req.body;
 
       // Use Evolution API to send real message
       const activeInstanceName = "whatsapp_36_lowfy";

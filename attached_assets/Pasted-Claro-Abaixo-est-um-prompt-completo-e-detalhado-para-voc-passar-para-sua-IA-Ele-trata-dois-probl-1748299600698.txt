@@ -1,0 +1,106 @@
+Claro! Abaixo está um prompt completo e detalhado para você passar para sua IA. Ele trata dois problemas principais:
+
+    ✅ Eliminação total de mensagens duplicadas usando tempId
+
+    ✅ Exibição de status de entrega com ✔ (enviado) e ✔✔ (entregue)
+
+🧠 PROMPT COMPLETO PARA IA – DEDUPLICAÇÃO + STATUS DE ENTREGA VISUAL
+
+    🔧 Objetivo: Corrigir a duplicação de mensagens no frontend e exibir corretamente o status de envio e entrega, como no WhatsApp (⏳, ✔, ✔✔).
+
+🛠️ 1. Deduplicação robusta com tempId
+
+    Ao enviar uma nova mensagem do frontend:
+
+        Gere um tempId com crypto.randomUUID().
+
+        Armazene localmente essa mensagem com status "pending" e esse tempId.
+
+        Envie esse tempId no corpo da requisição para o backend:
+
+fetch(`/api/connections/${selectedConnectionId}/send`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: selectedConversation,
+    message: message.trim(),
+    tempId: tempId
+  })
+});
+
+🔁 2. Substituição da mensagem temporária pela oficial
+
+    No backend: inclua o tempId na resposta WebSocket do tipo newMessage.
+
+{
+  "type": "newMessage",
+  "data": {
+    "id": 123,
+    "content": "mensagem enviada",
+    "tempId": "uuid-da-temporaria",
+    ...
+  }
+}
+
+    No frontend, ao processar o WebSocket:
+
+        Se msgData.tempId existir, procure por ele em realtimeMessages.
+
+        Se encontrado, substitua a mensagem temporária pela oficial (com id, timestamp, etc.).
+
+        Se não encontrar por tempId, tente por conteúdo + direção + telefone + timestamp próximo (fallback).
+
+        Evite adicionar a nova mensagem se for duplicada (já existe msgData.id).
+
+👁️ 3. Status visual da mensagem (⏳, ✔, ✔✔)
+
+    Adicione uma propriedade status em cada mensagem:
+
+        "pending" → exibido como ⏳ (enviando)
+
+        "sent" → exibido como ✔ (enviado ao servidor)
+
+        "delivered" → exibido como ✔✔ (entregue no destino)
+
+✅ Exemplo no JSX:
+
+{message.status === 'pending' && '⏳'}
+{message.status === 'sent' && '✔'}
+{message.status === 'delivered' && '✔✔'}
+{message.status === 'failed' && '❌'}
+
+📩 4. Atualização de status para delivered
+
+    Quando o WebSocket receber um evento "messageStatus" ou "messageDelivered", atualize o status da mensagem (buscando por id).
+
+    Exemplo de mensagem recebida:
+
+{
+  "type": "messageStatus",
+  "data": {
+    "id": 123,
+    "status": "delivered"
+  }
+}
+
+    No frontend, encontre a mensagem por id e altere status para "delivered".
+
+✅ Resultado esperado
+
+    Mensagem enviada:
+
+        Aparece com ⏳
+
+        Substituída automaticamente pela oficial ✔
+
+        Quando entregue ao destinatário: ✔✔
+
+    Nenhuma duplicação
+
+    Tudo em tempo real
+
+🧪 Extras opcionais:
+
+    Rolar a interface automaticamente até a última mensagem ao adicionar novas.
+
+    Em caso de erro ao enviar, marcar a mensagem como failed.
