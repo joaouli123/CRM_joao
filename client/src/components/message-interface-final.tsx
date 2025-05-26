@@ -189,11 +189,23 @@ export default function MessageInterface({
     refetchIntervalInBackground: true
   });
 
-  // Combinar mensagens da API com mensagens em tempo real E ORDENAR POR TIMESTAMP
-  const allMessages = [
-    ...chatMessages,
+  // Combinar mensagens da API com mensagens em tempo real SEM DUPLICATAS
+  const allMessagesMap = new Map();
+
+  [
+    ...(Array.isArray(chatMessages) ? chatMessages : []),
     ...realtimeMessages.filter((m) => m.phoneNumber === selectedConversation)
-  ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  ].forEach((msg) => {
+    const key = `${msg.id || msg.tempId}`;
+    // Priorizar mensagens com ID real sobre mensagens temporárias
+    if (!allMessagesMap.has(key) || (msg.id && !allMessagesMap.get(key).id)) {
+      allMessagesMap.set(key, msg);
+    }
+  });
+
+  const allMessages = Array.from(allMessagesMap.values()).sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
 
   // Função para rolar automaticamente para o final do chat
   const scrollToBottom = () => {
