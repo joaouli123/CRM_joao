@@ -149,6 +149,19 @@ export default function MessageInterface({
     try {
       console.log(`📤 ENVIANDO MENSAGEM: "${message}" para ${selectedConversation}`);
       
+      // ADICIONAR MENSAGEM LOCALMENTE PRIMEIRO (para aparecer imediatamente)
+      const localMessage = {
+        id: `local-${Date.now()}`,
+        content: message.trim(),
+        phoneNumber: selectedConversation,
+        direction: 'sent',
+        timestamp: new Date(),
+        status: 'sending'
+      };
+      
+      setRealtimeMessages((prev) => [...prev, localMessage]);
+      console.log(`🚀 MENSAGEM LOCAL ADICIONADA: ${message}`);
+      
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -161,8 +174,21 @@ export default function MessageInterface({
       if (response.ok) {
         console.log(`✅ MENSAGEM ENVIADA COM SUCESSO!`);
         setNewMessage('');
+        
+        // Atualizar status da mensagem local para 'sent'
+        setRealtimeMessages((prev) => 
+          prev.map((msg) => 
+            msg.id === localMessage.id 
+              ? { ...msg, status: 'sent' }
+              : msg
+          )
+        );
       } else {
         console.error('❌ Erro ao enviar mensagem');
+        // Remover mensagem local se falhou
+        setRealtimeMessages((prev) => 
+          prev.filter((msg) => msg.id !== localMessage.id)
+        );
       }
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error);
