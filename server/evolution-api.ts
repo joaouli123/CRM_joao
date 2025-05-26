@@ -126,7 +126,8 @@ class EvolutionAPI {
   async getConnectionStatus(instanceName: string): Promise<string> {
     try {
       const info = await this.getInstanceInfo(instanceName);
-      return info.instance.status;
+      // Evolution API returns 'state' field, not 'status'
+      return info.instance.state || info.instance.status || 'disconnected';
     } catch (error) {
       console.error(`❌ Erro ao verificar status da instância ${instanceName}:`, error);
       return 'disconnected';
