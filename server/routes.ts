@@ -96,32 +96,51 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
             const status = await evolutionAPI.getConnectionStatus(instanceName);
             const session = sessions.get(connectionId);
             
-            if (status === "open" && session && session.status === "waiting_qr") {
+            if (status === "open" && session && (session.status === "waiting_qr" || session.status === "connecting")) {
               clearInterval(connectionChecker);
               if (session.qrTimer) {
                 clearTimeout(session.qrTimer);
               }
               
-              const connectionInfo = await evolutionAPI.getInstanceInfo(instanceName);
-              const phoneNumber = connectionInfo.instance.phoneNumber;
-              
-              console.log(`✅ Conexão ${connectionId} estabelecida com sucesso! Telefone: ${phoneNumber}`);
-              
-              await storage.updateConnection(connectionId, { 
-                status: "connected",
-                qrCode: null,
-                qrExpiry: null,
-                lastActivity: new Date(),
-                phoneNumber: phoneNumber || null
-              });
-              
-              session.status = "connected";
-              sessions.set(connectionId, session);
-              
-              broadcast({ 
-                type: "connectionStatusChanged", 
-                data: { id: connectionId, status: "connected" }
-              });
+              try {
+                const connectionInfo = await evolutionAPI.getInstanceInfo(instanceName);
+                const phoneNumber = connectionInfo.instance.phoneNumber;
+                
+                console.log(`✅ Conexão ${connectionId} estabelecida com sucesso! Telefone: ${phoneNumber}`);
+                
+                await storage.updateConnection(connectionId, { 
+                  status: "connected",
+                  qrCode: null,
+                  qrExpiry: null,
+                  lastActivity: new Date(),
+                  phoneNumber: phoneNumber || null
+                });
+                
+                session.status = "connected";
+                sessions.set(connectionId, session);
+                
+                broadcast({ 
+                  type: "connectionStatusChanged", 
+                  data: { id: connectionId, status: "connected" }
+                });
+              } catch (error) {
+                console.error(`❌ Erro ao obter informações da conexão ${connectionId}:`, error);
+                // Still mark as connected even if we can't get phone number
+                await storage.updateConnection(connectionId, { 
+                  status: "connected",
+                  qrCode: null,
+                  qrExpiry: null,
+                  lastActivity: new Date()
+                });
+                
+                session.status = "connected";
+                sessions.set(connectionId, session);
+                
+                broadcast({ 
+                  type: "connectionStatusChanged", 
+                  data: { id: connectionId, status: "connected" }
+                });
+              }
             }
           } catch (error) {
             console.error(`❌ Erro ao verificar status da conexão ${connectionId}:`, error);

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, MessageSquare, Clock, Zap } from "lucide-react";
 import { useWebSocket } from "@/lib/websocket";
+import { useToast } from "@/hooks/use-toast";
 import type { Connection } from "@shared/schema";
 
 export default function Dashboard() {
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [showNewConnectionModal, setShowNewConnectionModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQrData] = useState<{ connectionId: number; qrCode: string; expiration: Date } | null>(null);
+  const { toast } = useToast();
 
   // Real-time WebSocket connection
   useWebSocket({
@@ -24,9 +26,25 @@ export default function Dashboard() {
       setQrData(data);
       setShowQRModal(true);
     },
-    onConnectionStatusChanged: () => {
+    onConnectionStatusChanged: (data) => {
       // Refetch connections when status changes
       refetchConnections();
+      
+      // Check if connection was established successfully
+      if (data.status === 'connected' || data.status === 'open') {
+        // Close QR modal if it's open for this connection
+        if (qrData && qrData.connectionId === data.id) {
+          setShowQRModal(false);
+          setQrData(null);
+        }
+        
+        // Show success notification
+        toast({
+          title: "WhatsApp Conectado!",
+          description: `Conexão estabelecida com sucesso.`,
+          variant: "default",
+        });
+      }
     },
   });
 
@@ -178,7 +196,7 @@ export default function Dashboard() {
                       setQrData({
                         connectionId: conn.id,
                         qrCode: conn.qrCode,
-                        expiration: conn.qrExpiration || new Date()
+                        expiration: conn.qrExpiry || new Date()
                       });
                       setShowQRModal(true);
                     }
