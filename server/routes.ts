@@ -17,11 +17,20 @@ const clients = new Set<WebSocket>();
 
 function broadcast(data: any) {
   const message = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
-  clients.forEach(client => {
+  console.log(`📡 BROADCASTING para ${clients.size} clientes:`, data);
+  
+  let sentCount = 0;
+  clients.forEach((client, index) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
+      sentCount++;
+      console.log(`✅ Mensagem enviada para cliente ${index + 1}`);
+    } else {
+      console.log(`❌ Cliente ${index + 1} não conectado (estado: ${client.readyState})`);
     }
   });
+  
+  console.log(`📊 BROADCAST finalizado: ${sentCount}/${clients.size} clientes alcançados`);
 }
 
 // GLOBAL SEND MESSAGE FUNCTION - FOR IMMEDIATE REGISTRATION
@@ -52,19 +61,25 @@ export function setupSendMessageRoute(app: Express) {
         direction: "sent"
       });
 
-      // Broadcast via WebSocket for real-time UI update
-      broadcast({ 
-        type: "newMessage", 
-        data: { 
-          id: newMessage.id,
-          connectionId, 
-          direction: "sent",
-          phoneNumber: cleanPhoneNumber,
-          content: messageText,
-          status: "sent",
-          timestamp: new Date()
-        }
-      });
+      // Broadcast FORÇADO via WebSocket for real-time UI update
+      const messageData = { 
+        id: newMessage.id,
+        connectionId, 
+        direction: "sent",
+        phoneNumber: cleanPhoneNumber,
+        content: messageText,
+        status: "sent",
+        timestamp: new Date().toISOString()
+      };
+
+      // MÚLTIPLOS BROADCASTS para garantir recebimento
+      broadcast({ type: "newMessage", data: messageData });
+      broadcast({ type: "messageSent", data: messageData });
+      
+      // BROADCAST ADICIONAL após delay
+      setTimeout(() => {
+        broadcast({ type: "messageReceived", data: messageData });
+      }, 100);
 
       res.json({ 
         success: true, 

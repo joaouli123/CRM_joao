@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MessageCircle, Send, Phone, Clock, User, Search, ChevronDown } from "lucide-react";
+import { MessageCircle, Send, User, Search } from "lucide-react";
 import { Connection, Conversation, Message } from "@/lib/api";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
 
@@ -15,6 +14,15 @@ interface MessageInterfaceProps {
   connections: Connection[];
   selectedConnectionId: number | null;
   onSelectConnection: (id: number) => void;
+}
+
+interface RealtimeMessage {
+  id: string;
+  content: string;
+  phoneNumber: string;
+  direction: 'sent' | 'received';
+  timestamp: Date;
+  status: string;
 }
 
 export default function MessageInterface({ 
@@ -25,45 +33,50 @@ export default function MessageInterface({
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
-  
-  // Estados para tempo real conforme especificação
-  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [typing, setTyping] = useState(false);
-  
-  // Multi-instance state management
-  const [chatsByInstance, setChatsByInstance] = useState<Record<string, Conversation[]>>({});
-  const [messagesByInstance, setMessagesByInstance] = useState<Record<string, Record<string, Message[]>>>({});
-  const [skipByInstance, setSkipByInstance] = useState<Record<string, number>>({});
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMoreChats, setHasMoreChats] = useState<Record<string, boolean>>({});
 
-  // Get current instance info
-  const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
-  const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
+  // Estados FORÇADOS para mensagens em tempo real
+  const [realtimeMessages, setRealtimeMessages] = useState<RealtimeMessage[]>([]);
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
+  const [conversationsList, setConversationsList] = useState<any[]>([]);
 
-  // WebSocket FORÇADO para mensagens em tempo real
+  const queryClient = useQueryClient();
+  const wsRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // SCROLL AUTOMÁTICO para última mensagem
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [realtimeMessages]);
+
+  // WEBSOCKET FORÇADO - GARANTIDO PARA FUNCIONAR
   useEffect(() => {
     if (!selectedConnectionId) return;
 
-    console.log(`🔌 INICIANDO WebSocket FORÇADO para conexão ${selectedConnectionId}`);
-    
+    console.log(`🔌 INICIANDO WEBSOCKET FORÇADO para conexão ${selectedConnectionId}`);
+
     let reconnectTimer: NodeJS.Timeout | null = null;
-    let socket: WebSocket | null = null;
+    let shouldReconnect = true;
 
     const connectWebSocket = () => {
+      if (!shouldReconnect) return;
+
       try {
         const wsUrl = `wss://${window.location.host}/api/ws`;
         console.log(`📡 Conectando WebSocket FORÇADO: ${wsUrl}`);
-        
-        socket = new WebSocket(wsUrl);
+
+        const socket = new WebSocket(wsUrl);
+        wsRef.current = socket;
 
         socket.onopen = () => {
-          console.log(`✅ WebSocket FORÇADO conectado! Conexão: ${selectedConnectionId}`);
-          setIsConnected(true);
-          
-          // FORÇA o registro para receber mensagens
-          socket?.send(JSON.stringify({
+          console.log(`✅ WEBSOCKET FORÇADO CONECTADO! Conexão: ${selectedConnectionId}`);
+          setIsWebSocketConnected(true);
+
+          // REGISTRAR para receber mensagens desta conexão
+          socket.send(JSON.stringify({
             type: "register",
             connectionId: selectedConnectionId
           }));
@@ -74,75 +87,50 @@ export default function MessageInterface({
             const data = JSON.parse(event.data);
             console.log(`📨 WEBSOCKET RECEBEU:`, data);
 
-            // FORÇA o processamento de QUALQUER mensagem relacionada à conexão
-            if (data.data && data.data.connectionId === selectedConnectionId) {
+            // PROCESSA QUALQUER TIPO DE MENSAGEM NOVA
+            if ((data.type === "newMessage" || data.type === "messageSent" || data.type === "messageReceived") && data.data) {
               const msgData = data.data;
-              const chatPhone = msgData.phoneNumber || msgData.from || msgData.to;
-              
-              console.log(`🎯 PROCESSANDO MENSAGEM FORÇADA: ${msgData.content || msgData.body} para chat ${chatPhone}`);
-              
-              // FORÇAR atualização imediata das mensagens
-              setMessagesByInstance((prevMessages) => {
-                const currentMessages = prevMessages[instanceKey]?.[chatPhone] || [];
-                
-                // Anti-duplicação
-                const messageId = msgData.id || `msg_${Date.now()}_${Math.random()}`;
-                const exists = currentMessages.some((m: any) => m.id === messageId);
-                if (exists) {
-                  console.log("⚠️ Mensagem duplicada ignorada");
-                  return prevMessages;
-                }
-                
-                // NOVA MENSAGEM FORÇADA
-                const newMessage = {
-                  id: messageId,
-                  content: msgData.content || msgData.body || msgData.message || "Nova mensagem",
-                  phoneNumber: chatPhone,
+
+              // VERIFICA se é da conexão ativa
+              if (msgData.connectionId === selectedConnectionId) {
+                console.log(`🎯 PROCESSANDO MENSAGEM FORÇADA: "${msgData.content}" para chat ${msgData.phoneNumber}`);
+
+                // ADICIONA MENSAGEM IMEDIATAMENTE
+                const newMsg: RealtimeMessage = {
+                  id: msgData.id || `msg_${Date.now()}_${Math.random()}`,
+                  content: msgData.content || msgData.message || msgData.body || "Nova mensagem",
+                  phoneNumber: msgData.phoneNumber || msgData.to || msgData.from,
                   direction: msgData.direction || (msgData.fromMe ? "sent" : "received"),
                   timestamp: new Date(msgData.timestamp || Date.now()),
                   status: msgData.status || 'delivered'
                 };
-                
-                console.log(`🚀 ADICIONANDO MENSAGEM FORÇADA: "${newMessage.content}" para ${chatPhone}`);
-                console.log(`📊 Total mensagens antes: ${currentMessages.length}, depois: ${currentMessages.length + 1}`);
-                
-                return {
-                  ...prevMessages,
-                  [instanceKey]: {
-                    ...prevMessages[instanceKey],
-                    [chatPhone]: [...currentMessages, newMessage]
-                  }
-                };
-              });
 
-              // FORÇAR atualização da lista de conversas
-              setChatsByInstance(prev => {
-                const currentChats = prev[instanceKey] || [];
-                const updatedChats = currentChats.map(chat => {
-                  if (chat.phoneNumber === chatPhone) {
-                    return {
-                      ...chat,
-                      lastMessage: msgData.content || msgData.body || "Nova mensagem",
-                      lastMessageTime: new Date(msgData.timestamp || Date.now()),
-                      unreadCount: msgData.direction === 'received' && selectedConversation !== chatPhone 
-                        ? (chat.unreadCount || 0) + 1 
-                        : chat.unreadCount || 0
-                    };
+                setRealtimeMessages(prev => {
+                  // Anti-duplicação
+                  const exists = prev.some(m => m.id === newMsg.id);
+                  if (exists) {
+                    console.log("⚠️ Mensagem duplicada ignorada");
+                    return prev;
                   }
-                  return chat;
+
+                  console.log(`🚀 ADICIONANDO MENSAGEM FORÇADA: "${newMsg.content}"`);
+                  return [...prev, newMsg];
                 });
-                
-                return {
-                  ...prev,
-                  [instanceKey]: updatedChats
-                };
-              });
-            }
 
-            // STATUS "DIGITANDO..."
-            if (data.type === "typing" && data.phoneNumber === selectedConversation) {
-              setTyping(true);
-              setTimeout(() => setTyping(false), 2000);
+                // ATUALIZA lista de conversas
+                setConversationsList(prevConvs => {
+                  return prevConvs.map(conv => {
+                    if (conv.phoneNumber === newMsg.phoneNumber) {
+                      return {
+                        ...conv,
+                        lastMessage: newMsg.content,
+                        lastMessageTime: newMsg.timestamp
+                      };
+                    }
+                    return conv;
+                  });
+                });
+              }
             }
           } catch (error) {
             console.error("❌ Erro ao processar WebSocket:", error);
@@ -151,21 +139,23 @@ export default function MessageInterface({
 
         socket.onerror = (error) => {
           console.error("❌ WebSocket erro:", error);
+          setIsWebSocketConnected(false);
         };
 
         socket.onclose = () => {
           console.log("🔴 WebSocket FORÇADO fechado, tentando reconectar...");
-          setIsConnected(false);
-          
-          // Reconexão automática
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(connectWebSocket, 2000);
+          setIsWebSocketConnected(false);
+
+          if (shouldReconnect) {
+            reconnectTimer = setTimeout(connectWebSocket, 2000);
+          }
         };
 
       } catch (error) {
         console.error("❌ Erro ao criar WebSocket:", error);
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(connectWebSocket, 2000);
+        if (shouldReconnect) {
+          reconnectTimer = setTimeout(connectWebSocket, 2000);
+        }
       }
     };
 
@@ -173,284 +163,82 @@ export default function MessageInterface({
 
     return () => {
       console.log("🔌 Limpando WebSocket FORÇADO");
+      shouldReconnect = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (socket) socket.close();
-    };
-  }, [selectedConnectionId, instanceKey]);
-
-  // Função para enviar notificação de digitando
-  const sendTypingNotification = () => {
-    if (webSocket && webSocket.readyState === WebSocket.OPEN) {
-      webSocket.send(
-        JSON.stringify({
-          type: "typing",
-          phoneNumber: selectedConversation,
-        })
-      );
-    }
-  };
-
-  // Função para enviar mensagens em tempo real
-  const sendMessage = async (message: string) => {
-    if (!selectedConversation || !selectedConnectionId || !message.trim()) return;
-
-    try {
-      const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: selectedConversation,
-          message: message.trim()
-        })
-      });
-
-      if (response.ok) {
-        console.log(`✅ Mensagem "${message}" enviada com sucesso!`);
-        setNewMessage(''); // Limpa o input
-      } else {
-        console.error('Erro ao enviar mensagem');
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
-    } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
-    }
-  };
+    };
+  }, [selectedConnectionId]);
 
-      
-  
-  // Load initial chats for current instance
-  const { isLoading: conversationsLoading } = useQuery({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations`, 0],
+  // BUSCAR CONVERSAS
+  const { data: fetchedConversations = [], isLoading: conversationsLoading } = useQuery({
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations`],
     queryFn: async () => {
-      if (!selectedConnectionId || !instanceKey) return [];
-      
-      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations?limit=12&skip=0`);
-      const chats = await response.json();
-      
-      // Initialize chats for this instance
-      setChatsByInstance(prev => ({
-        ...prev,
-        [instanceKey]: chats
-      }));
-      
-      // Initialize skip counter
-      setSkipByInstance(prev => ({
-        ...prev,
-        [instanceKey]: 0
-      }));
-      
-      // Check if there are more chats
-      setHasMoreChats(prev => ({
-        ...prev,
-        [instanceKey]: chats.length === 12
-      }));
-      
-      console.log(`✅ ${chats.length} contatos carregados para instância ${instanceKey}`);
-      return chats;
+      if (!selectedConnectionId) return [];
+      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations?limit=50&skip=0`);
+      return response.json();
     },
-    enabled: !!selectedConnectionId && !!instanceKey,
+    enabled: !!selectedConnectionId,
+    refetchOnWindowFocus: false
   });
 
-  // Load more chats for current instance
-  const loadMoreChats = async () => {
-    if (!selectedConnectionId || !instanceKey || loadingMore) return;
-    
-    setLoadingMore(true);
-    try {
-      const currentSkip = skipByInstance[instanceKey] || 0;
-      const newSkip = currentSkip + 12;
-      
-      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations?limit=12&skip=${newSkip}`);
-      const newChats = await response.json();
-      
-      // Accumulate chats for this instance
-      setChatsByInstance(prev => ({
-        ...prev,
-        [instanceKey]: [...(prev[instanceKey] || []), ...newChats]
-      }));
-      
-      // Update skip for this instance
-      setSkipByInstance(prev => ({
-        ...prev,
-        [instanceKey]: newSkip
-      }));
-      
-      // Check if there are more chats
-      setHasMoreChats(prev => ({
-        ...prev,
-        [instanceKey]: newChats.length === 12
-      }));
-      
-      console.log(`✅ Carregados mais ${newChats.length} contatos para instância ${instanceKey}`);
-      
-    } catch (error) {
-      console.error('Erro ao carregar mais contatos:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  // Load messages for specific chat on demand
-  const loadChatMessages = async (phoneNumber: string) => {
-    if (!selectedConnectionId || !instanceKey) return;
-    
-    try {
-      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${phoneNumber}/messages`);
-      const messages = await response.json();
-      
-      // Store messages for this instance and chat
-      setMessagesByInstance(prev => ({
-        ...prev,
-        [instanceKey]: {
-          ...prev[instanceKey],
-          [phoneNumber]: messages
-        }
-      }));
-      
-      console.log(`✅ ${messages.length} mensagens carregadas para ${phoneNumber} na instância ${instanceKey}`);
-      
-    } catch (error) {
-      console.error('Erro ao carregar mensagens:', error);
-    }
-  };
-
-  // Handle conversation selection - load messages on demand
-  const handleConversationSelect = (phoneNumber: string) => {
-    setSelectedConversation(phoneNumber);
-    // Load messages only when chat is opened
-    loadChatMessages(phoneNumber);
-  };
-
-  // WebSocket for real-time messages per instance
+  // ATUALIZAR lista de conversas quando carregar
   useEffect(() => {
-    if (!selectedConnection || selectedConnection.status !== "connected") return;
+    if (fetchedConversations.length > 0) {
+      setConversationsList(fetchedConversations);
+    }
+  }, [fetchedConversations]);
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
-    const socket = new WebSocket(wsUrl);
+  // BUSCAR MENSAGENS da conversa selecionada
+  const { data: apiMessages = [] } = useQuery({
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`],
+    queryFn: async () => {
+      if (!selectedConnectionId || !selectedConversation) return [];
+      const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`);
+      return response.json();
+    },
+    enabled: !!selectedConnectionId && !!selectedConversation,
+    refetchOnWindowFocus: false
+  });
 
-    socket.onopen = () => {
-      console.log(`🔌 WebSocket conectado para instância ${instanceKey}`);
-    };
+  // COMBINAR mensagens da API com mensagens em tempo real
+  const allMessages = [
+    ...apiMessages.map((msg: any) => ({
+      id: msg.id,
+      content: msg.content,
+      phoneNumber: msg.phoneNumber,
+      direction: msg.direction,
+      timestamp: new Date(msg.timestamp),
+      status: msg.status || 'delivered'
+    })),
+    ...realtimeMessages.filter(msg => msg.phoneNumber === selectedConversation)
+  ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Handle real-time messages
-        if (data.type === "newMessage" && data.data.connectionId === selectedConnectionId) {
-          const message = data.data;
-          const chatId = message.phoneNumber;
-          
-          // If this chat is currently open, add message to current view
-          if (chatId === selectedConversation && instanceKey) {
-            setMessagesByInstance(prev => ({
-              ...prev,
-              [instanceKey]: {
-                ...prev[instanceKey],
-                [chatId]: [...(prev[instanceKey]?.[chatId] || []), message]
-              }
-            }));
-          }
-          
-          // Update chat list preview with new message
-          setChatsByInstance(prev => ({
-            ...prev,
-            [instanceKey]: (prev[instanceKey] || []).map(chat => 
-              chat.phoneNumber === chatId 
-                ? { ...chat, lastMessage: message.content, lastMessageTime: new Date(message.timestamp) }
-                : chat
-            )
-          }));
-          
-          console.log(`📨 Nova mensagem em tempo real para ${chatId}: ${message.content}`);
-        }
-      } catch (error) {
-        console.error('Erro ao processar mensagem WebSocket:', error);
-      }
-    };
-
-    socket.onclose = () => {
-      console.log(`🔌 WebSocket desconectado para instância ${instanceKey}`);
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, [selectedConnectionId, instanceKey, selectedConversation]);
-
-  // POLLING FORÇADO para garantir mensagens em tempo real
-  useEffect(() => {
-    if (!selectedConversation || !selectedConnectionId) return;
-
-    console.log(`⏰ INICIANDO POLLING FORÇADO para ${selectedConversation}`);
-
-    const pollMessages = async () => {
-      try {
-        const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`);
-        const serverMessages = await response.json();
-
-        if (serverMessages.length > 0) {
-          const currentMessages = messagesByInstance[instanceKey]?.[selectedConversation] || [];
-          
-          // Verificar se há mensagens novas no servidor
-          const newestServerMessage = serverMessages[serverMessages.length - 1];
-          const newestClientMessage = currentMessages[currentMessages.length - 1];
-
-          if (!newestClientMessage || 
-              newestServerMessage.id !== newestClientMessage.id ||
-              serverMessages.length !== currentMessages.length) {
-            
-            console.log(`🔄 POLLING: Atualizando mensagens para ${selectedConversation}`);
-            console.log(`📊 Servidor: ${serverMessages.length}, Cliente: ${currentMessages.length}`);
-
-            setMessagesByInstance(prev => ({
-              ...prev,
-              [instanceKey]: {
-                ...prev[instanceKey],
-                [selectedConversation]: serverMessages
-              }
-            }));
-          }
-        }
-      } catch (error) {
-        console.error('❌ Erro no polling:', error);
-      }
-    };
-
-    // Polling a cada 2 segundos
-    const pollInterval = setInterval(pollMessages, 2000);
-    
-    // Executar imediatamente
-    pollMessages();
-
-    return () => {
-      console.log(`⏰ PARANDO POLLING para ${selectedConversation}`);
-      clearInterval(pollInterval);
-    };
-  }, [selectedConversation, selectedConnectionId, instanceKey]);
-
-  // Get conversations for current instance
-  const conversations = chatsByInstance[instanceKey] || [];
-  const currentMessages = selectedConversation && instanceKey 
-    ? messagesByInstance[instanceKey]?.[selectedConversation] || []
-    : [];
-
-  // Filter conversations based on search
-  const filteredConversations = conversations.filter(conv => 
-    conv.contactName?.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    conv.phoneNumber.includes(searchFilter)
-  );
-
-  // Send message function - messages will be added via WebSocket
-  const sendMessage = async () => {
+  // FUNÇÃO FORÇADA PARA ENVIAR MENSAGEM
+  const sendMessageForced = async () => {
     if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
 
-    const messageText = newMessage;
-    setNewMessage(''); // Clear input immediately
+    const messageText = newMessage.trim();
+    setNewMessage(''); // Limpa input imediatamente
 
     try {
-      console.log(`📤 Enviando mensagem para ${selectedConversation}: ${messageText}`);
-      
+      console.log(`📤 ENVIANDO MENSAGEM FORÇADA para ${selectedConversation}: ${messageText}`);
+
+      // ADICIONA mensagem IMEDIATAMENTE na UI (feedback visual instantâneo)
+      const sentMessage: RealtimeMessage = {
+        id: `sent_${Date.now()}_${Math.random()}`,
+        content: messageText,
+        phoneNumber: selectedConversation,
+        direction: 'sent',
+        timestamp: new Date(),
+        status: 'sending'
+      };
+
+      setRealtimeMessages(prev => [...prev, sentMessage]);
+
+      // ENVIA para o servidor
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -461,50 +249,42 @@ export default function MessageInterface({
       });
 
       if (response.ok) {
-        const result = await response.json();
-        console.log(`✅ Mensagem enviada com sucesso:`, result);
-        
-        // Adicionar mensagem imediatamente na UI para feedback visual
-        const sentMessage = {
-          id: `sent_${Date.now()}_${Math.random()}`,
-          content: messageText,
-          phoneNumber: selectedConversation,
-          direction: 'sent' as const,
-          timestamp: new Date(),
-          status: 'sent'
-        };
+        console.log(`✅ SUCESSO! Mensagem "${messageText}" enviada!`);
 
-        setMessagesByInstance(prev => ({
-          ...prev,
-          [instanceKey]: {
-            ...prev[instanceKey],
-            [selectedConversation]: [...(prev[instanceKey]?.[selectedConversation] || []), sentMessage]
-          }
-        }));
-
-        // Atualizar lista de conversas
-        setChatsByInstance(prev => ({
-          ...prev,
-          [instanceKey]: (prev[instanceKey] || []).map(chat => 
-            chat.phoneNumber === selectedConversation 
-              ? { ...chat, lastMessage: messageText, lastMessageTime: new Date() }
-              : chat
+        // ATUALIZA status da mensagem para "sent"
+        setRealtimeMessages(prev => 
+          prev.map(msg => 
+            msg.id === sentMessage.id 
+              ? { ...msg, status: 'sent' }
+              : msg
           )
-        }));
-        
+        );
+
+        // ATUALIZA lista de conversas
+        setConversationsList(prev => 
+          prev.map(conv => 
+            conv.phoneNumber === selectedConversation 
+              ? { ...conv, lastMessage: messageText, lastMessageTime: new Date() }
+              : conv
+          )
+        );
       } else {
         console.error(`❌ Erro ao enviar mensagem:`, response.status);
-        setNewMessage(messageText); // Restore message on error
+        // Remove mensagem em caso de erro
+        setRealtimeMessages(prev => prev.filter(msg => msg.id !== sentMessage.id));
+        setNewMessage(messageText); // Restaura texto
       }
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
-      setNewMessage(messageText); // Restore message on error
+      console.error('❌ Erro ao enviar mensagem:', error);
+      // Remove mensagem em caso de erro
+      setRealtimeMessages(prev => prev.filter(msg => msg.id !== sentMessage.id));
+      setNewMessage(messageText); // Restaura texto
     }
   };
 
   const formatTime = (date: Date | string) => {
     const messageDate = typeof date === 'string' ? parseISO(date) : date;
-    
+
     if (isToday(messageDate)) {
       return format(messageDate, 'HH:mm');
     } else if (isYesterday(messageDate)) {
@@ -513,6 +293,12 @@ export default function MessageInterface({
       return format(messageDate, 'dd/MM');
     }
   };
+
+  // FILTRAR conversas
+  const filteredConversations = conversationsList.filter(conv => 
+    conv.contactName?.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    conv.phoneNumber.includes(searchFilter)
+  );
 
   if (!selectedConnectionId) {
     return (
@@ -528,21 +314,19 @@ export default function MessageInterface({
 
   return (
     <div className="h-full flex">
-      {/* Lista de Conversas */}
+      {/* LISTA DE CONVERSAS */}
       <div className="w-1/3 border-r flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
             Conversas
-            {selectedConnection && (
-              <Badge variant="outline" className="ml-auto">
-                {selectedConnection.name}
-              </Badge>
-            )}
+            <Badge variant={isWebSocketConnected ? "default" : "destructive"} className="ml-auto">
+              {isWebSocketConnected ? "Online" : "Offline"}
+            </Badge>
           </CardTitle>
         </CardHeader>
 
-        {/* Pesquisa */}
+        {/* PESQUISA */}
         <div className="px-6 pb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -555,25 +339,19 @@ export default function MessageInterface({
           </div>
         </div>
 
-        {/* Lista de conversas */}
+        {/* LISTA DE CONVERSAS */}
         <ScrollArea className="flex-1">
-          {!selectedConnectionId ? (
-            <div className="p-6 text-center text-gray-500">
-              <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Selecione uma conexão para ver as conversas</p>
-            </div>
-          ) : filteredConversations.length === 0 && !conversationsLoading ? (
+          {filteredConversations.length === 0 && !conversationsLoading ? (
             <div className="p-6 text-center text-gray-500">
               <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-sm">Nenhuma conversa encontrada</p>
-              <p className="text-xs">As conversas aparecerão aqui</p>
             </div>
           ) : (
             <div className="space-y-0">
               {filteredConversations.map((conversation, index) => (
                 <button
                   key={conversation.phoneNumber || `conversation-${index}`}
-                  onClick={() => handleConversationSelect(conversation.phoneNumber)}
+                  onClick={() => setSelectedConversation(conversation.phoneNumber)}
                   className={`w-full p-4 text-left hover:bg-gray-50 border-b border-gray-100 transition-colors ${
                     selectedConversation === conversation.phoneNumber ? 'bg-green-50 border-r-4 border-r-green-500' : ''
                   }`}
@@ -584,7 +362,7 @@ export default function MessageInterface({
                         <User className="h-6 w-6" />
                       </AvatarFallback>
                     </Avatar>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="font-semibold text-gray-900 truncate">
@@ -594,53 +372,32 @@ export default function MessageInterface({
                           {formatTime(conversation.lastMessageTime)}
                         </span>
                       </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600 truncate flex-1">
-                          {conversation.lastMessage}
-                        </p>
-                        {conversation.unreadCount > 0 && (
-                          <Badge className="bg-green-500 text-white ml-2 px-2 py-1 text-xs">
-                            {conversation.unreadCount}
-                          </Badge>
-                        )}
-                      </div>
+
+                      <p className="text-sm text-gray-600 truncate">
+                        {conversation.lastMessage}
+                      </p>
                     </div>
                   </div>
                 </button>
               ))}
-              
-              {/* Botão Carregar Mais */}
-              {hasMoreChats[instanceKey] && (
-                <div className="p-4">
-                  <Button 
-                    onClick={loadMoreChats} 
-                    disabled={loadingMore}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    {loadingMore ? "Carregando..." : "Carregar mais contatos"}
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </ScrollArea>
       </div>
 
-      {/* Área de Chat */}
+      {/* ÁREA DE CHAT */}
       <div className="flex-1 flex flex-col">
         {!selectedConversation ? (
           <div className="h-full flex items-center justify-center text-gray-500">
             <div className="text-center">
               <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg font-medium">Nenhuma conversa selecionada</p>
-              <p className="text-sm">Clique em uma conversa para começar a conversar</p>
+              <p className="text-sm">Clique em uma conversa para começar</p>
             </div>
           </div>
         ) : (
           <>
-            {/* Header do Chat */}
+            {/* HEADER DO CHAT */}
             <div className="p-4 border-b bg-white">
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
@@ -659,18 +416,14 @@ export default function MessageInterface({
               </div>
             </div>
 
-            {/* Mensagens */}
+            {/* MENSAGENS */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {currentMessages.map((message, index) => {
-                  // CHAVE ABSOLUTAMENTE ÚNICA - RESOLVE PROBLEMA DE DUPLICAÇÃO DEFINITIVAMENTE
-                  const uniqueKey = `message-${index}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                  
-                  return (
-                    <div
-                      key={uniqueKey}
-                      className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
-                    >
+                {allMessages.map((message, index) => (
+                  <div
+                    key={`${message.id}-${index}`}
+                    className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
+                  >
                     <div
                       className={`max-w-[70%] rounded-lg px-3 py-2 ${
                         message.direction === 'sent'
@@ -683,25 +436,33 @@ export default function MessageInterface({
                         message.direction === 'sent' ? 'text-green-100' : 'text-gray-500'
                       }`}>
                         {formatTime(message.timestamp)}
+                        {message.direction === 'sent' && (
+                          <span className="ml-1">
+                            {message.status === 'sending' ? '⏳' : '✓'}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
-                  );
-                })}
+                ))}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
-            {/* Input de Mensagem */}
+            {/* INPUT DE MENSAGEM */}
             <div className="p-4 border-t bg-white">
               <div className="flex gap-2">
                 <Input
                   placeholder="Digite sua mensagem..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessageForced()}
                   className="flex-1"
                 />
-                <Button onClick={sendMessage} disabled={!newMessage.trim()}>
+                <Button 
+                  onClick={sendMessageForced} 
+                  disabled={!newMessage.trim() || !isWebSocketConnected}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
