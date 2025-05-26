@@ -24,6 +24,7 @@ interface RealtimeMessage {
   timestamp: Date;
   status: string;
   messageHash?: string;
+  tempId?: string;
 }
 
 export default function MessageInterface({ 
@@ -281,37 +282,103 @@ export default function MessageInterface({
     ...realtimeMessages.filter(msg => msg.phoneNumber === selectedConversation)
   ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  // FUNÇÃO PARA ENVIAR MENSAGEM - APENAS ENVIO, SEM ADICIONAR MANUALMENTE
+    // Função para adicionar mensagens localmente (feedback imediato)
+  const addLocalMessage = (message: Omit<RealtimeMessage, 'id' | 'messageHash'>) => {
+    setRealtimeMessages(prev => {
+      const newMsg: RealtimeMessage = {
+        ...message,
+        id: message.tempId || `temp-${Date.now()}`, // Usar tempId como ID temporário
+        status: 'pending',
+        messageHash: generateMessageHash(message.content, message.phoneNumber, message.direction, message.timestamp)
+      };
+      return [...prev, newMsg];
+    });
+
+    // ATUALIZA lista de conversas
+    setConversationsList(prevConvs => {
+      const updated = prevConvs.map(conv => {
+        if (conv.phoneNumber === message.phoneNumber) {
+          return {
+            ...conv,
+            lastMessage: message.content,
+            lastMessageTime: message.timestamp
+          };
+        }
+        return conv;
+      });
+
+      // Se conversa não existe, adiciona
+      const conversationExists = updated.some(conv => conv.phoneNumber === message.phoneNumber);
+      if (!conversationExists) {
+        updated.push({
+          phoneNumber: message.phoneNumber,
+          contactName: message.phoneNumber,
+          lastMessage: message.content,
+          lastMessageTime: message.timestamp,
+          unreadCount: message.direction === 'received' ? 1 : 0,
+          messageCount: 1
+        });
+      }
+
+      return updated;
+    });
+  };
+
+  // FUNÇÃO PARA ENVIAR MENSAGEM COM FEEDBACK IMEDIATO
   const sendMessageForced = async () => {
     if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
 
     const messageText = newMessage.trim();
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // ADICIONAR MENSAGEM LOCAL IMEDIATAMENTE PARA FEEDBACK
+    addLocalMessage({
+      tempId,
+      content: messageText,
+      phoneNumber: selectedConversation,
+      direction: 'sent',
+      timestamp: new Date(),
+      status: 'pending'
+    });
+
+    // Limpar input imediatamente
+    setNewMessage('');
 
     try {
-      console.log(`📤 ENVIANDO MENSAGEM para ${selectedConversation}: ${messageText}`);
+      console.log(`📤 ENVIANDO MENSAGEM para ${selectedConversation}: ${messageText} (tempId: ${tempId})`);
 
-      // ENVIA para o servidor - O WebSocket irá receber a mensagem e adicionar automaticamente
+      // ENVIAR para o servidor
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: selectedConversation,
-          message: messageText
+          message: messageText,
+          tempId // Enviar tempId para o backend poder associar
         })
       });
 
       if (response.ok) {
-        console.log(`✅ Mensagem enviada com sucesso! Aguardando WebSocket processar...`);
-
-        // Limpa input imediatamente (a mensagem aparecerá via WebSocket)
-        setNewMessage('');
+        console.log(`✅ Mensagem enviada com sucesso! WebSocket irá confirmar... (tempId: ${tempId})`);
       } else {
         console.error(`❌ Erro ao enviar mensagem:`, response.status);
-        // Mantém a mensagem no input em caso de erro
+
+        // Atualizar status da mensagem local para falha
+        setRealtimeMessages(prev => prev.map(msg => 
+          msg.tempId === tempId || msg.id === tempId 
+            ? { ...msg, status: 'failed' as const }
+            : msg
+        ));
       }
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error);
-      // Mantém a mensagem no input em caso de erro
+
+      // Atualizar status da mensagem local para falha
+      setRealtimeMessages(prev => prev.map(msg => 
+        msg.tempId === tempId || msg.id === tempId 
+          ? { ...msg, status: 'failed' as const }
+          : msg
+      ));
     }
   };
 
@@ -471,7 +538,7 @@ export default function MessageInterface({
                         {formatTime(message.timestamp)}
                         {message.direction === 'sent' && (
                           <span className="ml-1">
-                            {message.status === 'sending' ? '⏳' : '✓'}
+                            {message.status === 'sending' ? '⏳' : (message.status === 'failed' ? '❌' : '✓')}
                           </span>
                         )}
                       </p>
