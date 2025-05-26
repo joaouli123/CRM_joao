@@ -388,20 +388,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✅ Encontradas ${realMessages.length} mensagens reais para ${phoneNumber}`);
             
             // Convert Evolution API messages to our format (reverse for correct display order)
-            const formattedMessages = realMessages.reverse().map((msg: any, index: number) => ({
-              id: msg.key?.id || `msg_${index}`,
-              connectionId,
-              direction: msg.key?.fromMe ? "sent" : "received",
-              phoneNumber: phoneNumber,
-              content: msg.message?.conversation || 
-                      msg.message?.extendedTextMessage?.text || 
-                      msg.message?.imageMessage?.caption ||
-                      msg.message?.documentMessage?.caption ||
-                      "Mensagem de mídia",
-              status: "delivered",
-              timestamp: new Date(msg.messageTimestamp * 1000)
-            }));
+            const formattedMessages = realMessages.reverse().map((msg: any, index: number) => {
+              const messageContent = msg.message?.conversation || 
+                                   msg.message?.extendedTextMessage?.text || 
+                                   msg.message?.imageMessage?.caption ||
+                                   msg.message?.documentMessage?.caption ||
+                                   "Mensagem de mídia";
+              
+              console.log(`📝 Mensagem ${index + 1}: "${messageContent}" - ${msg.key?.fromMe ? "Enviada" : "Recebida"}`);
+              
+              return {
+                id: msg.key?.id || `msg_${index}`,
+                connectionId,
+                direction: msg.key?.fromMe ? "sent" : "received",
+                phoneNumber: phoneNumber,
+                content: messageContent,
+                status: "delivered",
+                timestamp: new Date(msg.messageTimestamp * 1000)
+              };
+            });
             
+            console.log(`🚀 Retornando ${formattedMessages.length} mensagens formatadas para o frontend`);
             return res.json(formattedMessages);
           }
         } catch (apiError) {
