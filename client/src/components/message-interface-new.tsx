@@ -22,7 +22,7 @@ interface RealtimeMessage {
   phoneNumber: string;
   direction: 'sent' | 'received';
   timestamp: Date;
-  status: string;
+  status: 'pending' | 'sent' | 'delivered' | 'failed';
   messageHash?: string;
   tempId?: string;
 }
@@ -45,8 +45,10 @@ export default function MessageInterface({
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Conjunto para rastrear hashes de mensagens processadas
-  const [processedMessageHashes, setProcessedMessageHashes] = useState<Set<string>>(new Set());
+  // Gerar UUID temporário
+  const generateTempId = (): string => {
+    return crypto.randomUUID();
+  };
 
   // SCROLL AUTOMÁTICO para última mensagem
   const scrollToBottom = () => {
@@ -57,10 +59,32 @@ export default function MessageInterface({
     scrollToBottom();
   }, [realtimeMessages]);
 
-    // Função para gerar um hash único para cada mensagem
-  const generateMessageHash = (content: string, phoneNumber: string, direction: string, timestamp: Date): string => {
-    const hash = `${content}-${phoneNumber}-${direction}-${timestamp.getTime()}`;
-    return btoa(hash); // Codifica em Base64 para garantir que seja uma string válida
+    // Função para encontrar mensagem local por tempId ou conteúdo similar
+  const findLocalMessage = (content: string, direction: string, timestamp: Date, tempId?: string): RealtimeMessage | null => {
+    return realtimeMessages.find(msg => {
+      // Primeiro, tenta encontrar por tempId se fornecido
+      if (tempId && msg.tempId === tempId) {
+        return true;
+      }
+      
+      // Fallback: encontrar por conteúdo, direção e timestamp similar (dentro de 5 segundos)
+      if (msg.content === content && 
+          msg.direction === direction && 
+          Math.abs(new Date(msg.timestamp).getTime() - new Date(timestamp).getTime()) < 5000) {
+        return true;
+      }
+      
+      return false;
+    }) || null;
+  };
+
+  // Função para substituir mensagem local pela oficial
+  const replaceLocalMessage = (localMsg: RealtimeMessage, officialMsg: RealtimeMessage) => {
+    setRealtimeMessages(prev => prev.map(msg => 
+      msg.tempId === localMsg.tempId || msg.id === localMsg.id
+        ? { ...officialMsg, status: 'sent' }
+        : msg
+    ));
   };
 
   // WEBSOCKET FORÇADO - GARANTIDO PARA FUNCIONAR
@@ -98,7 +122,7 @@ export default function MessageInterface({
             const data = JSON.parse(event.data);
             console.log(`📨 WEBSOCKET RECEBEU:`, data);
 
-              // PROCESSA APENAS messageSent e messageReceived - SEM DUPLICAÇÃO
+              // PROCESSA APENAS messageSent e messageReceived - COM SISTEMA DE DEDUPLICAÇÃO
               const validTypes = ["messageSent", "messageReceived"];
 
               if (validTypes.includes(data.type) && data.data) {
@@ -108,52 +132,49 @@ export default function MessageInterface({
                 if (msgData.connectionId === selectedConnectionId && msgData.phoneNumber === selectedConversation) {
                   console.log(`🎯 PROCESSANDO ${data.type}: "${msgData.content}" para chat ${msgData.phoneNumber}`);
 
-                  // Gerar hash único para esta mensagem
                   const messageTimestamp = new Date(msgData.timestamp);
-                  const messageHash = generateMessageHash(msgData.content, msgData.phoneNumber, msgData.direction, messageTimestamp);
-
-                  // Verificar se já processamos esta mensagem
-                  if (processedMessageHashes.has(messageHash)) {
-                    console.log(`⚠️ MENSAGEM JÁ PROCESSADA (hash: ${messageHash}), ignorando duplicata:`, msgData.content);
-                    return;
-                  }
-
-                  // CRIA mensagem com ID único baseado no banco de dados
-                  const newMsg: RealtimeMessage = {
+                  
+                  // CRIA mensagem oficial do servidor
+                  const officialMsg: RealtimeMessage = {
                     id: msgData.id.toString(),
                     content: msgData.content,
                     phoneNumber: msgData.phoneNumber,
                     direction: msgData.direction,
                     timestamp: messageTimestamp,
-                    status: msgData.status || 'delivered',
-                    messageHash: messageHash
+                    status: msgData.status || 'delivered'
                   };
 
-                  console.log(`🚀 NOVA MENSAGEM CRIADA (hash: ${messageHash}):`, newMsg);
+                  console.log(`🚀 MENSAGEM OFICIAL RECEBIDA:`, officialMsg);
 
-                  // Adicionar hash ao conjunto de mensagens processadas
-                  setProcessedMessageHashes(prev => new Set([...prev, messageHash]));
+                  // VERIFICAR SE É UMA MENSAGEM QUE JÁ TEMOS LOCALMENTE (tempId)
+                  const localMessage = findLocalMessage(
+                    msgData.content, 
+                    msgData.direction, 
+                    messageTimestamp, 
+                    msgData.tempId
+                  );
 
-                  // VERIFICAÇÃO FINAL ANTI-DUPLICAÇÃO
                   setRealtimeMessages(prev => {
-                    // Verificar por ID único
-                    const existsById = prev.some(m => m.id === newMsg.id);
+                    // Se encontrou mensagem local, substitui pela oficial
+                    if (localMessage) {
+                      console.log(`🔄 SUBSTITUINDO mensagem local (tempId: ${localMessage.tempId}) pela oficial (ID: ${officialMsg.id})`);
+                      return prev.map(msg => 
+                        msg.tempId === localMessage.tempId || msg.id === localMessage.id
+                          ? { ...officialMsg, status: 'sent' }
+                          : msg
+                      );
+                    }
 
-                    // Verificar por hash
-                    const existsByHash = prev.some(m => m.messageHash === messageHash);
-
+                    // Verificar se a mensagem oficial já existe (anti-duplicação final)
+                    const existsById = prev.some(m => m.id === officialMsg.id);
                     if (existsById) {
-                      console.log("⚠️ Mensagem duplicada (ID já existe):", newMsg.id);
+                      console.log("⚠️ Mensagem oficial já existe:", officialMsg.id);
                       return prev;
                     }
 
-                    if (existsByHash) {
-                      console.log("⚠️ Mensagem duplicada (hash já existe):", messageHash);
-                      return prev;
-                    }
-
-                    console.log(`✅ MENSAGEM ADICIONADA COM SUCESSO: "${newMsg.content}" (ID: ${newMsg.id}, Hash: ${messageHash})`);
-                    return [...prev, newMsg];
+                    // Adicionar nova mensagem (não foi enviada localmente)
+                    console.log(`✅ ADICIONANDO NOVA MENSAGEM: "${officialMsg.content}" (ID: ${officialMsg.id})`);
+                    return [...prev, officialMsg];
                   });
 
                 // ATUALIZA lista de conversas
@@ -265,7 +286,6 @@ export default function MessageInterface({
     if (selectedConversation) {
       console.log(`🔄 Trocando para conversa ${selectedConversation}, limpando mensagens em tempo real`);
       setRealtimeMessages(prev => prev.filter(msg => msg.phoneNumber === selectedConversation));
-      setProcessedMessageHashes(new Set()); // Limpa os hashes ao trocar de conversa
     }
   }, [selectedConversation]);
 
@@ -283,14 +303,22 @@ export default function MessageInterface({
   ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     // Função para adicionar mensagens localmente (feedback imediato)
-  const addLocalMessage = (message: Omit<RealtimeMessage, 'id' | 'messageHash'>) => {
+  const addLocalMessage = (message: Omit<RealtimeMessage, 'id'>) => {
+    const newMsg: RealtimeMessage = {
+      ...message,
+      id: message.tempId || `temp-${Date.now()}`, // Usar tempId como ID temporário
+      status: 'pending'
+    };
+
     setRealtimeMessages(prev => {
-      const newMsg: RealtimeMessage = {
-        ...message,
-        id: message.tempId || `temp-${Date.now()}`, // Usar tempId como ID temporário
-        status: 'pending',
-        messageHash: generateMessageHash(message.content, message.phoneNumber, message.direction, message.timestamp)
-      };
+      // Verificar se já existe mensagem com este tempId
+      const existsByTempId = prev.some(m => m.tempId === newMsg.tempId);
+      if (existsByTempId) {
+        console.log("⚠️ Mensagem local duplicada (tempId já existe):", newMsg.tempId);
+        return prev;
+      }
+
+      console.log(`📤 ADICIONANDO mensagem local com tempId: ${newMsg.tempId}`);
       return [...prev, newMsg];
     });
 
@@ -324,12 +352,13 @@ export default function MessageInterface({
     });
   };
 
-  // FUNÇÃO PARA ENVIAR MENSAGEM COM FEEDBACK IMEDIATO
+  // FUNÇÃO PARA ENVIAR MENSAGEM COM UUID TEMPORÁRIO
   const sendMessageForced = async () => {
     if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
 
     const messageText = newMessage.trim();
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const tempId = generateTempId(); // Usar crypto.randomUUID()
+    const timestamp = new Date();
 
     // ADICIONAR MENSAGEM LOCAL IMEDIATAMENTE PARA FEEDBACK
     addLocalMessage({
@@ -337,7 +366,7 @@ export default function MessageInterface({
       content: messageText,
       phoneNumber: selectedConversation,
       direction: 'sent',
-      timestamp: new Date(),
+      timestamp,
       status: 'pending'
     });
 
@@ -347,26 +376,25 @@ export default function MessageInterface({
     try {
       console.log(`📤 ENVIANDO MENSAGEM para ${selectedConversation}: ${messageText} (tempId: ${tempId})`);
 
-      // ENVIAR para o servidor
+      // ENVIAR para o servidor (backend NÃO precisa tratar tempId)
       const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: selectedConversation,
-          message: messageText,
-          tempId // Enviar tempId para o backend poder associar
+          message: messageText
         })
       });
 
       if (response.ok) {
-        console.log(`✅ Mensagem enviada com sucesso! WebSocket irá confirmar... (tempId: ${tempId})`);
+        console.log(`✅ Mensagem enviada com sucesso! WebSocket irá confirmar e substituir tempId: ${tempId}`);
       } else {
         console.error(`❌ Erro ao enviar mensagem:`, response.status);
 
         // Atualizar status da mensagem local para falha
         setRealtimeMessages(prev => prev.map(msg => 
-          msg.tempId === tempId || msg.id === tempId 
-            ? { ...msg, status: 'failed' as const }
+          msg.tempId === tempId
+            ? { ...msg, status: 'failed' }
             : msg
         ));
       }
@@ -375,8 +403,8 @@ export default function MessageInterface({
 
       // Atualizar status da mensagem local para falha
       setRealtimeMessages(prev => prev.map(msg => 
-        msg.tempId === tempId || msg.id === tempId 
-          ? { ...msg, status: 'failed' as const }
+        msg.tempId === tempId
+          ? { ...msg, status: 'failed' }
           : msg
       ));
     }
@@ -538,7 +566,9 @@ export default function MessageInterface({
                         {formatTime(message.timestamp)}
                         {message.direction === 'sent' && (
                           <span className="ml-1">
-                            {message.status === 'sending' ? '⏳' : (message.status === 'failed' ? '❌' : '✓')}
+                            {message.status === 'pending' ? '⏳' : 
+                             message.status === 'failed' ? '❌' : 
+                             message.status === 'sent' ? '✓' : '✓✓'}
                           </span>
                         )}
                       </p>
