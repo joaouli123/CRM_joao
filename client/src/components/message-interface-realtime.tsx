@@ -52,53 +52,58 @@ export default function MessageInterface({
         console.log("📨 WebSocket evento recebido:", data);
 
         // MENSAGENS EM TEMPO REAL - PROCESSAR QUALQUER TIPO DE MENSAGEM
-        if (data.type === "newMessage" || (data.data && data.data.content)) {
-          console.log("🎯 Detectada nova mensagem:", data);
+        if (data.type === "newMessage") {
+          console.log("🎯 NOVA MENSAGEM DETECTADA:", data);
           
-          // Extrair dados da mensagem do formato correto
-          const messageData = data.data || data;
+          const messageData = data.data;
+          if (!messageData) {
+            console.log("❌ Dados da mensagem não encontrados");
+            return;
+          }
           
-          console.log(`🔍 Verificando mensagem para conexão ${selectedConnectionId} e chat ${selectedConversation}`);
-          console.log(`🔍 Mensagem é da conexão ${messageData.connectionId} e chat ${messageData.phoneNumber}`);
+          console.log(`🔍 Conexão atual: ${selectedConnectionId}, Chat atual: ${selectedConversation}`);
+          console.log(`🔍 Mensagem da conexão: ${messageData.connectionId}, Chat: ${messageData.phoneNumber}`);
           
-          // Só processa se for da conexão ativa e chat selecionado
-          if (messageData.connectionId === selectedConnectionId && 
-              messageData.phoneNumber === selectedConversation) {
+          // PROCESSA TODAS AS MENSAGENS DA CONEXÃO ATIVA (independente do chat)
+          if (messageData.connectionId === selectedConnectionId) {
+            console.log(`🔥 PROCESSANDO MENSAGEM DA CONEXÃO ATIVA!`);
             
-            console.log(`🔥 PROCESSANDO MENSAGEM PARA CHAT ATIVO: ${selectedConversation}`);
-            
+            // Adiciona à lista de mensagens em tempo real
             setMessages((prevMessages) => {
-              // Evitar duplicação com base no ID ou conteúdo+timestamp
-              const messageId = messageData.id || `${messageData.content}-${messageData.timestamp}`;
-              const exists = prevMessages.some((m: any) => 
-                m.id === messageId || 
-                (m.content === messageData.content && Math.abs(new Date(m.timestamp).getTime() - new Date(messageData.timestamp).getTime()) < 1000)
-              );
+              const messageId = messageData.id || `${messageData.content}-${Date.now()}`;
               
+              // Evitar duplicação por ID
+              const exists = prevMessages.some((m: any) => m.id === messageId);
               if (exists) {
                 console.log("🔁 Mensagem duplicada ignorada");
                 return prevMessages;
               }
               
-              // Adiciona nova mensagem FORÇANDO RENDER
               const newMessage = {
                 id: messageId,
                 content: messageData.content,
                 phoneNumber: messageData.phoneNumber,
                 direction: messageData.direction,
                 timestamp: new Date(messageData.timestamp),
-                status: messageData.direction === 'sent' ? 'sent' : 'received'
+                status: messageData.status || 'received'
               };
               
-              console.log(`✅ TEMPO REAL INSTANTÂNEO: "${messageData.content}" adicionada!`);
-              console.log(`🚀 FORÇANDO RENDER - Nova lista terá ${prevMessages.length + 1} mensagens`);
+              console.log(`✅ ADICIONANDO MENSAGEM: "${messageData.content}" de ${messageData.phoneNumber}`);
               
-              // FORÇA ATUALIZAÇÃO IMEDIATA
-              const newList = [...prevMessages, newMessage];
-              return newList;
+              return [...prevMessages, newMessage];
             });
+            
+            // SE FOR DO CHAT ATUALMENTE SELECIONADO, força scroll
+            if (messageData.phoneNumber === selectedConversation) {
+              console.log(`🚀 MENSAGEM DO CHAT ATIVO - FORÇANDO ATUALIZAÇÃO VISUAL!`);
+              
+              // Força re-render com timeout
+              setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+              }, 100);
+            }
           } else {
-            console.log(`⚠️ Mensagem ignorada - não é para este chat ativo`);
+            console.log(`⚠️ Mensagem de conexão diferente ignorada`);
           }
         }
 
@@ -192,6 +197,13 @@ export default function MessageInterface({
 
   // Combina mensagens da API com mensagens em tempo real
   const allMessages = [...chatMessages, ...messages.filter(m => m.phoneNumber === selectedConversation)];
+  
+  // FORÇA ATUALIZAÇÃO quando recebe mensagem via WebSocket
+  useEffect(() => {
+    if (messages.length > 0) {
+      console.log(`🔄 FORÇANDO RENDER - ${messages.length} mensagens em tempo real:`, messages);
+    }
+  }, [messages]);
 
   const filteredConversations = conversations.filter((conv: any) =>
     conv.contactName?.toLowerCase().includes(searchFilter.toLowerCase()) ||
