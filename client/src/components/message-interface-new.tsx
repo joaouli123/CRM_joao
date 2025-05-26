@@ -37,76 +37,106 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket nativo para mensagens em tempo real
+  // WebSocket estável para mensagens em tempo real - UMA CONEXÃO POR VEZ
   useEffect(() => {
     if (!selectedConnectionId || !selectedConversation || !instanceKey) return;
 
-    console.log("🔌 Conectando WebSocket nativo...");
+    console.log(`🔌 Conectando WebSocket para chat ${selectedConversation}...`);
     
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/api/ws`;
-    const socket = new WebSocket(wsUrl);
+    let socket: WebSocket | null = null;
+    let isConnecting = false;
 
-    socket.onopen = () => {
-      console.log("🟢 WebSocket conectado!");
-    };
+    const connectWebSocket = () => {
+      if (isConnecting || (socket && socket.readyState === WebSocket.OPEN)) return;
+      
+      isConnecting = true;
+      socket = new WebSocket(wsUrl);
 
-    socket.onmessage = (event) => {
-      try {
-        const messageData = JSON.parse(event.data);
-        console.log("🔥 WebSocket recebeu:", messageData);
+      socket.onopen = () => {
+        console.log(`🟢 WebSocket conectado para ${selectedConversation}!`);
+        isConnecting = false;
+      };
 
-        if (messageData.type === 'newMessage' && messageData.data) {
-          const data = messageData.data;
+      socket.onmessage = (event) => {
+        try {
+          const messageData = JSON.parse(event.data);
           
-          // Só processa se for para o chat ativo e connectionId correto
-          if (data.phoneNumber === selectedConversation && data.connectionId === selectedConnectionId) {
-            setMessagesByInstance(prev => {
-              const currentMessages = prev[instanceKey]?.[selectedConversation] || [];
+          if (messageData.type === 'newMessage' && messageData.data) {
+            const data = messageData.data;
+            console.log(`🔥 Mensagem WebSocket recebida para ${data.phoneNumber}:`, data.content);
+            
+            // FILTRO RIGOROSO: só processa se for EXATAMENTE para o chat ativo
+            if (data.phoneNumber === selectedConversation && data.connectionId === selectedConnectionId) {
               
-              // Verifica duplicação por ID
-              const exists = currentMessages.some((m: any) => m.id === data.id);
-              if (exists) {
-                console.log("🔁 Mensagem duplicada ignorada:", data);
-                return prev;
-              }
-
-              // Adiciona mensagem nova
-              const newMessage = {
-                id: data.id,
-                connectionId: data.connectionId,
-                direction: data.direction,
-                phoneNumber: data.phoneNumber,
-                content: data.content,
-                status: data.status || 'delivered',
-                timestamp: new Date(data.timestamp)
-              };
-
-              console.log("✅ Mensagem adicionada em tempo real:", newMessage);
-
-              return {
-                ...prev,
-                [instanceKey]: {
-                  ...prev[instanceKey],
-                  [selectedConversation]: [...currentMessages, newMessage]
+              setMessagesByInstance(prev => {
+                const currentMessages = prev[instanceKey]?.[selectedConversation] || [];
+                
+                // ANTI-DUPLICAÇÃO ULTRA-ROBUSTA
+                const exists = currentMessages.some((m: any) => 
+                  m.id === data.id || 
+                  (m.content === data.content && 
+                   m.direction === data.direction &&
+                   Math.abs(new Date(m.timestamp).getTime() - new Date(data.timestamp).getTime()) < 2000)
+                );
+                
+                if (exists) {
+                  console.log(`🔁 Mensagem duplicada ignorada para ${selectedConversation}`);
+                  return prev;
                 }
-              };
-            });
+
+                // Adiciona mensagem com garantia de unicidade
+                const newMessage = {
+                  id: data.id,
+                  connectionId: data.connectionId,
+                  direction: data.direction,
+                  phoneNumber: data.phoneNumber,
+                  content: data.content,
+                  status: data.status || 'delivered',
+                  timestamp: new Date(data.timestamp)
+                };
+
+                console.log(`✅ Nova mensagem ${data.direction} adicionada para ${selectedConversation}:`, data.content);
+
+                return {
+                  ...prev,
+                  [instanceKey]: {
+                    ...prev[instanceKey],
+                    [selectedConversation]: [...currentMessages, newMessage]
+                  }
+                };
+              });
+            } else {
+              console.log(`⏭️ Mensagem ignorada - não é para o chat ativo (${data.phoneNumber} ≠ ${selectedConversation})`);
+            }
           }
+        } catch (error) {
+          console.error("Erro ao processar mensagem WebSocket:", error);
         }
-      } catch (error) {
-        console.error("Erro ao processar mensagem WebSocket:", error);
-      }
+      };
+
+      socket.onerror = (error) => {
+        console.error("Erro no WebSocket:", error);
+        isConnecting = false;
+      };
+
+      socket.onclose = () => {
+        console.log(`🔴 WebSocket fechado para ${selectedConversation}`);
+        isConnecting = false;
+      };
     };
 
-    socket.onclose = () => {
-      console.log("🔴 WebSocket desconectado");
-    };
+    connectWebSocket();
 
-    // Cleanup ao desmontar
+    // Cleanup rigoroso ao trocar chat
     return () => {
-      console.log("🔌 Fechando WebSocket...");
-      socket.close();
+      console.log(`🔌 Limpeza: fechando WebSocket do chat ${selectedConversation}...`);
+      if (socket && socket.readyState !== WebSocket.CLOSED) {
+        socket.close();
+      }
+      socket = null;
+      isConnecting = false;
     };
   }, [selectedConnectionId, selectedConversation, instanceKey]);
   
@@ -492,7 +522,7 @@ export default function MessageInterface({
               <div className="space-y-4">
                 {currentMessages.map((message, index) => (
                   <div
-                    key={message.id || index}
+                    key={`msg-${message.id}-${message.direction}-${message.timestamp}-${index}`}
                     className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
