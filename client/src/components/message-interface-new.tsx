@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageCircle, Send, Phone, Clock, User, Search, ChevronDown } from "lucide-react";
 import { Connection, Conversation, Message } from "@/lib/api";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
-import { useWebSocket } from "@/lib/websocket";
+import { io } from "socket.io-client";
 
 interface MessageInterfaceProps {
   connections: Connection[];
@@ -38,42 +38,49 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket DEFINITIVO - SEM DUPLICAÇÃO + TEMPO REAL!
-  useWebSocket({
-    onMessageReceived: (messageData) => {
-      console.log("🔥 WEBSOCKET RECEBEU:", messageData);
+  // WebSocket DIRETO da Evolution API - TEMPO REAL PERFEITO!
+  useEffect(() => {
+    if (!selectedConnectionId || !instanceKey) return;
+
+    console.log("🔌 Conectando ao WebSocket da Evolution API...");
+    
+    // Conectar diretamente ao WebSocket da Evolution API
+    const evolutionSocket = io('wss://evolution.lowfy.com.br/whatsapp_36_lowfy', {
+      transports: ['websocket']
+    });
+
+    evolutionSocket.on('connect', () => {
+      console.log("🟢 Conectado ao WebSocket da Evolution API!");
+    });
+
+    evolutionSocket.on('newMessage', (data) => {
+      console.log("🟢 Nova mensagem via Evolution WebSocket:", data);
       
-      // ONLY process messages for current connection and chat
-      if (messageData.connectionId === selectedConnectionId && 
-          messageData.phoneNumber === selectedConversation && 
-          instanceKey) {
-        
-        console.log(`📥 MENSAGEM PARA CHAT ATIVO (${messageData.direction}):`, messageData);
-        
+      // Só processa se for para o chat ativo
+      if (data.phoneNumber === selectedConversation) {
         setMessagesByInstance(prev => {
           const currentMessages = prev[instanceKey]?.[selectedConversation] || [];
           
-          // ULTRA-ROBUST duplicate check by ID
-          const alreadyExists = currentMessages.some(msg => msg.id === messageData.id);
-          
-          if (alreadyExists) {
-            console.log("🛑 MENSAGEM JÁ EXISTE - IGNORANDO DUPLICATA");
+          // Verifica duplicação por ID
+          const exists = currentMessages.some(m => m.id === data.id);
+          if (exists) {
+            console.log("🔁 Mensagem duplicada ignorada:", data);
             return prev;
           }
-          
-          // Add ALL messages (sent and received) via WebSocket
-          console.log(`✅ ADICIONANDO MENSAGEM ${messageData.direction.toUpperCase()} EM TEMPO REAL`);
-          
+
+          // Adiciona mensagem nova
           const newMessage = {
-            id: messageData.id,
-            connectionId: messageData.connectionId,
-            direction: messageData.direction,
-            phoneNumber: messageData.phoneNumber,
-            content: messageData.content,
-            status: messageData.status || (messageData.direction === 'sent' ? 'sent' : 'delivered'),
-            timestamp: new Date(messageData.timestamp)
+            id: data.id,
+            connectionId: selectedConnectionId,
+            direction: data.direction,
+            phoneNumber: data.phoneNumber,
+            content: data.content,
+            status: data.status || 'delivered',
+            timestamp: new Date(data.timestamp)
           };
-          
+
+          console.log("✅ Mensagem adicionada em tempo real:", newMessage);
+
           return {
             ...prev,
             [instanceKey]: {
@@ -83,31 +90,18 @@ export default function MessageInterface({
           };
         });
       }
-      
-      // Update conversation list for ALL messages
-      if (messageData.connectionId === selectedConnectionId && instanceKey) {
-        setChatsByInstance(prev => {
-          const currentChats = prev[instanceKey] || [];
-          const updatedChats = currentChats.map(chat => {
-            if (chat.phoneNumber === messageData.phoneNumber) {
-              return {
-                ...chat,
-                lastMessage: messageData.content,
-                lastMessageTime: new Date(messageData.timestamp),
-                unreadCount: (selectedConversation === messageData.phoneNumber || messageData.direction === 'sent') ? 0 : (chat.unreadCount || 0) + 1
-              };
-            }
-            return chat;
-          });
-          
-          return {
-            ...prev,
-            [instanceKey]: updatedChats
-          };
-        });
-      }
-    }
-  });
+    });
+
+    evolutionSocket.on('disconnect', () => {
+      console.log("🔴 Desconectado do WebSocket da Evolution API");
+    });
+
+    // Cleanup ao desmontar
+    return () => {
+      console.log("🔌 Desconectando WebSocket da Evolution API...");
+      evolutionSocket.disconnect();
+    };
+  }, [selectedConnectionId, selectedConversation, instanceKey]);
   
   // Load initial chats for current instance
   const { isLoading: conversationsLoading } = useQuery({
