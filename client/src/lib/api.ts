@@ -30,6 +30,15 @@ export interface Message {
   timestamp: Date;
 }
 
+export interface Conversation {
+  phoneNumber: string;
+  contactName?: string;
+  lastMessage: string;
+  lastMessageTime: Date;
+  unreadCount: number;
+  messageCount: number;
+}
+
 export const api = {
   // Connection endpoints
   getConnections: (): Promise<Connection[]> =>

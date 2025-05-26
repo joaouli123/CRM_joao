@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Send, ArrowRight, ArrowLeft } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import type { Connection, Message } from "@shared/schema";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MessageCircle, Send, Phone, Clock, User } from "lucide-react";
+import { Connection, Conversation, Message } from "@/lib/api";
 
 interface MessageInterfaceProps {
   connections: Connection[];
@@ -22,238 +21,268 @@ export default function MessageInterface({
   selectedConnectionId, 
   onSelectConnection 
 }: MessageInterfaceProps) {
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [messageText, setMessageText] = useState("");
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [newMessage, setNewMessage] = useState("");
 
-  const selectedConnection = connections.find(c => c.id === selectedConnectionId);
+  // Get connected connections only
+  const connectedConnections = connections.filter(conn => conn.status === "connected");
 
-  // Fetch messages for selected connection
-  const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/connections", selectedConnectionId, "messages"],
+  // Fetch conversations for selected connection
+  const { data: conversations = [] } = useQuery<Conversation[]>({
+    queryKey: ["/api/connections", selectedConnectionId, "conversations"],
     enabled: !!selectedConnectionId,
   });
 
-  const sendMessageMutation = useMutation({
-    mutationFn: async (data: { connectionId: number; to: string; message: string }) => {
-      return apiRequest('POST', '/api/messages/send', data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Mensagem enviada",
-        description: "Mensagem foi enviada com sucesso",
-      });
-      setMessageText("");
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/connections", selectedConnectionId, "messages"] 
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao enviar mensagem",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+  // Fetch messages for selected conversation
+  const { data: messages = [] } = useQuery<Message[]>({
+    queryKey: ["/api/connections", selectedConnectionId, "conversations", selectedConversation, "messages"],
+    enabled: !!selectedConnectionId && !!selectedConversation,
   });
 
-  const handleSendMessage = () => {
-    if (!selectedConnectionId || !phoneNumber.trim() || !messageText.trim()) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha o número e a mensagem",
-        variant: "destructive",
+  const formatTime = (date: Date) => {
+    return new Date(date).toLocaleTimeString("pt-BR", { 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const messageDate = new Date(date);
+    const diffDays = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Hoje";
+    if (diffDays === 1) return "Ontem";
+    if (diffDays < 7) return `${diffDays} dias atrás`;
+    return messageDate.toLocaleDateString("pt-BR");
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedConnectionId || !selectedConversation) return;
+    
+    try {
+      const response = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          connectionId: selectedConnectionId,
+          to: selectedConversation,
+          message: newMessage,
+        }),
       });
-      return;
+      
+      if (response.ok) {
+        setNewMessage("");
+        // Messages will be updated via WebSocket
+      }
+    } catch (error) {
+      console.error("Erro ao enviar mensagem:", error);
     }
-
-    sendMessageMutation.mutate({
-      connectionId: selectedConnectionId,
-      to: phoneNumber,
-      message: messageText,
-    });
-  };
-
-  const formatTime = (date: Date | null) => {
-    if (!date) return "";
-    return new Date(date).toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatPhoneNumber = (phone: string) => {
-    // Remove country code and format for Brazilian numbers
-    return phone.replace(/^\+55/, "").replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
   };
 
   return (
-    <div className="flex h-full space-x-6">
-      {/* Connection List */}
-      <div className="w-1/3 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Conexões Ativas</h3>
-        
-        {connections.length > 0 ? (
-          <div className="space-y-3">
-            {connections.map((connection) => (
-              <div
-                key={connection.id}
-                onClick={() => onSelectConnection(connection.id)}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedConnectionId === connection.id
-                    ? "bg-blue-50 border-l-4 border-primary"
-                    : "bg-gray-50 hover:bg-gray-100"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900">{connection.name}</h4>
-                  <Badge variant="secondary" className="bg-green-100 text-secondary text-xs">
-                    Online
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  {connection.messageCount || 0} mensagens
-                </p>
+    <div className="flex h-[calc(100vh-200px)] gap-4">
+      {/* Connection Selector */}
+      <Card className="w-80">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            Conexões WhatsApp
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {connectedConnections.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma conexão ativa</p>
+                <p className="text-sm">Conecte um WhatsApp primeiro</p>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhuma conexão ativa</p>
-          </div>
-        )}
-      </div>
-
-      {/* Message Interface */}
-      <div className="flex-1 flex flex-col space-y-6">
-        {selectedConnection ? (
-          <>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Teste de Mensagens</h3>
-              <Badge className="bg-green-100 text-secondary">
-                {selectedConnection.name} - Online
-              </Badge>
-            </div>
-
-            {/* Send Message Form */}
-            <Card>
-              <CardContent className="p-6">
-                <h4 className="font-medium text-gray-900 mb-4">Enviar Mensagem de Teste</h4>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="phone">Número de Destino</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+55 (11) 99999-9999"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="mt-1"
-                    />
+            ) : (
+              connectedConnections.map((connection) => (
+                <Button
+                  key={connection.id}
+                  variant={selectedConnectionId === connection.id ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => {
+                    onSelectConnection(connection.id);
+                    setSelectedConversation(null);
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className="text-left">
+                      <div className="font-medium">{connection.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {connection.phoneNumber || "WhatsApp Conectado"}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="message">Mensagem</Label>
-                    <Textarea
-                      id="message"
-                      rows={3}
-                      placeholder="Digite sua mensagem aqui..."
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      className="mt-1 resize-none"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleSendMessage}
-                    disabled={sendMessageMutation.isPending || !phoneNumber.trim() || !messageText.trim()}
-                    className="flex items-center space-x-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>
-                      {sendMessageMutation.isPending ? "Enviando..." : "Enviar Mensagem"}
-                    </span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </Button>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Message History */}
-            <Card className="flex-1">
-              <CardContent className="p-6 flex flex-col h-full">
-                <h4 className="font-medium text-gray-900 mb-4">
-                  Histórico de Mensagens (Últimas 24h)
-                </h4>
-                <div className="flex-1 space-y-3 overflow-y-auto">
-                  {messages.length > 0 ? (
-                    messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex items-start space-x-3 p-3 rounded-lg ${
-                          message.direction === "sent" ? "bg-blue-50" : "bg-gray-50"
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          message.direction === "sent" ? "bg-primary" : "bg-green-500"
-                        }`}>
-                          {message.direction === "sent" ? (
-                            <ArrowRight className="text-white text-xs" />
-                          ) : (
-                            <ArrowLeft className="text-white text-xs" />
-                          )}
-                        </div>
-                        <div className="flex-1">
+      {/* Conversations List */}
+      {selectedConnectionId && (
+        <Card className="w-80">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Conversas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[500px]">
+              <div className="space-y-2">
+                {conversations.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nenhuma conversa encontrada</p>
+                  </div>
+                ) : (
+                  conversations.map((conversation) => (
+                    <Button
+                      key={conversation.phoneNumber}
+                      variant={selectedConversation === conversation.phoneNumber ? "default" : "ghost"}
+                      className="w-full p-3 h-auto justify-start"
+                      onClick={() => setSelectedConversation(conversation.phoneNumber)}
+                    >
+                      <div className="flex items-center gap-3 w-full">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback>
+                            <User className="h-5 w-5" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 text-left min-w-0">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-gray-900">
-                              {message.direction === "sent" 
-                                ? formatPhoneNumber(message.to)
-                                : formatPhoneNumber(message.from)
-                              }
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {formatTime(message.timestamp)}
-                            </span>
+                            <div className="font-medium truncate">
+                              {conversation.contactName}
+                            </div>
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatTime(conversation.lastMessageTime)}
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-700 mt-1">{message.body}</p>
-                          <span className={`text-xs mt-1 inline-block ${
-                            message.status === "sent" ? "text-secondary" :
-                            message.status === "delivered" ? "text-blue-600" :
-                            message.status === "failed" ? "text-error" : "text-gray-500"
-                          }`}>
-                            {message.status === "sent" && "Enviada"}
-                            {message.status === "delivered" && "Entregue"}
-                            {message.status === "read" && "Lida"}
-                            {message.status === "failed" && "Falhou"}
-                            {message.status === "pending" && "Pendente"}
-                            {message.direction === "received" && "Recebida"}
-                          </span>
+                          <div className="text-sm text-gray-500 truncate">
+                            {conversation.lastMessage}
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {conversation.messageCount} mensagens
+                            </Badge>
+                            {conversation.unreadCount > 0 && (
+                              <Badge className="text-xs">
+                                {conversation.unreadCount}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Nenhuma mensagem encontrada</p>
+                    </Button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Messages Area */}
+      {selectedConnectionId && selectedConversation && (
+        <Card className="flex-1">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <User className="h-5 w-5" />
+              {selectedConversation}
+            </CardTitle>
+            <Separator />
+          </CardHeader>
+          <CardContent className="flex flex-col h-[500px]">
+            {/* Messages List */}
+            <ScrollArea className="flex-1 mb-4">
+              <div className="space-y-4">
+                {messages.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nenhuma mensagem encontrada</p>
+                  </div>
+                ) : (
+                  messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.direction === "sent" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[70%] p-3 rounded-lg ${
+                          message.direction === "sent"
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100 text-gray-900"
+                        }`}
+                      >
+                        <div className="text-sm">{message.content}</div>
+                        <div className="flex items-center justify-between mt-1">
+                          <div
+                            className={`text-xs ${
+                              message.direction === "sent"
+                                ? "text-blue-100"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {formatTime(message.timestamp)}
+                          </div>
+                          {message.direction === "sent" && (
+                            <Badge
+                              variant={message.status === "delivered" ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {message.status}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+
+            {/* Message Input */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite sua mensagem..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                className="flex-1"
+              />
+              <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Welcome State */}
+      {!selectedConnectionId && (
+        <Card className="flex-1">
+          <CardContent className="flex items-center justify-center h-[500px]">
             <div className="text-center">
-              <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Selecione uma conexão
-              </h3>
-              <p className="text-gray-500">
-                Escolha uma conexão ativa para enviar mensagens de teste
+              <MessageCircle className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium mb-2">Bem-vindo ao WhatsApp Hub</h3>
+              <p className="text-gray-500 mb-4">
+                Selecione uma conexão WhatsApp para ver suas conversas e mensagens
+              </p>
+              <p className="text-sm text-gray-400">
+                Todas as suas mensagens serão atualizadas em tempo real
               </p>
             </div>
-          </div>
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
