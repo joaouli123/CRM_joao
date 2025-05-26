@@ -125,10 +125,12 @@ export default function MessageInterface({
     enabled: !!selectedConnectionId,
   });
 
-  // Buscar mensagens do chat selecionado
+  // Buscar mensagens do chat selecionado COM ATUALIZAÇÃO AUTOMÁTICA
   const { data: chatMessages = [] } = useQuery({
     queryKey: [`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConnectionId && !!selectedConversation,
+    refetchInterval: 2000, // Verificar novas mensagens a cada 2 segundos
+    refetchIntervalInBackground: true
   });
 
   // Combinar mensagens da API com mensagens em tempo real
