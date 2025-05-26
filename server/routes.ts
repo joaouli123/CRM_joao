@@ -26,7 +26,6 @@ function broadcast(data: any) {
 // Generate a realistic QR code for WhatsApp Web simulation
 function generateQRCode(): string {
   const timestamp = Date.now();
-  const randomData = Math.random().toString(36).substring(2, 15);
   
   // Create a more realistic QR code SVG
   const qrSize = 256;
@@ -75,12 +74,12 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
     // Simulate QR code generation
     setTimeout(async () => {
       const qrCode = generateQRCode();
-      const qrExpiration = new Date(Date.now() + 60000); // 1 minute expiration
+      const qrExpiry = new Date(Date.now() + 60000); // 1 minute expiration
       
       await storage.updateConnection(connectionId, { 
-        status: "qr_pending", 
+        status: "waiting_qr", 
         qrCode,
-        qrExpiration 
+        qrExpiry 
       });
       
       broadcast({ 
@@ -88,18 +87,18 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
         data: { 
           connectionId, 
           qrCode,
-          expiration: qrExpiration 
+          expiration: qrExpiry 
         }
       });
 
       // Set timer to expire QR code
       const qrTimer = setTimeout(async () => {
         const connection = await storage.getConnection(connectionId);
-        if (connection && connection.status === "qr_pending") {
+        if (connection && connection.status === "waiting_qr") {
           await storage.updateConnection(connectionId, { 
             status: "disconnected",
             qrCode: null,
-            qrExpiration: null 
+            qrExpiry: null 
           });
           broadcast({ type: "connectionStatusChanged", data: { id: connectionId, status: "disconnected" }});
         }
@@ -110,13 +109,13 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
         client: null,
         connection: await storage.getConnection(connectionId),
         qrTimer,
-        status: "qr_pending"
+        status: "waiting_qr"
       });
 
       // Simulate successful connection after 10 seconds (user would scan QR in real scenario)
       setTimeout(async () => {
         const session = sessions.get(connectionId);
-        if (session && session.status === "qr_pending") {
+        if (session && session.status === "waiting_qr") {
           if (session.qrTimer) {
             clearTimeout(session.qrTimer);
           }
@@ -124,8 +123,9 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
           await storage.updateConnection(connectionId, { 
             status: "connected",
             qrCode: null,
-            qrExpiration: null,
-            lastActivity: new Date()
+            qrExpiry: null,
+            lastActivity: new Date(),
+            phoneNumber: "+5511999999999" // Simulated phone number
           });
           
           session.status = "connected";
@@ -238,7 +238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store message in database
       const messageRecord = await storage.createMessage({
         connectionId,
-        from: "system", // Would be the WhatsApp number in real implementation
+        from: connection.phoneNumber || "system",
         to,
         body: message,
         direction: "sent",
@@ -266,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const responseMessage = await storage.createMessage({
             connectionId,
             from: to,
-            to: "system",
+            to: connection.phoneNumber || "system",
             body: `Resposta automática para: "${message}"`,
             direction: "received",
           });
