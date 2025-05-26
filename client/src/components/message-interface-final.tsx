@@ -55,19 +55,19 @@ export default function MessageInterface({
             const data = JSON.parse(event.data);
             console.log(`📨 WEBSOCKET EVENTO RECEBIDO:`, data);
 
-            // APENAS processar mensagens RECEBIDAS do servidor (não enviadas)
-            if (data.type === "messageReceived" && data.data) {
+            // Processar APENAS UM evento por mensagem para evitar duplicação
+            if ((data.type === "newMessage") && data.data) {
               const msgData = data.data;
-              console.log(`📥 MENSAGEM RECEBIDA DO SERVIDOR: ${msgData.content} de ${msgData.phoneNumber}`);
               
-              // Só adicionar se for para a conexão ativa E for realmente recebida (não enviada)
-              if (msgData.connectionId === selectedConnectionId && msgData.direction === 'received') {
-                console.log(`✅ ADICIONANDO MENSAGEM RECEBIDA EM TEMPO REAL!`);
+              // Só processar se for para a conexão ativa
+              if (msgData.connectionId === selectedConnectionId) {
+                console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
                 
                 setRealtimeMessages((prev) => {
+                  // ANTI-DUPLICAÇÃO: verificar se mensagem já existe
                   const exists = prev.some((m: any) => m.id === msgData.id);
                   if (exists) {
-                    console.log(`⚠️ Mensagem já existe: ${msgData.id}`);
+                    console.log(`⚠️ Mensagem ${msgData.id} JÁ EXISTE, ignorando duplicação`);
                     return prev;
                   }
                   
@@ -75,20 +75,20 @@ export default function MessageInterface({
                     id: msgData.id,
                     content: msgData.content,
                     phoneNumber: msgData.phoneNumber,
-                    direction: 'received', // Garantir que é recebida
+                    direction: msgData.direction,
                     timestamp: new Date(msgData.timestamp),
-                    status: 'received'
+                    status: msgData.status || 'sent'
                   };
                   
-                  console.log(`🚀 MENSAGEM RECEBIDA ADICIONADA: Total ${prev.length + 1}`);
+                  console.log(`✅ ADICIONANDO mensagem ${msgData.id}: "${msgData.content}"`);
                   return [...prev, newMsg];
                 });
               }
             }
             
-            // Para debug - ignorar mensagens enviadas
-            if (data.type === "newMessage" || data.type === "messageSent") {
-              console.log(`📤 IGNORANDO mensagem enviada: ${data.data?.content}`);
+            // Ignorar eventos duplicados
+            if (data.type === "messageSent" || data.type === "messageReceived") {
+              console.log(`🔇 Ignorando evento duplicado: ${data.type}`);
             }
           } catch (error) {
             console.error("❌ Erro ao processar WebSocket:", error);
