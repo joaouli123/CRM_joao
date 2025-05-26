@@ -1,0 +1,137 @@
+orrigir o problema de duplicação de mensagens e garantir que o status de "enviado", "recebido", "entregue" e "falha" seja atualizado corretamente. Além disso, precisamos garantir que o status de "mensagem recebida" funcione, atualizando os ícones corretamente para cada mensagem.
+Problemas identificados:
+
+    Duplicação de mensagens:
+
+        As mensagens estão sendo duplicadas, porque o sistema não está verificando corretamente se uma mensagem já foi recebida ou enviada anteriormente.
+
+    Não validação de "Mensagem Recebida":
+
+        O sistema não está atualizando o status corretamente para "mensagem recebida", ou seja, ele não marca uma mensagem como "entregue" no frontend.
+
+    Status incorreto:
+
+        O status das mensagens não está sendo alterado conforme a interação (e.g., "⏳" → "✓" → "✔✔").
+
+Passos para Correção:
+
+    Correção de Duplicação de Mensagens:
+
+        Ao receber uma mensagem, verifique se ela já foi enviada ou já existe (utilizando o tempId ou id).
+
+        Se a mensagem já existir, ignore a duplicação, caso contrário, adicione a nova mensagem.
+
+    Validar "Mensagem Recebida":
+
+        Certifique-se de que o sistema não só marque a mensagem como "enviada" (com sent), mas também ao receber a confirmação do servidor, marque a mensagem como "recebida" (e possivelmente "entregue").
+
+        Ao receber a confirmação de entrega, atualize a mensagem para o status "entregue" (representado com ✔✔).
+
+    Substituição de Mensagens Temporárias:
+
+        Ao receber uma confirmação do servidor (como um messageSent ou messageReceived via WebSocket), substitua a mensagem temporária (tempId) pela mensagem final e atualize o status para "sent", "delivered" ou "failed".
+
+    Correção do Status Visual:
+
+        Use o status de mensagem para indicar:
+
+            ⏳: Mensagem sendo enviada (status "pending").
+
+            ✓: Mensagem enviada com sucesso (status "sent").
+
+            ✔✔: Mensagem entregue (status "delivered").
+
+            ❌: Erro ao enviar (status "failed").
+
+Código a ser alterado:
+
+    Verificar Duplicação de Mensagens (via tempId ou id):
+    No evento onmessage, dentro da verificação do WebSocket:
+
+        Adicionar Verificação para Duplicação:
+        Ao processar as mensagens recebidas via WebSocket:
+
+    // Verificar duplicação por tempId e id
+    const existsById = prev.some((m: any) => m.id === msgData.id || m.tempId === msgData.tempId);
+    if (existsById) {
+      console.log(`⚠️ Mensagem ${msgData.id || msgData.tempId} JÁ EXISTE, ignorando duplicação`);
+      return prev;
+    }
+
+Substituição de Mensagens Temporárias:
+Quando uma mensagem temporária for recebida e confirmada pelo servidor:
+
+    Atualização do Status da Mensagem:
+
+    if (msgData.direction === 'sent' && msgData.id) {
+      console.log(`🔍 BUSCANDO mensagem temporária para "${msgData.content}" | tempId: ${msgData.tempId}`);
+      
+      let tempIndex = prev.findIndex((m: any) => m.tempId === msgData.tempId);
+      if (tempIndex !== -1) {
+        const newMessages = [...prev];
+        newMessages[tempIndex] = {
+          id: msgData.id,
+          content: msgData.content,
+          phoneNumber: msgData.phoneNumber,
+          direction: msgData.direction,
+          timestamp: new Date(msgData.timestamp),
+          status: 'sent',
+          tempId: undefined // Remover tempId após a confirmação
+        };
+        return newMessages;
+      }
+    }
+
+Atualização de Status de Entrega ("✔✔"):
+Ao receber a confirmação de entrega, altere o status para "entregue" (✔✔):
+
+    Status de Entrega:
+
+    if (data.type === 'messageReceived' && data.data) {
+      const msgData = data.data;
+      setRealtimeMessages((prev) => 
+        prev.map((msg) => 
+          msg.id === msgData.id 
+            ? { ...msg, status: 'delivered' } // Atualizar para 'delivered' quando a mensagem for entregue
+            : msg
+        )
+      );
+    }
+
+Adicionar o Indicador de Status Visual:
+Ao exibir as mensagens, implemente o indicador visual com base no status:
+
+    Status de Envio e Recebimento:
+
+        <span className="text-xs ml-1">
+          {message.status === 'pending' && '⏳'}
+          {message.status === 'sent' && '✓'}
+          {message.status === 'delivered' && '✔✔'}
+          {message.status === 'failed' && '❌'}
+        </span>
+
+Considerações Finais:
+
+    Verificação Adicional:
+
+        Sempre que uma mensagem for recebida e não encontrar uma correspondência para tempId, adicione-a como uma nova mensagem com o status apropriado (por exemplo, "sent" ou "received").
+
+    Confirmações de Mensagens:
+
+        Certifique-se de que o servidor está enviando corretamente os eventos de messageSent e messageReceived via WebSocket. Esses eventos são cruciais para garantir que a substituição das mensagens temporárias e o status de "entregue" sejam atualizados corretamente.
+
+    Otimização e Performance:
+
+        Verifique o uso de Map para evitar problemas de duplicação em grandes quantidades de mensagens e melhorar a performance.
+
+Testes a serem realizados:
+
+    Envie uma mensagem e verifique se ela aparece imediatamente com o status ⏳.
+
+    Após o envio, verifique se ela é atualizada para ✓ quando enviada e, em seguida, para ✔✔ quando entregue.
+
+    Tente enviar uma mensagem e veja se o WebSocket processa corretamente as mensagens temporárias.
+
+    Verifique se as mensagens não estão sendo duplicadas após o envio e a confirmação de entrega.
+
+Se você seguir essas sugestões de correção, o sistema de mensagens em tempo real e o gerenciamento de duplicações devem funcionar corretamente, com os ícones de status de envio e entrega funcionando como esperado.

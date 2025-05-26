@@ -64,10 +64,10 @@ export default function MessageInterface({
                 console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
                 
                 setRealtimeMessages((prev) => {
-                  // 1. Verificar se já existe por ID
-                  const existsById = prev.some((m: any) => m.id === msgData.id);
-                  if (existsById) {
-                    console.log(`⚠️ Mensagem ${msgData.id} JÁ EXISTE, ignorando duplicação`);
+                  // 1. VERIFICAÇÃO ROBUSTA DE DUPLICAÇÃO (por id E tempId)
+                  const existsById = prev.some((m: any) => m.id === msgData.id || m.tempId === msgData.tempId);
+                  if (existsById && msgData.id) {
+                    console.log(`⚠️ Mensagem ${msgData.id || msgData.tempId} JÁ EXISTE, ignorando duplicação`);
                     return prev;
                   }
 
@@ -139,8 +139,38 @@ export default function MessageInterface({
               }
             }
             
-            // Ignorar eventos duplicados
-            if (data.type === "messageSent" || data.type === "messageReceived") {
+            // 4. ATUALIZAÇÃO DE STATUS DE ENTREGA (messageReceived)
+            if (data.type === 'messageReceived' && data.data) {
+              const msgData = data.data;
+              console.log(`📬 CONFIRMAÇÃO DE ENTREGA recebida para mensagem ${msgData.id}`);
+              
+              setRealtimeMessages((prev) => 
+                prev.map((msg) => 
+                  msg.id === msgData.id 
+                    ? { ...msg, status: 'delivered' } // ✔✔ Atualizar para 'delivered'
+                    : msg
+                )
+              );
+              return; // Evitar processamento adicional
+            }
+
+            // 5. STATUS DE FALHA NA ENTREGA
+            if (data.type === 'messageFailed' && data.data) {
+              const msgData = data.data;
+              console.log(`❌ FALHA NA ENTREGA para mensagem ${msgData.id}`);
+              
+              setRealtimeMessages((prev) => 
+                prev.map((msg) => 
+                  msg.id === msgData.id 
+                    ? { ...msg, status: 'failed' } // ❌ Marcar como falha
+                    : msg
+                )
+              );
+              return; // Evitar processamento adicional
+            }
+
+            // Ignorar outros eventos duplicados
+            if (data.type === "messageSent") {
               console.log(`🔇 Ignorando evento duplicado: ${data.type}`);
             }
           } catch (error) {
