@@ -36,11 +36,11 @@ class EvolutionAPI {
   private apiKey: string;
 
   constructor() {
-    // Use sua instância real da Evolution API
-    this.baseUrl = "https://evolution.lowfy.com.br/";
-    this.apiKey = "011dA95bf60bb215afd8cce1e01f99598A";
+    // Use suas credenciais reais da Evolution API
+    this.baseUrl = process.env.EVOLUTION_API_URL || "https://evolution.lowfy.com.br/";
+    this.apiKey = process.env.EVOLUTION_API_KEY || "";
     
-    console.log("✅ Evolution API configurada com instância real:", this.baseUrl);
+    console.log("✅ Evolution API configurada com credenciais reais:", this.baseUrl);
   }
 
   private async makeRequest(endpoint: string, method: string = 'GET', data?: any) {

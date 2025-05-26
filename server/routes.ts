@@ -226,7 +226,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🎯 Buscando contatos reais para ${instanceName}...`);
       
       try {
-        const chats = await evolutionAPI.getAllChats(instanceName);
+        // Use your real Evolution API instance
+        const realInstanceId = process.env.EVOLUTION_INSTANCE_ID || "663d47ec-d490-4822-9c8d-c258cc46e0c1";
+        const chats = await evolutionAPI.getAllChats(realInstanceId);
         console.log(`✅ Encontrados ${chats.length} contatos autênticos!`);
         
         // Create conversations from your real WhatsApp contacts
@@ -373,7 +375,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
           
           // Get real messages from Evolution API using your authentic instance
-          const realInstanceId = "663d47ec-d490-4822-9c8d-c258cc46e0c1";
+          const realInstanceId = process.env.EVOLUTION_INSTANCE_ID || "663d47ec-d490-4822-9c8d-c258cc46e0c1";
+          console.log(`🔍 Usando instância real: ${realInstanceId}`);
           const realMessages = await evolutionAPI.getChatMessages(realInstanceId, `${phoneNumber}@s.whatsapp.net`, limit);
           
           if (realMessages && realMessages.length > 0) {
@@ -401,41 +404,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storedMessages = await storage.getMessagesByConversation(connectionId, phoneNumber, limit);
       
       if (storedMessages.length === 0) {
-        console.log(`📝 Criando mensagens de demonstração para ${phoneNumber}`);
-        
-        // Create realistic sample messages for testing
-        const contactName = req.query.contactName as string || phoneNumber;
-        const sampleMessages = [
-          {
-            id: 1,
-            connectionId,
-            direction: "received",
-            phoneNumber: phoneNumber,
-            content: `Olá! Como você está?`,
-            status: "delivered",
-            timestamp: new Date(Date.now() - 3600000) // 1 hour ago
-          },
-          {
-            id: 2,
-            connectionId,
-            direction: "sent", 
-            phoneNumber: phoneNumber,
-            content: "Oi! Estou bem, obrigado. E você?",
-            status: "delivered",
-            timestamp: new Date(Date.now() - 3000000) // 50 minutes ago
-          },
-          {
-            id: 3,
-            connectionId,
-            direction: "received",
-            phoneNumber: phoneNumber,
-            content: "Também estou bem! Vamos nos falar mais tarde?",
-            status: "delivered", 
-            timestamp: new Date(Date.now() - 1800000) // 30 minutes ago
-          }
-        ];
-        
-        return res.json(sampleMessages);
+        console.log(`📝 Nenhuma mensagem encontrada para ${phoneNumber} - retornando array vazio`);
+        return res.json([]);
       }
       
       res.json(storedMessages);
