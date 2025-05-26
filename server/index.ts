@@ -22,6 +22,12 @@ async function main() {
     }
   });
 
+  // Add specific API route handler to ensure they're processed before Vite
+  app.use('/api/*', (req, res, next) => {
+    console.log(`🔧 API Request intercepted: ${req.method} ${req.originalUrl}`);
+    next();
+  });
+
   // Register API routes FIRST
   const server = await registerRoutes(app);
 

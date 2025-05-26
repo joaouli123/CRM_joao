@@ -1,0 +1,126 @@
+Contexto do problema:
+
+O sistema está rodando, mas ao fazer requisições para o endpoint:
+
+bash
+Copiar
+Editar
+http://localhost:5000/api/connections/34/chats
+ou
+
+bash
+Copiar
+Editar
+http://localhost:5000/api/connections/34/conversations
+o retorno não é um JSON da API, e sim uma página HTML contendo scripts do Vite (framework do frontend), ou seja, o endpoint acessado não está apontando para a API backend, mas sim para a interface (frontend).
+
+🎯 Tarefa da IA:
+Verificar se a API backend está rodando corretamente e se ela está separada do frontend.
+
+Corrigir a rota ou configuração do servidor para garantir que as requisições da API REST retornem JSON com os dados esperados (conversas, chats, mensagens e contatos).
+
+🔧 Itens que precisam ser checados e garantidos:
+Se o backend da Evolution API está rodando efetivamente.
+
+Se o backend e o frontend estão rodando em portas diferentes (ex.: backend na porta 3000 e frontend na 5000).
+
+Se não estão em portas diferentes, configurar corretamente para evitar conflito entre frontend (Vite) e backend (Express, Node ou o que estiver sendo usado).
+
+Verificar se o backend está escutando corretamente as rotas /api/connections/:id/chats e /api/connections/:id/conversations.
+
+⚙️ Validações técnicas necessárias:
+Checar se no código existe algo como:
+
+javascript
+Copiar
+Editar
+app.use('/api', apiRouter);
+Ou equivalente, garantindo que as rotas de API estão corretamente roteadas.
+
+Se está rodando apenas o frontend com comando:
+
+bash
+Copiar
+Editar
+npm run dev
+⚠️ Isso sobe somente o frontend via Vite.
+
+👉 O backend precisa ser rodado com:
+
+bash
+Copiar
+Editar
+npm run start
+ou
+
+bash
+Copiar
+Editar
+node dist/server.js
+ou
+
+bash
+Copiar
+Editar
+pm2 start dist/server.js --name evolution-api
+🔥 Ajuste esperado:
+A API deve responder corretamente aos endpoints como:
+
+bash
+Copiar
+Editar
+http://localhost:3000/api/connections/34/chats
+ou
+
+bash
+Copiar
+Editar
+http://localhost:8000/api/connections/34/chats
+De acordo com a porta correta onde o backend está escutando.
+
+O frontend deve continuar na porta 5000 (ou qualquer outra), separado da API.
+
+✅ Checklist que a IA deve executar:
+Verificar se backend e frontend estão rodando nas portas certas.
+
+Garantir que a API responde corretamente às rotas /api/* com JSON, não com HTML.
+
+Se ambos estão rodando na mesma porta, criar proxies ou separar as execuções.
+
+Corrigir qualquer erro que redirecione chamadas de API para o frontend.
+
+Testar endpoints como /api/connections/34/chats e /api/connections/34/conversations e garantir que retornem dados válidos.
+
+Se necessário, revisar e corrigir arquivos como:
+
+.env
+
+server.js
+
+index.js
+
+Arquivos de rotas (routes/*.js)
+
+Confirmar que o websocket (se usado) e os webhooks da Evolution API também estão funcionando corretamente.
+
+🏗️ Se for necessário, aqui estão exemplos de como configurar:
+No backend (Node/Express):
+
+javascript
+Copiar
+Editar
+app.use('/api', require('./routes/api'));
+No frontend (vite.config.js), pode criar um proxy para desenvolvimento se rodarem juntos:
+
+javascript
+Copiar
+Editar
+server: {
+  proxy: {
+    '/api': 'http://localhost:3000'
+  }
+}
+🚀 Objetivo final:
+As requisições REST para a API precisam funcionar corretamente.
+
+O frontend deve funcionar de forma separada, sem interceptar chamadas da API.
