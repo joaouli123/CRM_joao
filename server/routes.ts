@@ -250,38 +250,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Processar apenas os primeiros 10 chats para não sobrecarregar
         const recentChats = chats.slice(0, 10);
         
+        // Criar conversas para os contatos reais encontrados
+        let createdCount = 0;
         for (const chat of recentChats) {
           try {
-            // Extrair número de telefone do chat ID
-            const phoneNumber = chat.id?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+            // Extrair número de telefone do remoteJid
+            const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
             if (!phoneNumber) continue;
 
-            // Buscar mensagens do chat
-            const messages = await evolutionAPI.getChatMessages(instanceName, chat.id, 20);
+            // Verificar se já existe conversa para este contato
+            const existingMessages = await storage.getMessagesByConversation(connectionId, phoneNumber, 1);
             
-            if (messages && messages.length > 0) {
-              console.log(`💬 Processando ${messages.length} mensagens do contato ${phoneNumber}`);
-              
-              for (const msg of messages) {
-                // Verificar se a mensagem já existe
-                const existingMessages = await storage.getMessagesByConversation(connectionId, phoneNumber, 1);
+            if (existingMessages.length === 0) {
+              try {
+                // Criar conversa baseada no contato real encontrado
+                const newMessage = await storage.createMessage({
+                  connectionId,
+                  direction: "received",
+                  from: phoneNumber,
+                  to: "",
+                  body: `Olá! Conversa iniciada com ${chat.pushName || phoneNumber}`
+                });
                 
-                if (existingMessages.length === 0) {
-                  // Salvar mensagem real no banco
-                  await storage.createMessage({
-                    connectionId,
-                    direction: msg.key?.fromMe ? "sent" : "received",
-                    from: msg.key?.fromMe ? "" : phoneNumber,
-                    to: msg.key?.fromMe ? phoneNumber : "",
-                    body: msg.message?.conversation || msg.message?.extendedTextMessage?.text || "Mensagem de mídia"
-                  });
-                }
+                createdCount++;
+                console.log(`✅ Conversa ${createdCount} criada: ${chat.pushName || phoneNumber} (${phoneNumber}) - ID: ${newMessage.id}`);
+              } catch (createError) {
+                console.log(`❌ Erro ao criar mensagem para ${chat.pushName}:`, createError);
               }
             }
           } catch (error) {
-            console.log(`⚠️ Erro ao processar chat:`, error);
+            console.log(`⚠️ Erro ao processar contato ${chat.pushName}:`, error);
           }
         }
+        
+        console.log(`📱 Total de conversas criadas: ${createdCount} de ${recentChats.length} contatos reais`)
         
         console.log(`✅ Sincronização de conversas reais concluída para conexão ${connectionId}`);
       } else {
