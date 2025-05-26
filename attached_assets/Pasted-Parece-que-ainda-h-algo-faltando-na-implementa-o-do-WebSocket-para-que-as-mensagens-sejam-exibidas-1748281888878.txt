@@ -1,0 +1,93 @@
+Parece que ainda há algo faltando na implementação do WebSocket para que as mensagens sejam exibidas em tempo real, sem que seja necessário atualizar a tela ou alternar de chat. Isso pode ocorrer se o WebSocket não estiver sendo corretamente disparado ou se o estado da interface não for atualizado imediatamente.
+
+Aqui estão algumas ações que podemos tomar para garantir que as mensagens apareçam automaticamente:
+1. Atualização do Estado do React
+
+O WebSocket precisa enviar as mensagens recebidas para o estado do React, e a interface precisa reagir a essas atualizações de maneira eficiente. Certifique-se de que o estado está sendo atualizado corretamente.
+2. Verificar a Configuração do WebSocket
+
+O WebSocket precisa emitir eventos para o frontend assim que uma mensagem for recebida, e a interface precisa reagir a esses eventos. Verifique se o evento do WebSocket está sendo acionado no frontend e, quando uma nova mensagem é recebida, o estado da interface deve ser atualizado.
+3. Manter o Estado e Atualizar em Tempo Real
+
+Quando o WebSocket receber uma nova mensagem, a interface precisa ser atualizada para refletir isso sem necessidade de recarregar ou mudar de chat.
+Exemplo de Código para o WebSocket
+
+Aqui está um exemplo de como você pode modificar o seu código para garantir que as mensagens sejam atualizadas em tempo real:
+
+import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
+
+const ChatInterface = ({ chatId }) => {
+  const [messages, setMessages] = useState([]);
+  const [socket, setSocket] = useState(null);
+  
+  useEffect(() => {
+    // Criar conexão WebSocket
+    const newSocket = io('wss://seu-servidor.com/nome_instancia');
+    setSocket(newSocket);
+
+    // Quando uma mensagem for recebida, atualizar o estado
+    newSocket.on('new_message', (newMessage) => {
+      // Verifique se a mensagem pertence ao chat atual
+      if (newMessage.chatId === chatId) {
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+      }
+    });
+
+    return () => {
+      // Limpar a conexão ao desmontar o componente
+      newSocket.disconnect();
+    };
+  }, [chatId]);
+
+  const handleSendMessage = (message) => {
+    // Enviar mensagem via WebSocket
+    socket.emit('send_message', { chatId, message });
+  };
+
+  return (
+    <div>
+      <div>
+        {/* Exibindo as mensagens do chat */}
+        {messages.map((message, index) => (
+          <div key={message.id}>
+            <p>{message.content}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Caixa de envio de mensagens */}
+      <button onClick={() => handleSendMessage("Nova mensagem")}>
+        Enviar
+      </button>
+    </div>
+  );
+};
+
+export default ChatInterface;
+
+O que esse código faz:
+
+    Conexão com WebSocket: Cria uma conexão com o WebSocket, onde você pode emitir e ouvir mensagens em tempo real.
+
+    Escuta de Novas Mensagens: Quando uma nova mensagem é recebida via WebSocket (new_message), o estado do componente (messages) é atualizado com a nova mensagem.
+
+    Reatividade: O React vai re-renderizar automaticamente o componente quando o estado for alterado, então a nova mensagem aparecerá instantaneamente no chat.
+
+    Enviando Mensagens: Você também pode enviar uma mensagem de volta para o servidor com o WebSocket.
+
+Verifique os Eventos do WebSocket
+
+Certifique-se de que o servidor também está emitindo os eventos corretamente. Por exemplo, o servidor deve emitir um evento new_message toda vez que uma nova mensagem é recebida:
+
+// Exemplo no servidor
+socket.on('new_message', (message) => {
+  // Enviar para o cliente conectado
+  socket.emit('new_message', message);
+});
+
+Teste em Tempo Real
+
+    Envie uma mensagem do WhatsApp para a instância: Assim que o WebSocket receber essa mensagem, ela deve ser exibida na interface.
+
+    Verifique no console: O log do WebSocket deve mostrar que a mensagem foi recebida e processada, sem duplicações ou erros.

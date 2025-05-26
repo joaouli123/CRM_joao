@@ -63,30 +63,32 @@ export default function MessageInterface({
         try {
           const messageData = JSON.parse(event.data);
           
+          // TEMPO REAL: Processa mensagens recebidas e enviadas
           if (messageData.type === 'newMessage' && messageData.data) {
             const data = messageData.data;
-            console.log(`🔥 Mensagem WebSocket recebida para ${data.phoneNumber}:`, data.content);
+            console.log(`🔥 Mensagem WebSocket recebida:`, data);
             
-            // FILTRO RIGOROSO: só processa se for EXATAMENTE para o chat ativo
-            if (data.phoneNumber === selectedConversation && data.connectionId === selectedConnectionId) {
+            // Atualiza TODAS as mensagens para o chat correto, independente de estar ativo
+            if (data.connectionId === selectedConnectionId) {
               
               setMessagesByInstance(prev => {
-                const currentMessages = prev[instanceKey]?.[selectedConversation] || [];
+                const targetChat = data.phoneNumber;
+                const currentMessages = prev[instanceKey]?.[targetChat] || [];
                 
-                // ANTI-DUPLICAÇÃO ULTRA-ROBUSTA
+                // ANTI-DUPLICAÇÃO ROBUSTA
                 const exists = currentMessages.some((m: any) => 
                   m.id === data.id || 
                   (m.content === data.content && 
                    m.direction === data.direction &&
-                   Math.abs(new Date(m.timestamp).getTime() - new Date(data.timestamp).getTime()) < 2000)
+                   Math.abs(new Date(m.timestamp).getTime() - new Date(data.timestamp).getTime()) < 3000)
                 );
                 
                 if (exists) {
-                  console.log(`🔁 Mensagem duplicada ignorada para ${selectedConversation}`);
+                  console.log(`🔁 Mensagem duplicada ignorada para ${targetChat}`);
                   return prev;
                 }
 
-                // Adiciona mensagem com garantia de unicidade
+                // Adiciona mensagem em tempo real
                 const newMessage = {
                   id: data.id,
                   connectionId: data.connectionId,
@@ -97,18 +99,47 @@ export default function MessageInterface({
                   timestamp: new Date(data.timestamp)
                 };
 
-                console.log(`✅ Nova mensagem ${data.direction} adicionada para ${selectedConversation}:`, data.content);
+                console.log(`✅ TEMPO REAL: ${data.direction} adicionada para ${targetChat}: "${data.content}"`);
 
-                return {
+                // Atualiza mensagens para o chat específico
+                const updatedInstance = {
                   ...prev,
                   [instanceKey]: {
                     ...prev[instanceKey],
-                    [selectedConversation]: [...currentMessages, newMessage]
+                    [targetChat]: [...currentMessages, newMessage]
                   }
                 };
+                
+                // Se for o chat ativo, força re-render
+                if (targetChat === selectedConversation) {
+                  console.log(`🔥 ATUALIZANDO CHAT ATIVO ${selectedConversation} EM TEMPO REAL!`);
+                }
+                
+                return updatedInstance;
               });
-            } else {
-              console.log(`⏭️ Mensagem ignorada - não é para o chat ativo (${data.phoneNumber} ≠ ${selectedConversation})`);
+              
+              // Atualiza também a lista de conversas com última mensagem
+              setChatsByInstance(prev => {
+                const currentChats = prev[instanceKey] || [];
+                const updatedChats = currentChats.map(chat => {
+                  if (chat.phoneNumber === data.phoneNumber) {
+                    return {
+                      ...chat,
+                      lastMessage: data.content,
+                      lastMessageTime: new Date(data.timestamp),
+                      unreadCount: data.direction === 'received' && selectedConversation !== data.phoneNumber 
+                        ? (chat.unreadCount || 0) + 1 
+                        : chat.unreadCount || 0
+                    };
+                  }
+                  return chat;
+                });
+                
+                return {
+                  ...prev,
+                  [instanceKey]: updatedChats
+                };
+              });
             }
           }
         } catch (error) {
