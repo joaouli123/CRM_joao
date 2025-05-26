@@ -1,0 +1,74 @@
+Resolver o erro 500 (Internal Server Error) que ocorre ao tentar enviar mensagens do frontend para o backend, garantindo que o sistema continue funcional e sem interrupções no envio de mensagens.
+
+Descrição do Problema:
+
+No frontend, ao enviar uma mensagem via WebSocket, a requisição de envio retorna com um erro 500 (Internal Server Error) no console. O sistema ainda processa a mensagem corretamente, mas o erro no console precisa ser corrigido para evitar falhas futuras. O erro ocorre especificamente ao chamar o endpoint:
+
+POST /api/connections/36/send
+
+O que está funcionando bem:
+
+    Mensagens enviadas aparecem corretamente no frontend.
+
+    WebSocket está funcionando e a mensagem é recebida corretamente.
+
+    A lógica de envio da mensagem e a interface do usuário estão operando como esperado, mas o erro 500 precisa ser resolvido.
+
+O que deve ser feito:
+
+    Verificar e corrigir o endpoint /api/connections/36/send:
+
+        Investigar a configuração do backend que lida com este endpoint. O erro 500 indica que algo está falhando ao processar a requisição. Verifique se:
+
+            A URL do endpoint está correta.
+
+            Os dados enviados na requisição estão no formato esperado pela API.
+
+            O servidor não está falhando em algum processo interno (ex.: falta de dados ou erros de lógica no backend).
+
+    Testar a API diretamente (Postman/cURL):
+
+        Enviar uma requisição manual diretamente para o endpoint usando ferramentas como Postman ou cURL para testar se a API está funcionando sem erros. Se o erro persistir, isso indicará que o problema está no backend, e não na forma como as mensagens estão sendo enviadas do frontend.
+
+    Verificar se os dados são válidos no backend:
+
+        Certifique-se de que os dados passados para o endpoint estão no formato correto e se todos os campos necessários estão sendo enviados. Por exemplo, o corpo da requisição pode precisar de um campo específico como:
+
+    {
+      "phoneNumber": "554187038339",
+      "message": "Aqui vai sua mensagem"
+    }
+
+    Verificar o código do backend:
+
+        Se possível, revisar a lógica no código backend que processa o envio de mensagens. Certifique-se de que não há validações incorretas ou problemas ao tentar salvar os dados no banco de dados (se aplicável).
+
+        Verifique também se o código está tratando erros corretamente para evitar falhas internas.
+
+    Logs detalhados no servidor:
+
+        Adicione mais logs de debug no backend para que possamos entender o que está causando o erro 500. Os logs devem incluir:
+
+            Requisição recebida.
+
+            Dados processados antes de retornar o erro.
+
+            Causa do erro 500.
+
+Ações de Teste:
+
+    Teste via cURL:
+
+    Tente enviar uma mensagem via cURL para garantir que a API está funcionando corretamente:
+
+    curl -X POST https://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev/api/connections/36/send \
+    -H "Content-Type: application/json" \
+    -d '{"phoneNumber": "554187038339", "message": "Test message"}'
+
+    Teste via Postman:
+
+    Configure uma requisição POST no Postman para o mesmo endpoint e dados para verificar se o erro 500 ainda ocorre.
+
+Considerações Finais:
+
+O erro 500 precisa ser resolvido no backend para garantir que a requisição de envio de mensagem seja processada corretamente. Assim que o erro for corrigido, o sistema funcionará sem problemas e as mensagens serão enviadas sem erros no console.
