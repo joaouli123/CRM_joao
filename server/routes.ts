@@ -489,6 +489,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Send message endpoint - REAL WhatsApp delivery
   app.post("/api/connections/:id/send", async (req, res) => {
+    console.log(`🚨 ROTA SEND CHAMADA - ID: ${req.params.id}`);
+    console.log(`🚨 BODY:`, req.body);
     try {
       const connectionId = parseInt(req.params.id);
       const { to, message: messageText } = req.body;
