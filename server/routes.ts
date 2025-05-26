@@ -372,8 +372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sessionName = connection.name;
           console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
           
-          // Get real messages from Evolution API
-          const realMessages = await evolutionAPI.getChatMessages(sessionName, `${phoneNumber}@s.whatsapp.net`, limit);
+          // Get real messages from Evolution API using your authentic instance
+          const realInstanceId = "663d47ec-d490-4822-9c8d-c258cc46e0c1";
+          const realMessages = await evolutionAPI.getChatMessages(realInstanceId, `${phoneNumber}@s.whatsapp.net`, limit);
           
           if (realMessages && realMessages.length > 0) {
             console.log(`✅ Encontradas ${realMessages.length} mensagens reais para ${phoneNumber}`);

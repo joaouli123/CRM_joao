@@ -1,0 +1,99 @@
+Olá! A seguir estão os dados reais da minha instância EvolutionAPI, que precisam ser usados para conectar corretamente, obter mensagens reais do WhatsApp e exibir o histórico verdadeiro das conversas no frontend.
+✅ DADOS REAIS DA INSTÂNCIA
+
+    ID da instância: 663d47ec-d490-4822-9c8d-c258cc46e0c1
+
+    Número conectado: 554199077637@s.whatsapp.net
+
+    Link do painel da instância:
+    https://evolution.lowfy.com.br/manager/instance/663d47ec-d490-4822-9c8d-c258cc46e0c1/
+
+    Token/API Key:
+    011dA95bf60bb215afd8cce1e01f99598A
+
+🧠 O que deve ser feito:
+1. ✅ Conectar ao WebSocket real da instância:
+
+A conexão deve ser feita assim (usando socket.io-client):
+
+const socket = io("wss://evolution.lowfy.com.br/instance/663d47ec-d490-4822-9c8d-c258cc46e0c1", {
+  transports: ["websocket"],
+  extraHeaders: {
+    Authorization: "Bearer 011dA95bf60bb215afd8cce1e01f99598A"
+  }
+});
+
+2. ✅ Parar de usar mensagens falsas/mocked no frontend
+
+O sistema atual mostra mensagens simuladas ao clicar em um contato.
+
+Preciso que isso seja substituído imediatamente por dados reais vindos da API.
+3. ✅ Buscar o histórico real da conversa
+
+No backend, deve-se chamar a API para obter mensagens da conversa com um contato específico.
+
+Exemplo de chamada (GET):
+
+GET https://evolution.lowfy.com.br/api/messages/554199077637
+Authorization: Bearer 011dA95bf60bb215afd8cce1e01f99598A
+
+    Substituir 554199077637 pelo número do contato clicado.
+
+4. ✅ Exibir as mensagens reais no frontend
+
+Ao clicar em um contato:
+
+    Buscar o histórico real dessa conversa via API (ou evento WebSocket).
+
+    Exibir as mensagens reais no painel do chat, em ordem cronológica.
+
+    As novas mensagens enviadas/recebidas devem aparecer automaticamente.
+
+5. ✅ Exibir as mensagens enviadas corretamente no chat
+
+Atualmente, o sistema envia as mensagens via:
+
+socket.emit("send_message", {
+  to: "55XXXXXXXXXXX",
+  message: "texto aqui"
+});
+
+🛠 Após o envio:
+
+    A interface deve exibir a mensagem enviada com status enviada.
+
+    Confirmar que a mensagem volta via evento WebSocket ("message", "message_sent", etc).
+
+6. ✅ Escutar os eventos reais do WebSocket
+
+No mínimo, escutar:
+
+socket.on("message", (data) => {
+  console.log("Mensagem recebida:", data);
+  // Mostrar no chat
+});
+
+socket.on("history", (data) => {
+  console.log("Histórico:", data);
+  // Preencher o histórico
+});
+
+Se não souberem os nomes dos eventos exatos, usar:
+
+socket.onAny((event, data) => {
+  console.log("🛰 Evento recebido:", event, data);
+});
+
+⚠️ Importante
+
+A IA ou o dev que estiver fazendo a integração não deve continuar usando mensagens simuladas. Já temos:
+
+    Instância real ✅
+
+    Token real ✅
+
+    WebSocket ativo ✅
+
+    API funcional ✅
+
+Só falta integrar isso de verdade no frontend.
