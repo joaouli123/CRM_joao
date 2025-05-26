@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -40,7 +41,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           console.log("WebSocket message received:", message);
 
           switch (message.type) {
+            case "connected":
+              // Just acknowledge connection, don't treat as unknown
+              break;
+              
             case "qrCodeReceived":
+              console.log("QR Code received:", message.data);
               options.onQRCodeReceived?.(message.data);
               break;
               
