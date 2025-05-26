@@ -1,0 +1,144 @@
+Correção proposta:
+
+    Evitar que as mensagens "pendentes" sejam tratadas novamente quando já forem "enviadas" ou "entregues".
+
+    Garantir que a lista de mensagens seja atualizada corretamente, evitando reprocessar as mesmas mensagens.
+
+Aqui está uma versão modificada que trata a substituição de mensagens temporárias de forma mais robusta e previne duplicação.
+Solução Final para Evitar Duplicação e Corrigir Ordem de Status
+Código Ajustado para Deduplicação e Substituição de Mensagens Temporárias
+
+useEffect(() => {
+  if (!selectedConnectionId) return;
+
+  console.log(`🔌 INICIANDO WEBSOCKET para conexão ${selectedConnectionId}`);
+
+  let socket: WebSocket | null = null;
+  let reconnectTimer: NodeJS.Timeout | null = null;
+
+  const connectWebSocket = () => {
+    try {
+      const wsUrl = `wss://${window.location.host}/api/ws`;
+      console.log(`📡 Conectando WebSocket: ${wsUrl}`);
+      
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        console.log(`✅ WEBSOCKET CONECTADO! Conexão: ${selectedConnectionId}`);
+        setIsConnected(true);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log(`📨 WEBSOCKET EVENTO RECEBIDO:`, data);
+
+          // Processar mensagem NOVA
+          if (data.type === "newMessage" && data.data) {
+            const msgData = data.data;
+
+            if (msgData.connectionId === selectedConnectionId) {
+              console.log(`📨 NOVA MENSAGEM RECEBIDA: ${msgData.content} | Direção: ${msgData.direction}`);
+
+              setRealtimeMessages((prev) => {
+                // 1. Evitar duplicação, verificando se já existe a mensagem por ID
+                const existsById = prev.some((m: any) => m.id === msgData.id);
+                if (existsById) {
+                  console.log(`⚠️ Mensagem ${msgData.id} já existe, ignorando duplicação`);
+                  return prev;
+                }
+
+                // 2. Substituição de mensagem temporária com tempId
+                if (msgData.direction === 'sent' && msgData.tempId) {
+                  console.log(`🔍 BUSCANDO mensagem temporária para ${msgData.content}`);
+                  
+                  let tempIndex = prev.findIndex((m: any) => m.tempId === msgData.tempId);
+
+                  if (tempIndex !== -1) {
+                    console.log(`🔄 SUBSTITUINDO mensagem temporária (tempId: ${msgData.tempId}) por oficial (id: ${msgData.id})`);
+                    const newMessages = [...prev];
+                    newMessages[tempIndex] = {
+                      id: msgData.id,
+                      content: msgData.content,
+                      phoneNumber: msgData.phoneNumber,
+                      direction: msgData.direction,
+                      timestamp: new Date(msgData.timestamp),
+                      status: 'sent',
+                      tempId: undefined, // Remove tempId na mensagem oficial
+                    };
+                    return newMessages;
+                  }
+                }
+
+                // 3. Se não encontrou mensagem temporária, adicionar normalmente
+                const newMsg = {
+                  id: msgData.id,
+                  content: msgData.content,
+                  phoneNumber: msgData.phoneNumber,
+                  direction: msgData.direction,
+                  timestamp: new Date(msgData.timestamp),
+                  status: msgData.direction === 'sent' ? 'sent' : 'received'
+                };
+                console.log(`✅ ADICIONANDO nova mensagem ${msgData.id}: "${msgData.content}"`);
+                return [...prev, newMsg];
+              });
+            }
+          }
+
+          // Ignorar eventos duplicados (sent, received)
+          if (data.type === "messageSent" || data.type === "messageReceived") {
+            console.log(`🔇 Ignorando evento duplicado: ${data.type}`);
+          }
+        } catch (error) {
+          console.error("❌ Erro ao processar WebSocket:", error);
+        }
+      };
+
+      socket.onerror = (error) => {
+        console.error("❌ WebSocket erro:", error);
+        setIsConnected(false);
+      };
+
+      socket.onclose = () => {
+        console.log("🔴 WebSocket fechado, tentando reconectar...");
+        setIsConnected(false);
+        reconnectTimer = setTimeout(connectWebSocket, 3000);
+      };
+
+    } catch (error) {
+      console.error("❌ Erro ao criar WebSocket:", error);
+      reconnectTimer = setTimeout(connectWebSocket, 3000);
+    }
+  };
+
+  connectWebSocket();
+
+  return () => {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (socket) socket.close();
+  };
+}, [selectedConnectionId]);
+
+O que foi corrigido:
+
+    Substituição de mensagens temporárias:
+
+        Quando a mensagem é enviada, ela é marcada com um tempId. Quando o servidor retorna a confirmação de envio, a mensagem temporária é substituída pela mensagem oficial, usando o id fornecido pelo servidor.
+
+        Se a mensagem já tiver o tempId, ela será atualizada com o novo id e o status será alterado para "sent". Isso evita duplicações, pois a mensagem temporária é substituída pela oficial sem adicionar uma nova mensagem.
+
+    Evitar duplicação de mensagens:
+
+        O sistema agora verifica se uma mensagem já existe no estado antes de adicioná-la. Isso é feito com base no id da mensagem, o que garante que uma mensagem já existente não será duplicada.
+
+    Ajuste no fluxo de atualização do estado:
+
+        O estado da mensagem é atualizado corretamente ao substituir a temporária pela oficial, e o estado de "entregue" (✔✔) é controlado diretamente.
+
+Próximos Passos:
+
+    Teste novamente o envio de mensagens e veja se as duplicações desaparecem.
+
+    Verifique o status das mensagens se a transição de "pending" para "sent" está sendo feita corretamente.
+
+    Confirmar a ordenação das mensagens para garantir que as mais recentes apareçam na parte inferior sem alterações no status.

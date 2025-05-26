@@ -64,49 +64,21 @@ export default function MessageInterface({
                 console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
                 
                 setRealtimeMessages((prev) => {
-                  // 1. VERIFICAÇÃO ROBUSTA DE DUPLICAÇÃO (por id E tempId)
-                  const existsById = prev.some((m: any) => m.id === msgData.id || m.tempId === msgData.tempId);
-                  if (existsById && msgData.id) {
-                    console.log(`⚠️ Mensagem ${msgData.id || msgData.tempId} JÁ EXISTE, ignorando duplicação`);
+                  // 1. Evitar duplicação, verificando se já existe a mensagem por ID
+                  const existsById = prev.some((m: any) => m.id === msgData.id);
+                  if (existsById) {
+                    console.log(`⚠️ Mensagem ${msgData.id} já existe, ignorando duplicação`);
                     return prev;
                   }
 
-                  // 2. SUBSTITUIR mensagem temporária usando tempId (PRIORIDADE) ou fallback
-                  if (msgData.direction === 'sent' && msgData.id) {
-                    console.log(`🔍 BUSCANDO mensagem temporária para "${msgData.content}" | tempId: ${msgData.tempId}`);
+                  // 2. Substituição de mensagem temporária com tempId
+                  if (msgData.direction === 'sent' && msgData.tempId) {
+                    console.log(`🔍 BUSCANDO mensagem temporária para ${msgData.content}`);
                     
-                    let tempIndex = -1;
-                    
-                    // PRIMEIRO: Buscar por tempId exato (mais confiável)
-                    if (msgData.tempId) {
-                      tempIndex = prev.findIndex((m: any) => m.tempId === msgData.tempId);
-                      if (tempIndex !== -1) {
-                        console.log(`✅ ENCONTRADO por tempId: ${msgData.tempId}`);
-                      }
-                    }
-                    
-                    // FALLBACK: Buscar por conteúdo + direção + telefone se não encontrou por tempId
-                    if (tempIndex === -1) {
-                      tempIndex = prev.findIndex((m: any) => {
-                        const isTemporary = m.tempId && m.status === 'pending';
-                        const sameContent = m.content === msgData.content;
-                        const sameDirection = m.direction === 'sent';
-                        const samePhoneNumber = m.phoneNumber === msgData.phoneNumber;
-                        const timeDiff = Math.abs(new Date(m.timestamp).getTime() - new Date(msgData.timestamp).getTime());
-                        const withinTimeWindow = timeDiff < 10000;
-                        
-                        return isTemporary && sameContent && sameDirection && samePhoneNumber && withinTimeWindow;
-                      });
-                      
-                      if (tempIndex !== -1) {
-                        console.log(`✅ ENCONTRADO por fallback (conteúdo+tempo)`);
-                      }
-                    }
+                    let tempIndex = prev.findIndex((m: any) => m.tempId === msgData.tempId);
 
                     if (tempIndex !== -1) {
-                      const tempMsg = prev[tempIndex];
-                      console.log(`🔄 SUBSTITUINDO mensagem tempId=${tempMsg.tempId} por id=${msgData.id}`);
-                      
+                      console.log(`🔄 SUBSTITUINDO mensagem temporária (tempId: ${msgData.tempId}) por oficial (id: ${msgData.id})`);
                       const newMessages = [...prev];
                       newMessages[tempIndex] = {
                         id: msgData.id,
@@ -115,15 +87,13 @@ export default function MessageInterface({
                         direction: msgData.direction,
                         timestamp: new Date(msgData.timestamp),
                         status: 'sent',
-                        tempId: undefined // Remover tempId da mensagem oficial
+                        tempId: undefined, // Remove tempId na mensagem oficial
                       };
                       return newMessages;
-                    } else {
-                      console.warn(`⚠️ Mensagem oficial recebida, mas não foi possível encontrar uma temporária: "${msgData.content}"`);
                     }
                   }
 
-                  // 3. Se não encontrou temporária, adicionar normalmente
+                  // 3. Se não encontrou mensagem temporária, adicionar normalmente
                   const newMsg = {
                     id: msgData.id,
                     content: msgData.content,
@@ -132,7 +102,6 @@ export default function MessageInterface({
                     timestamp: new Date(msgData.timestamp),
                     status: msgData.direction === 'sent' ? 'sent' : 'received'
                   };
-                  
                   console.log(`✅ ADICIONANDO nova mensagem ${msgData.id}: "${msgData.content}"`);
                   return [...prev, newMsg];
                 });
