@@ -94,14 +94,31 @@ class EvolutionAPI {
   async generateQRCode(instanceName: string): Promise<string> {
     console.log(`📱 Gerando QR Code para instância: ${instanceName}`);
     
-    const response: EvolutionQRResponse = await this.makeRequest(`/instance/connect/${instanceName}`, 'GET');
-    
-    if (response.qrcode && response.qrcode.base64) {
-      console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
-      return `data:image/png;base64,${response.qrcode.base64}`;
+    try {
+      const response = await this.makeRequest(`instance/connect/${instanceName}`, 'GET');
+      
+      // Handle different possible response formats from Evolution API
+      if (response.qrcode?.base64) {
+        console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
+        return `data:image/png;base64,${response.qrcode.base64}`;
+      }
+      
+      if (response.base64) {
+        console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
+        return `data:image/png;base64,${response.base64}`;
+      }
+      
+      if (response.qr) {
+        console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
+        return `data:image/png;base64,${response.qr}`;
+      }
+      
+      console.error('❌ Formato de resposta inesperado da Evolution API:', response);
+      throw new Error('QR code not found in response');
+    } catch (error) {
+      console.error(`❌ Erro ao gerar QR Code:`, error);
+      throw new Error('Failed to generate QR code - check Evolution API credentials');
     }
-    
-    throw new Error('Failed to generate QR code');
   }
 
   async getConnectionStatus(instanceName: string): Promise<string> {
