@@ -133,11 +133,11 @@ export default function MessageInterface({
     refetchIntervalInBackground: true
   });
 
-  // Combinar mensagens da API com mensagens em tempo real
+  // Combinar mensagens da API com mensagens em tempo real E ORDENAR POR TIMESTAMP
   const allMessages = [
     ...chatMessages,
     ...realtimeMessages.filter((m) => m.phoneNumber === selectedConversation)
-  ];
+  ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   // Debug - mostrar contagem de mensagens
   useEffect(() => {
