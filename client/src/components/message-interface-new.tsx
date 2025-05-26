@@ -240,7 +240,9 @@ export default function MessageInterface({
     try {
       console.log(`📤 Enviando mensagem para ${selectedConversation}: ${messageText}`);
       
-      const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
+      // Use full backend URL to bypass Vite proxy issues
+      const backendUrl = window.location.origin;
+      const response = await fetch(`${backendUrl}/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
