@@ -52,28 +52,9 @@ export function setupSendMessageRoute(app: Express) {
       const result = await evolutionAPI.sendMessage(activeInstanceName, cleanPhoneNumber, messageText);
       console.log(`✅ SUCESSO! Mensagem enviada para o WhatsApp:`, result);
 
-      // Store message in database
-      const newMessage = await storage.createMessage({
-        connectionId,
-        from: "me",
-        to: cleanPhoneNumber,
-        body: messageText,
-        direction: "sent"
-      });
-
-      // Broadcast ÚNICO via WebSocket for real-time UI update
-      const messageData = { 
-        id: newMessage.id,
-        connectionId, 
-        direction: "sent",
-        phoneNumber: cleanPhoneNumber,
-        content: messageText,
-        status: "sent",
-        timestamp: new Date().toISOString()
-      };
-
-      // APENAS UM BROADCAST para evitar duplicação
-      broadcast({ type: "messageSent", data: messageData });
+      // ⚠️ NÃO SALVAR NO BANCO - Deixar o webhook da Evolution API fazer tudo
+      console.log(`🚫 SALVAMENTO E BROADCAST removidos - webhook da Evolution API irá processar`);
+      console.log(`🎯 Aguardando webhook processar a mensagem enviada...`);
 
       res.json({ 
         success: true, 
@@ -815,71 +796,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const connection = connections.find(c => c.status === "connected");
 
         if (connection) {
-          // Processar mensagem RECEBIDA (não nossa)
-          if (!messageData.key.fromMe && messageData.message) {
-            console.log(`📱 Nova mensagem RECEBIDA de ${phoneNumber}: ${messageContent}`);
-
-            // Criar registro da mensagem recebida
-            const receivedMessage = await storage.createMessage({
-              connectionId: connection.id,
-              from: phoneNumber,
-              to: connection.phoneNumber || "system", 
-              body: messageContent,
-              direction: "received"
-            });
-
-            console.log("💾 Mensagem RECEBIDA salva no banco:", receivedMessage);
-
-            // APENAS UM BROADCAST para mensagem recebida
-            const messageToSend = {
-              type: "messageReceived",
-              data: {
-                id: receivedMessage.id,
-                connectionId: connection.id,
-                direction: "received",
-                phoneNumber: phoneNumber,
-                content: messageContent,
-                status: "received",
-                timestamp: new Date().toISOString()
-              }
-            };
-
-            console.log("📡 Broadcasting mensagem RECEBIDA:", messageToSend);
-            broadcast(messageToSend);
-          }
+          // Processar QUALQUER mensagem (recebida ou enviada)
+          const isReceived = !messageData.key.fromMe;
+          const direction = isReceived ? "received" : "sent";
           
-          // Processar mensagem ENVIADA (nossa)
-          else if (messageData.key.fromMe && messageData.message) {
-            console.log(`📤 Confirmação de mensagem ENVIADA para ${phoneNumber}: ${messageContent}`);
+          console.log(`📱 Processando mensagem ${direction.toUpperCase()} - ${phoneNumber}: ${messageContent}`);
 
-            // Criar registro da mensagem enviada
-            const sentMessage = await storage.createMessage({
+          // Criar registro da mensagem
+          const newMessage = await storage.createMessage({
+            connectionId: connection.id,
+            from: isReceived ? phoneNumber : (connection.phoneNumber || "system"),
+            to: isReceived ? (connection.phoneNumber || "system") : phoneNumber,
+            body: messageContent,
+            direction: direction
+          });
+
+          console.log(`💾 Mensagem ${direction.toUpperCase()} salva no banco:`, newMessage);
+
+          // ÚNICO BROADCAST para qualquer mensagem
+          const messageToSend = {
+            type: isReceived ? "messageReceived" : "messageSent",
+            data: {
+              id: newMessage.id,
               connectionId: connection.id,
-              from: connection.phoneNumber || "system",
-              to: phoneNumber, 
-              body: messageContent,
-              direction: "sent"
-            });
+              direction: direction,
+              phoneNumber: phoneNumber,
+              content: messageContent,
+              status: isReceived ? "received" : "sent",
+              timestamp: new Date().toISOString()
+            }
+          };
 
-            console.log("💾 Mensagem ENVIADA salva no banco:", sentMessage);
-
-            // APENAS UM BROADCAST para mensagem enviada
-            const messageToSend = {
-              type: "messageSent",
-              data: {
-                id: sentMessage.id,
-                connectionId: connection.id,
-                direction: "sent",
-                phoneNumber: phoneNumber,
-                content: messageContent,
-                status: "sent",
-                timestamp: new Date().toISOString()
-              }
-            };
-
-            console.log("📡 Broadcasting mensagem ENVIADA:", messageToSend);
-            broadcast(messageToSend);
-          }
+          console.log(`📡 Broadcasting mensagem ${direction.toUpperCase()}:`, messageToSend);
+          broadcast(messageToSend);
         }
       }
 

@@ -109,21 +109,21 @@ export default function MessageInterface({
 
                 console.log(`🚀 MENSAGEM CRIADA:`, newMsg);
 
-                // VERIFICAÇÃO RIGOROSA para evitar duplicação
+                // VERIFICAÇÃO RIGOROSA contra duplicação
                 setRealtimeMessages(prev => {
-                  // Verifica por ID exato do banco
+                  // Verificar por ID único
                   const existsById = prev.some(m => m.id === newMsg.id);
-                  
-                  // Verifica duplicação por conteúdo e timestamp próximo
+
+                  // Verificar por conteúdo duplicado nos últimos 5 segundos
                   const existsByContent = prev.some(m => 
-                    m.content === newMsg.content && 
-                    m.phoneNumber === newMsg.phoneNumber && 
+                    m.content === newMsg.content &&
+                    m.phoneNumber === newMsg.phoneNumber &&
                     m.direction === newMsg.direction &&
                     Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000
                   );
 
                   if (existsById || existsByContent) {
-                    console.log("⚠️ Mensagem duplicada detectada, ignorando");
+                    console.log("⚠️ Mensagem duplicada detectada (ID ou conteúdo), ignorando");
                     return prev;
                   }
 
@@ -253,7 +253,7 @@ export default function MessageInterface({
     if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
 
     const messageText = newMessage.trim();
-    
+
     try {
       console.log(`📤 ENVIANDO MENSAGEM para ${selectedConversation}: ${messageText}`);
 
@@ -269,10 +269,10 @@ export default function MessageInterface({
 
       if (response.ok) {
         console.log(`✅ SUCESSO! Mensagem "${messageText}" enviada!`);
-        
+
         // Limpa input apenas após confirmação de sucesso
         setNewMessage('');
-        
+
         // NÃO atualizar lista de conversas aqui - o WebSocket fará isso
         console.log(`🔄 Aguardando WebSocket atualizar interface...`);
       } else {
