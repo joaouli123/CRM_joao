@@ -42,74 +42,101 @@ export default function MessageInterface({
   const selectedConnection = connections.find(conn => conn.id === selectedConnectionId);
   const instanceKey = selectedConnection ? `${selectedConnection.id}_${selectedConnection.name}` : '';
 
-  // WebSocket para Evolution API - Tempo Real conforme especificação
+  // WebSocket global para todas as mensagens em tempo real
   useEffect(() => {
-    if (!selectedConversation || !selectedConnectionId) return;
+    if (!selectedConnectionId) return;
 
-    console.log(`🔌 Conectando WebSocket para o chat ${selectedConversation}!`);
+    console.log(`🔌 Conectando WebSocket global para conexão ${selectedConnectionId}`);
     
     const wsUrl = `wss://${window.location.host}/api/ws`;
     const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
-      console.log(`✅ WebSocket conectado para o chat ${selectedConversation}!`);
+      console.log(`✅ WebSocket global conectado!`);
       setIsConnected(true);
     };
 
     socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      try {
+        const data = JSON.parse(event.data);
+        console.log("📨 WebSocket message received:", data);
 
-      // MENSAGENS EM TEMPO REAL
-      if (data.type === "newMessage") {
-        console.log("Nova mensagem recebida:", data);
-        const messageData = data.data;
-        
-        // Só processa se for da conexão ativa
-        if (messageData.connectionId === selectedConnectionId) {
+        // MENSAGENS EM TEMPO REAL - processar TODAS as mensagens
+        if ((data.type === "newMessage" || data.type === "messageReceived" || data.type === "messageSent") && data.data) {
+          const messageData = data.data;
           
-          const targetChat = messageData.phoneNumber;
-          const instanceKey = `instance_${selectedConnectionId}`;
-          
-          setMessagesByInstance((prevMessages) => {
-            const currentMessages = prevMessages[instanceKey]?.[targetChat] || [];
+          // Só processa se for da conexão ativa
+          if (messageData.connectionId === selectedConnectionId) {
+            console.log(`✅ Processando mensagem para conexão ${selectedConnectionId}:`, messageData);
             
-            // Verifica duplicação por ID única
-            const exists = currentMessages.some((m: any) => m.id === messageData.id);
-            if (exists) {
-              console.log("Mensagem duplicada ignorada");
-              return prevMessages;
-            }
+            const targetChat = messageData.phoneNumber;
             
-            // Adiciona nova mensagem
-            const newMessage = {
-              id: messageData.id,
-              content: messageData.content,
-              phoneNumber: messageData.phoneNumber,
-              direction: messageData.direction,
-              timestamp: new Date(messageData.timestamp),
-              status: messageData.status || 'delivered'
-            };
-            
-            console.log(`✅ TEMPO REAL: Adicionando "${messageData.content}" para ${targetChat}`);
-            
-            return {
-              ...prevMessages,
-              [instanceKey]: {
-                ...prevMessages[instanceKey],
-                [targetChat]: [...currentMessages, newMessage]
+            setMessagesByInstance((prevMessages) => {
+              const currentMessages = prevMessages[instanceKey]?.[targetChat] || [];
+              
+              // Verifica duplicação por ID única
+              const exists = currentMessages.some((m: any) => m.id === messageData.id);
+              if (exists) {
+                console.log("Mensagem duplicada ignorada");
+                return prevMessages;
               }
-            };
-          });
-        }
-      }
+              
+              // Adiciona nova mensagem
+              const newMessage = {
+                id: messageData.id || `msg_${Date.now()}_${Math.random()}`,
+                content: messageData.content || messageData.body || messageData.message,
+                phoneNumber: messageData.phoneNumber || messageData.from,
+                direction: messageData.direction,
+                timestamp: new Date(messageData.timestamp),
+                status: messageData.status || 'delivered'
+              };
+              
+              console.log(`✅ TEMPO REAL: Adicionando "${newMessage.content}" para ${targetChat}`);
+              
+              return {
+                ...prevMessages,
+                [instanceKey]: {
+                  ...prevMessages[instanceKey],
+                  [targetChat]: [...currentMessages, newMessage]
+                }
+              };
+            });
 
-      // STATUS "DIGITANDO..."
-      if (data.type === "typing") {
-        console.log(`${data.phoneNumber} está digitando...`);
-        if (data.phoneNumber === selectedConversation) {
-          setTyping(true);
-          setTimeout(() => setTyping(false), 2000);
+            // Atualiza também a lista de conversas
+            setChatsByInstance(prev => {
+              const currentChats = prev[instanceKey] || [];
+              const updatedChats = currentChats.map(chat => {
+                if (chat.phoneNumber === targetChat) {
+                  return {
+                    ...chat,
+                    lastMessage: messageData.content || messageData.body,
+                    lastMessageTime: new Date(messageData.timestamp),
+                    unreadCount: messageData.direction === 'received' && selectedConversation !== targetChat 
+                      ? (chat.unreadCount || 0) + 1 
+                      : chat.unreadCount || 0
+                  };
+                }
+                return chat;
+              });
+              
+              return {
+                ...prev,
+                [instanceKey]: updatedChats
+              };
+            });
+          }
         }
+
+        // STATUS "DIGITANDO..."
+        if (data.type === "typing") {
+          console.log(`${data.phoneNumber} está digitando...`);
+          if (data.phoneNumber === selectedConversation) {
+            setTyping(true);
+            setTimeout(() => setTyping(false), 2000);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao processar mensagem WebSocket:", error);
       }
     };
 
@@ -121,9 +148,10 @@ export default function MessageInterface({
     setWebSocket(socket);
 
     return () => {
+      console.log("🔌 Fechando WebSocket global");
       socket.close();
     };
-  }, [selectedConversation, selectedConnectionId]);
+  }, [selectedConnectionId, instanceKey]);
 
   // Função para enviar notificação de digitando
   const sendTypingNotification = () => {
@@ -162,119 +190,7 @@ export default function MessageInterface({
     }
   };
 
-      socket.onopen = () => {
-        console.log(`🟢 WebSocket conectado para ${selectedConversation}!`);
-        isConnecting = false;
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const messageData = JSON.parse(event.data);
-          
-          // TEMPO REAL: Processa mensagens recebidas e enviadas
-          if (messageData.type === 'newMessage' && messageData.data) {
-            const data = messageData.data;
-            console.log(`🔥 Mensagem WebSocket recebida:`, data);
-            console.log(`🔍 Verificando connectionId: ${data.connectionId} === ${selectedConnectionId}`);
-            
-            // Atualiza TODAS as mensagens para o chat correto, independente de estar ativo
-            if (data.connectionId === selectedConnectionId) {
-              console.log(`✅ PROCESSANDO MENSAGEM PARA CONEXÃO CORRETA!`);
-              
-              setMessagesByInstance(prev => {
-                const targetChat = data.phoneNumber;
-                const currentMessages = prev[instanceKey]?.[targetChat] || [];
-                
-                // Verifica duplicação apenas por ID
-                const exists = currentMessages.some((m: any) => m.id === data.id);
-                
-                if (exists) {
-                  console.log(`🔁 Mensagem duplicada ignorada para ${targetChat}`);
-                  return prev;
-                }
-
-                // Nova mensagem em tempo real COM TODOS OS CAMPOS
-                const newMessage = {
-                  id: data.id,
-                  connectionId: data.connectionId,
-                  direction: data.direction,
-                  phoneNumber: data.phoneNumber,
-                  content: data.content,
-                  status: data.status || 'delivered',
-                  timestamp: new Date(data.timestamp)
-                };
-
-                console.log(`✅ ADICIONANDO MENSAGEM EM TEMPO REAL: "${data.content}"`);
-
-                // Força atualização imediata criando novo objeto
-                const newState = {
-                  ...prev,
-                  [instanceKey]: {
-                    ...prev[instanceKey],
-                    [targetChat]: [...currentMessages, newMessage]
-                  }
-                };
-                
-                // Log para debug se é chat ativo
-                if (targetChat === selectedConversation) {
-                  console.log(`🔥 MENSAGEM PARA CHAT ATIVO - FORÇANDO RENDER!`);
-                }
-                
-                return newState;
-              });
-              
-              // Atualiza também a lista de conversas com última mensagem
-              setChatsByInstance(prev => {
-                const currentChats = prev[instanceKey] || [];
-                const updatedChats = currentChats.map(chat => {
-                  if (chat.phoneNumber === data.phoneNumber) {
-                    return {
-                      ...chat,
-                      lastMessage: data.content,
-                      lastMessageTime: new Date(data.timestamp),
-                      unreadCount: data.direction === 'received' && selectedConversation !== data.phoneNumber 
-                        ? (chat.unreadCount || 0) + 1 
-                        : chat.unreadCount || 0
-                    };
-                  }
-                  return chat;
-                });
-                
-                return {
-                  ...prev,
-                  [instanceKey]: updatedChats
-                };
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Erro ao processar mensagem WebSocket:", error);
-        }
-      };
-
-      socket.onerror = (error) => {
-        console.error("Erro no WebSocket:", error);
-        isConnecting = false;
-      };
-
-      socket.onclose = () => {
-        console.log(`🔴 WebSocket fechado para ${selectedConversation}`);
-        isConnecting = false;
-      };
-    };
-
-    connectWebSocket();
-
-    // Cleanup rigoroso ao trocar chat
-    return () => {
-      console.log(`🔌 Limpeza: fechando WebSocket do chat ${selectedConversation}...`);
-      if (socket && socket.readyState !== WebSocket.CLOSED) {
-        socket.close();
-      }
-      socket = null;
-      isConnecting = false;
-    };
-  }, [selectedConnectionId, selectedConversation, instanceKey]);
+      
   
   // Load initial chats for current instance
   const { isLoading: conversationsLoading } = useQuery({
@@ -449,22 +365,17 @@ export default function MessageInterface({
     conv.phoneNumber.includes(searchFilter)
   );
 
-  // Send message function with immediate UI update
+  // Send message function - messages will be added via WebSocket
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !selectedConnectionId || !instanceKey) return;
+    if (!newMessage.trim() || !selectedConversation || !selectedConnectionId) return;
 
     const messageText = newMessage;
     setNewMessage(''); // Clear input immediately
 
-    // REMOVED: Don't add message locally to avoid duplication
-    // The message will be added via WebSocket when it's confirmed sent
-
     try {
       console.log(`📤 Enviando mensagem para ${selectedConversation}: ${messageText}`);
       
-      // Use full backend URL to bypass Vite proxy issues
-      const backendUrl = window.location.origin;
-      const response = await fetch(`${backendUrl}/api/connections/${selectedConnectionId}/send`, {
+      const response = await fetch(`/api/connections/${selectedConnectionId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -473,26 +384,45 @@ export default function MessageInterface({
         })
       });
 
-      let result;
-      const contentType = response.headers.get('content-type');
-      
-      if (contentType && contentType.includes('application/json')) {
-        result = await response.json();
-      } else {
-        // If response is not JSON, get text for debugging
-        const responseText = await response.text();
-        console.error(`❌ Resposta não é JSON:`, responseText);
-        throw new Error(`Servidor retornou HTML/texto: ${responseText.substring(0, 200)}...`);
-      }
-      
       if (response.ok) {
+        const result = await response.json();
         console.log(`✅ Mensagem enviada com sucesso:`, result);
-        // Message will be added via WebSocket when confirmed
+        
+        // Adicionar mensagem imediatamente na UI para feedback visual
+        const sentMessage = {
+          id: `sent_${Date.now()}_${Math.random()}`,
+          content: messageText,
+          phoneNumber: selectedConversation,
+          direction: 'sent' as const,
+          timestamp: new Date(),
+          status: 'sent'
+        };
+
+        setMessagesByInstance(prev => ({
+          ...prev,
+          [instanceKey]: {
+            ...prev[instanceKey],
+            [selectedConversation]: [...(prev[instanceKey]?.[selectedConversation] || []), sentMessage]
+          }
+        }));
+
+        // Atualizar lista de conversas
+        setChatsByInstance(prev => ({
+          ...prev,
+          [instanceKey]: (prev[instanceKey] || []).map(chat => 
+            chat.phoneNumber === selectedConversation 
+              ? { ...chat, lastMessage: messageText, lastMessageTime: new Date() }
+              : chat
+          )
+        }));
+        
       } else {
-        console.error(`❌ Erro ao enviar mensagem:`, result);
+        console.error(`❌ Erro ao enviar mensagem:`, response.status);
+        setNewMessage(messageText); // Restore message on error
       }
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
+      setNewMessage(messageText); // Restore message on error
     }
   };
 
