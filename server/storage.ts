@@ -1,4 +1,4 @@
-import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation } from "@shared/schema";
+import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation, archivedChats, archivedMessages, type ArchivedChat, type InsertArchivedChat, type ArchivedMessage, type InsertArchivedMessage } from "@shared/schema";
 
 export interface IStorage {
   // Connection methods
@@ -17,6 +17,15 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: number, updates: Partial<Message>): Promise<Message | undefined>;
   getTodayMessageCount(): Promise<number>;
+  
+  // Archive methods
+  getArchivedChatsByConnection(connectionId: number): Promise<ArchivedChat[]>;
+  getArchivedChat(id: number): Promise<ArchivedChat | undefined>;
+  createArchivedChat(archivedChat: InsertArchivedChat): Promise<ArchivedChat>;
+  getArchivedMessagesByChat(archivedChatId: number, limit?: number): Promise<ArchivedMessage[]>;
+  createArchivedMessage(archivedMessage: InsertArchivedMessage): Promise<ArchivedMessage>;
+  unarchiveChat(id: number): Promise<boolean>;
+  deleteArchivedChat(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -372,6 +381,69 @@ export class DatabaseStorage implements IStorage {
       .where(gte(messages.timestamp, today));
     
     return result[0]?.count || 0;
+  }
+
+  // Archive methods implementation
+  async getArchivedChatsByConnection(connectionId: number): Promise<ArchivedChat[]> {
+    return await db
+      .select()
+      .from(archivedChats)
+      .where(eq(archivedChats.connectionId, connectionId))
+      .orderBy(desc(archivedChats.archiveDate));
+  }
+
+  async getArchivedChat(id: number): Promise<ArchivedChat | undefined> {
+    const [archivedChat] = await db
+      .select()
+      .from(archivedChats)
+      .where(eq(archivedChats.id, id));
+    return archivedChat || undefined;
+  }
+
+  async createArchivedChat(insertArchivedChat: InsertArchivedChat): Promise<ArchivedChat> {
+    const [archivedChat] = await db
+      .insert(archivedChats)
+      .values(insertArchivedChat)
+      .returning();
+    return archivedChat;
+  }
+
+  async getArchivedMessagesByChat(archivedChatId: number, limit: number = 50): Promise<ArchivedMessage[]> {
+    return await db
+      .select()
+      .from(archivedMessages)
+      .where(eq(archivedMessages.archivedChatId, archivedChatId))
+      .orderBy(desc(archivedMessages.timestamp))
+      .limit(limit);
+  }
+
+  async createArchivedMessage(insertArchivedMessage: InsertArchivedMessage): Promise<ArchivedMessage> {
+    const [archivedMessage] = await db
+      .insert(archivedMessages)
+      .values(insertArchivedMessage)
+      .returning();
+    return archivedMessage;
+  }
+
+  async unarchiveChat(id: number): Promise<boolean> {
+    const result = await db
+      .update(archivedChats)
+      .set({ isArchived: false })
+      .where(eq(archivedChats.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteArchivedChat(id: number): Promise<boolean> {
+    // First delete all archived messages
+    await db
+      .delete(archivedMessages)
+      .where(eq(archivedMessages.archivedChatId, id));
+    
+    // Then delete the archived chat
+    const result = await db
+      .delete(archivedChats)
+      .where(eq(archivedChats.id, id));
+    return (result.rowCount || 0) > 0;
   }
 }
 

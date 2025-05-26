@@ -1,0 +1,157 @@
+Você deve arquivar uma conversa usando a Evolution API. Para isso, siga as instruções abaixo, gerando um JSON com os dados da conversa e fazendo uma requisição para o servidor.
+Passos para Construir a Requisição:
+
+    Identifique a Conversa:
+
+        Você precisará de um ID único da conversa (chat_id). Se este ID não estiver disponível, crie um identificador único para essa conversa.
+
+        Esse ID serve para garantir que você está arquivando a conversa correta.
+
+    Identifique o Usuário e a Instância:
+
+        Cada usuário e instância devem ter um ID único. Esses IDs podem ser fornecidos ou você pode gerar identificadores exclusivos para representar o usuário e a instância na qual a conversa está ocorrendo.
+
+        Você precisa dos campos instance_id (para a instância) e user_id (para o usuário) para associar corretamente a conversa e o arquivamento.
+
+    Crie a Lista de Contatos:
+
+        Para cada contato que participou da conversa, você deve fornecer os seguintes dados:
+
+            contact_id: ID único do contato.
+
+            contact_name: Nome do contato.
+
+            contact_phone: Número de telefone do contato.
+
+            contact_status: O status do contato. Pode ser "active" se o contato está ativo ou "archived" se já foi arquivado.
+
+    Crie a Lista de Mensagens:
+
+        Cada mensagem na conversa precisa ser representada com os seguintes campos:
+
+            message_id: ID único da mensagem.
+
+            timestamp: Data e hora em que a mensagem foi enviada, no formato ISO 8601 (exemplo: "2025-05-26T10:00:00Z").
+
+            sender_id: ID do remetente da mensagem.
+
+            recipient_id: ID do destinatário da mensagem.
+
+            message_content: Conteúdo da mensagem.
+
+            status: Status da mensagem, pode ser "sent" ou "received".
+
+    Adicione os Metadados de Arquivamento:
+
+        Crie um bloco de metadados para o arquivamento da conversa. Esses dados são importantes para identificar a data e o motivo do arquivamento:
+
+            archive_date: Data e hora em que a conversa foi arquivada, no formato ISO 8601.
+
+            archive_reason: Motivo do arquivamento. Exemplo: "User requested to archive".
+
+            archived_by: ID do usuário que solicitou o arquivamento.
+
+    Construa o JSON Final:
+
+        Agora, você deve construir o JSON com todos os dados coletados nas etapas acima. O campo "archive" deve ser configurado como true para indicar que a conversa está sendo arquivada.
+
+    Envie a Requisição HTTP:
+
+        Após gerar o JSON corretamente, você precisa fazer uma requisição HTTP POST para o endpoint da Evolution API para arquivar a conversa.
+
+        O endpoint da API é: https://api.evolution.com/archive-chat.
+
+        A requisição deve ter o tipo de conteúdo application/json.
+
+Campos Obrigatórios:
+
+    chat_id: ID único da conversa.
+
+    instance_id: ID único da instância.
+
+    user_id: ID único do usuário.
+
+    archive: Valor true para indicar que a conversa está sendo arquivada.
+
+    contacts: Lista com os contatos da conversa, incluindo os campos contact_id, contact_name, contact_phone, e contact_status.
+
+    messages: Lista com as mensagens da conversa, incluindo message_id, timestamp, sender_id, recipient_id, message_content, e status.
+
+    archive_metadata: Dados sobre o arquivamento, incluindo archive_date, archive_reason, e archived_by.
+
+Exemplo de Requisição em JSON:
+
+Aqui está um exemplo de como o JSON deve ser estruturado:
+
+{
+    "action": "archive_chat",
+    "chat_id": "unique-chat-id",
+    "instance_id": "unique-instance-id",
+    "user_id": "unique-user-id",
+    "archive": true,
+    "contacts": [
+        {
+            "contact_id": "contact1-id",
+            "contact_name": "John Doe",
+            "contact_phone": "+551199999999",
+            "contact_status": "active"
+        },
+        {
+            "contact_id": "contact2-id",
+            "contact_name": "Jane Smith",
+            "contact_phone": "+551198888888",
+            "contact_status": "archived"
+        }
+    ],
+    "messages": [
+        {
+            "message_id": "message1-id",
+            "timestamp": "2025-05-26T10:00:00Z",
+            "sender_id": "unique-user-id",
+            "recipient_id": "contact1-id",
+            "message_content": "Hey, how's it going?",
+            "status": "sent"
+        },
+        {
+            "message_id": "message2-id",
+            "timestamp": "2025-05-26T10:05:00Z",
+            "sender_id": "contact1-id",
+            "recipient_id": "unique-user-id",
+            "message_content": "All good, thanks!",
+            "status": "received"
+        }
+    ],
+    "archive_metadata": {
+        "archive_date": "2025-05-26T10:30:00Z",
+        "archive_reason": "User requested to archive",
+        "archived_by": "unique-user-id"
+    }
+}
+
+Requisitos de Envio da Requisição:
+
+    Método HTTP: POST
+
+    Endpoint da API: https://api.evolution.com/archive-chat
+
+    Cabeçalhos da Requisição:
+
+        Content-Type: application/json
+
+    Corpo da Requisição: O corpo da requisição deve conter o JSON gerado conforme o exemplo acima.
+
+Dicas Importantes:
+
+    Verifique se todos os IDs (chat_id, instance_id, user_id, contact_id) são únicos e estão no formato correto.
+
+    Certifique-se de que as datas e horas no campo timestamp e archive_date estejam no formato ISO 8601.
+
+    O campo archive deve ser definido como true para garantir que a conversa seja arquivada.
+
+    Reveja os campos obrigatórios antes de enviar a requisição.
+
+Conclusão
+
+Este conjunto de instruções detalhadas foi criado para que a IA do Replit compreenda claramente as regras e passos necessários para arquivar uma conversa usando a Evolution API. Basta copiar e colar este prompt para que a IA possa gerar o JSON adequado e enviar a requisição HTTP.
+
+Se você precisar de ajustes ou mais informações, fique à vontade para perguntar!
