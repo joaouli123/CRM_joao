@@ -52,32 +52,42 @@ export default function MessageInterface({
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log(`📨 WEBSOCKET MENSAGEM RECEBIDA:`, data);
+            console.log(`📨 WEBSOCKET EVENTO RECEBIDO:`, data);
 
-            if (data.type === "newMessage" && data.data) {
+            // APENAS processar mensagens RECEBIDAS do servidor (não enviadas)
+            if (data.type === "messageReceived" && data.data) {
               const msgData = data.data;
-              console.log(`🎯 NOVA MENSAGEM: ${msgData.content} de ${msgData.phoneNumber}`);
+              console.log(`📥 MENSAGEM RECEBIDA DO SERVIDOR: ${msgData.content} de ${msgData.phoneNumber}`);
               
-              if (msgData.connectionId === selectedConnectionId) {
-                console.log(`✅ ADICIONANDO MENSAGEM EM TEMPO REAL!`);
+              // Só adicionar se for para a conexão ativa E for realmente recebida (não enviada)
+              if (msgData.connectionId === selectedConnectionId && msgData.direction === 'received') {
+                console.log(`✅ ADICIONANDO MENSAGEM RECEBIDA EM TEMPO REAL!`);
                 
                 setRealtimeMessages((prev) => {
                   const exists = prev.some((m: any) => m.id === msgData.id);
-                  if (exists) return prev;
+                  if (exists) {
+                    console.log(`⚠️ Mensagem já existe: ${msgData.id}`);
+                    return prev;
+                  }
                   
                   const newMsg = {
                     id: msgData.id,
                     content: msgData.content,
                     phoneNumber: msgData.phoneNumber,
-                    direction: msgData.direction,
+                    direction: 'received', // Garantir que é recebida
                     timestamp: new Date(msgData.timestamp),
-                    status: msgData.status || 'received'
+                    status: 'received'
                   };
                   
-                  console.log(`🚀 MENSAGEM ADICIONADA: Total ${prev.length + 1}`);
+                  console.log(`🚀 MENSAGEM RECEBIDA ADICIONADA: Total ${prev.length + 1}`);
                   return [...prev, newMsg];
                 });
               }
+            }
+            
+            // Para debug - ignorar mensagens enviadas
+            if (data.type === "newMessage" || data.type === "messageSent") {
+              console.log(`📤 IGNORANDO mensagem enviada: ${data.data?.content}`);
             }
           } catch (error) {
             console.error("❌ Erro ao processar WebSocket:", error);

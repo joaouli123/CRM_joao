@@ -1,0 +1,125 @@
+As mensagens enviadas via WebSocket devem ser processadas de maneira separada das mensagens que vêm do servidor ou do backend (as mensagens recebidas).
+O que pode estar acontecendo:
+
+    Mensagens enviadas pelo console são mensagens enviadas localmente, mas as mensagens recebidas (do servidor ou Evolution API) devem ser tratadas de forma diferente.
+
+    Mensagens recebidas via WebSocket devem ser tratadas como novas mensagens que chegam do servidor, enquanto as mensagens enviadas devem ser enviadas para o WebSocket e não precisam ser "processadas" ou "registradas" da mesma forma que as recebidas.
+
+Como garantir que as mensagens recebidas apareçam em tempo real no chat:
+
+    Mensagens enviadas devem ser capturadas e exibidas imediatamente, sem serem interpretadas como mensagens do servidor.
+
+    Mensagens recebidas devem ser processadas separadamente e atualizadas no estado para que a interface do usuário seja re-renderizada.
+
+Aqui está como o código pode ser ajustado para tratar mensagens enviadas e recebidas corretamente:
+Passo 1: Verificar o processamento de mensagens enviadas
+
+As mensagens enviadas não devem ser "tratadas como recebidas". Então, você deve garantir que apenas as mensagens do servidor sejam processadas da forma correta:
+
+// Mensagens enviadas para o servidor
+const sendMessage = (messageContent) => {
+  const message = {
+    content: messageContent,
+    phoneNumber: selectedConversation, // Garantir que a mensagem vai para o chat correto
+    timestamp: new Date().toISOString(),
+    direction: 'sent',
+    id: generateUniqueMessageId() // Gerar um ID único para cada mensagem
+  };
+
+  // Atualiza o estado com a nova mensagem enviada
+  setMessages((prevMessages) => [...prevMessages, message]);
+
+  // Enviar a mensagem para o servidor via WebSocket ou API
+  sendMessageToWebSocket(message);
+};
+
+// Envio para WebSocket
+const sendMessageToWebSocket = (message) => {
+  socket.send(JSON.stringify(message)); // Envia via WebSocket
+};
+
+Passo 2: Processar mensagens recebidas do servidor
+
+Aqui você deve garantir que as mensagens do servidor sejam capturadas e apareçam na interface sem qualquer duplicação.
+
+// Processamento de mensagens recebidas via WebSocket
+useEffect(() => {
+  const socket = createWebSocket();
+
+  socket.onmessage = (event) => {
+    const incomingMessage = JSON.parse(event.data); // Mensagem recebida do servidor
+    console.log("Mensagem recebida via WebSocket:", incomingMessage);
+
+    // Verifica se a mensagem é para o chat ativo
+    if (incomingMessage.phoneNumber === selectedConversation) {
+      // Atualiza o estado de mensagens somente se for do chat ativo
+      setMessages((prevMessages) => [...prevMessages, incomingMessage]);
+    }
+  };
+
+  return () => {
+    socket.close(); // Fechar o WebSocket quando o componente for desmontado
+  };
+}, [selectedConversation]); // A dependência é o chat ativo
+
+Passo 3: Garantir que o componente de chat reaja corretamente às novas mensagens
+
+    Quando uma mensagem é recebida, o estado de mensagens é atualizado.
+
+    Quando uma mensagem é enviada, ela aparece imediatamente no chat.
+
+Aqui está um exemplo de como exibir as mensagens na interface:
+
+const Chat = () => {
+  const [messages, setMessages] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState('554187038339'); // Número do chat ativo
+
+  // Atualiza o WebSocket para o chat ativo
+  useEffect(() => {
+    const socket = createWebSocket();
+
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      console.log("Mensagem recebida:", message);
+
+      // Adiciona a mensagem ao estado de mensagens
+      if (message.phoneNumber === selectedConversation) {
+        setMessages((prevMessages) => [...prevMessages, message]);
+      }
+    };
+
+    return () => {
+      socket.close(); // Fechar conexão quando o componente for desmontado
+    };
+  }, [selectedConversation]);
+
+  return (
+    <div>
+      <h1>Chat com {selectedConversation}</h1>
+      <div>
+        {messages.map((msg, index) => (
+          <div key={msg.id || index}>
+            <p>{msg.content}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+O que pode estar causando o problema:
+
+    Mensagens locais (enviadas diretamente do frontend) podem estar sendo tratadas de maneira igual às mensagens recebidas. É importante separá-las, garantindo que só as mensagens recebidas do servidor sejam processadas e exibidas.
+
+    Se o WebSocket estiver desconectando ou reiniciando a conexão, isso pode impactar a entrega das mensagens em tempo real. Verifique os logs do WebSocket para ver se ele está sendo desconectado e tente implementar uma lógica de reconexão automática.
+
+Se o problema continuar, pode ser interessante revisar o fluxo de comunicação entre o frontend, WebSocket e Evolution API para garantir que as mensagens estejam fluindo corretamente sem erros de sincronização.
+Próximos passos:
+
+    Corrigir o tratamento de mensagens enviadas para garantir que não sejam confundidas com as mensagens recebidas.
+
+    Garantir que as mensagens do servidor (recebidas pelo WebSocket) sejam processadas corretamente.
+
+    Adicionar reconexão automática para WebSocket, caso a conexão caia.
+
+    Teste utilizando mensagens simuladas (se disponíveis) para garantir que as mensagens estão sendo enviadas e recebidas corretamente.
