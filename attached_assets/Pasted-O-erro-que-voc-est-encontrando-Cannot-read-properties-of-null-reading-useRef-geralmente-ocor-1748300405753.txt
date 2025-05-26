@@ -1,0 +1,87 @@
+O erro que você está encontrando (Cannot read properties of null (reading 'useRef')) geralmente ocorre quando o useRef é chamado fora de um componente React válido ou quando o objeto referenciado é null no momento em que é acessado. Isso é comum quando você tenta acessar um useRef antes de o componente ser montado corretamente, ou se o componente foi removido da árvore de componentes de forma inesperada.
+Possíveis causas:
+
+    WebSocket não sendo inicializado corretamente: Parece que a inicialização do WebSocket não está sendo gerida corretamente devido ao uso de useRef. Isso pode estar causando o erro na linha 19 do arquivo websocket.ts. Verifique se o useRef está sendo usado de forma correta e se não está sendo acessado antes de ser corretamente inicializado.
+
+    Problema de Renderização do Componente: O componente Dashboard ou outro componente que utiliza o useRef pode não estar sendo renderizado corretamente no momento em que o WebSocket tenta usar a referência.
+
+Soluções sugeridas:
+
+    Verificar o uso do useRef:
+
+        Certifique-se de que o useRef está sendo utilizado corretamente no componente e se não está sendo acessado antes de ser inicializado.
+
+    Exemplo de inicialização correta do useRef:
+
+const messagesEndRef = useRef(null);
+
+Se messagesEndRef.current for null no momento da referência, você deve garantir que o useRef seja acessado apenas quando o componente estiver montado.
+
+Adicionar Condições de Segurança:
+
+    No local onde você está tentando acessar messagesEndRef.current, adicione uma verificação para garantir que não seja null antes de usá-lo:
+
+Exemplo:
+
+useEffect(() => {
+  if (messagesEndRef.current) {
+    messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }
+}, [allMessages]);  // Isso será chamado quando as mensagens mudarem.
+
+Error Boundary:
+
+    Uma solução para capturar erros de renderização seria usar um error boundary, para capturar os erros e evitar que a tela branca ocorra. Isso pode ser feito criando um componente de fallback para capturar erros no componente Dashboard.
+
+Exemplo básico de um Error Boundary:
+
+import React, { Component } from 'react';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.log(error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <h1>Algo deu errado.</h1>;
+    }
+
+    return this.props.children; 
+  }
+}
+
+export default ErrorBoundary;
+
+E, no App.tsx:
+
+    <ErrorBoundary>
+      <Dashboard />
+    </ErrorBoundary>
+
+    Verifique os Logs e a Inicialização do WebSocket:
+
+        Se o WebSocket está tentando ser inicializado antes de o componente estar pronto, adicione verificações para garantir que ele só seja iniciado quando o componente e a conexão estiverem prontos.
+
+    Verifique o tempId e o id:
+
+        A duplicação pode estar sendo causada pela lógica de tempId e id no WebSocket. Certifique-se de que a lógica de deduplicação que você implementou esteja funcionando corretamente e que não haja duas mensagens com o mesmo tempId ou id.
+
+Verificação Final:
+
+    Verifique se o useRef está sendo utilizado apenas dentro de um componente React montado.
+
+    Certifique-se de que o WebSocket está sendo aberto após a montagem do componente, e que você não está acessando referências antes que o componente tenha sido montado.
+
+    Use useEffect corretamente para manipular o estado do WebSocket e o comportamento do scroll com as referências.
+
+Se você seguir essas etapas, o erro deve ser resolvido e o sistema de mensagens sem duplicação deve funcionar corretamente.

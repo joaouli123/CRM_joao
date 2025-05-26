@@ -211,9 +211,11 @@ export default function MessageInterface({
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  // Auto scroll
+  // Auto scroll com verificação de segurança
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [allMessages]);
 
   // Enviar mensagem
