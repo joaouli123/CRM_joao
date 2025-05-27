@@ -468,25 +468,25 @@ export default function MessageInterface({
 
   return (
     <div className="h-full w-full flex bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg shadow-lg border overflow-hidden">
-      {/* Lista de Conversas */}
-      <div className="w-80 min-w-[280px] max-w-[400px] border-r border-gray-300 flex flex-col h-full bg-gradient-to-b from-gray-800 to-gray-900">
+      {/* Lista de Conversas - Design Sofisticado Verde */}
+      <div className="w-80 min-w-[280px] max-w-[400px] border-r border-white/20 flex flex-col h-full glass-panel">
         {/* Header das Conversas */}
-        <div className="p-4 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white">Conversas</h3>
+        <div className="p-6 glass-panel border-b border-white/20 flex-shrink-0">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gradient-green">Conversas</h3>
             {isConnected && (
-              <Badge variant="outline" className="text-xs bg-green-500 text-white border-green-400 px-2 py-1">
+              <div className="badge-success">
                 Online
-              </Badge>
+              </div>
             )}
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               placeholder="Buscar conversas..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="pl-10 h-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:bg-gray-600 focus:border-gray-500"
+              className="pl-10 h-12 bg-white/10 border-white/20 text-slate-700 placeholder:text-slate-400 focus:bg-white/20 focus:border-green-400 rounded-xl"
             />
           </div>
         </div>
