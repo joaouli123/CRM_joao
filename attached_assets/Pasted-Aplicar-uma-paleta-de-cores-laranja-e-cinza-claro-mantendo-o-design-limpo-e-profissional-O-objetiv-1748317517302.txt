@@ -1,0 +1,67 @@
+Aplicar uma paleta de cores laranja e cinza claro, mantendo o design limpo e profissional. O objetivo é criar uma interface moderna e funcional, com uma organização clara de informações e elementos interativos bem destacados.
+✅ Diretrizes para Melhorias no Design:
+1. Paleta de Cores:
+
+    Cor Principal: Laranja:
+
+        Use o laranja como a cor primária para destacar ações importantes, como botões de enviar, ícones de status, títulos e destaques na interface.
+
+        O laranja pode ser usado em elementos interativos, como botões, links e ícones, para tornar essas áreas visualmente atraentes e fáceis de identificar.
+
+    Cor Secundária: Cinza Claro:
+
+        O cinza claro deve ser usado para a base da interface, como fundos de painel, campos de texto, barras de navegação e outras áreas secundárias. Ele cria uma boa base neutra, permitindo que o laranja se destaque.
+
+        Utilize tons mais claros de cinza (quase branco) para seções onde você não quer muita ênfase, garantindo que o laranja realmente se destaque.
+
+    Cor de Texto: Branco e Cinza Escuro:
+
+        Utilize o branco para o texto primário e informações principais, para garantir que o conteúdo seja legível e que o design não fique sobrecarregado de cor.
+
+        Cinza escuro pode ser utilizado para texto secundário ou menos importante, como descrições, números de estatísticas ou informações que não precisam de ênfase.
+
+2. Estrutura do Layout:
+
+    Fundo e Seções:
+
+        Fundo principal: Utilize um cinza claro ou branco para o fundo da tela, criando uma área limpa e sem distrações. A parte principal da tela, como os painéis de informações e mensagens, deve ter um fundo em cinza muito suave ou até mesmo branco para não sobrecarregar a interface.
+
+        Seções e Painéis: Use o cinza mais escuro ou tom neutro para os painéis laterais e as áreas de navegação (como o menu lateral, rodapé e áreas de separação). Isso cria uma distinção clara entre as áreas de conteúdo interativo e as áreas informativas ou secundárias.
+
+    Destaques:
+
+        Use o laranja para destacar elementos importantes: como botões de ação (ex: "Nova Conexão", "Enviar mensagem"), ícones de status e títulos de seções. O laranja traz energia à interface, ao mesmo tempo em que mantém a harmonia visual com o restante do layout.
+
+        Texto de destaque: Aplique laranja em texto de destaque, como contagem de novos contatos, notificações ou alertas que precisam ser vistos de imediato.
+
+3. Elementos de Navegação:
+
+    Barra de Navegação: Utilize um fundo cinza escuro ou cinza carvão, com ícones e textos em branco. Os ícones podem ser coloridos em laranja quando estiverem ativos, para dar um toque de interatividade, ou quando o usuário passar o mouse sobre eles.
+
+    Barras Laterais e Cabeçalhos: A barra lateral de navegação pode ser um tom de cinza escuro, mas deve ter elementos como ícones ou títulos de seção em laranja para guiar o usuário visualmente. A parte superior do cabeçalho pode ter um tom suave de cinza para garantir um design leve e organizado, mas com ícones destacados em laranja para mais visibilidade.
+
+4. Botões e Ícones:
+
+    Botões Primários: Botões importantes, como os de ação principal (enviar mensagem, adicionar novo contato, etc.), devem ser laranja, com texto em branco para garantir contraste e legibilidade.
+
+    Botões Secundários: Para ações secundárias, como cancelar ou desmarcar, use botões em cinza claro ou translúcidos, com texto em cinza escuro ou branco. Isso mantém a interface limpa e sem sobrecarregar visualmente.
+
+    Ícones: Utilize ícones simples e modernos em laranja e cinza. O laranja pode ser usado para ícones de ações (como "adicionar", "editar", "enviar"), enquanto o cinza pode ser usado para ícones de informações secundárias.
+
+5. Estatísticas e Gráficos:
+
+    Gráficos e Indicadores: Os gráficos de barras e indicadores devem usar laranja e cinza para destacar os dados mais relevantes, como valores de atendimento e satisfação. Os gráficos de distribuição de dados podem ter um fundo neutro (cinza claro), com linhas ou barras de dados em laranja para evidenciar as informações importantes.
+
+    Feedback Visual: Para mostrar feedback como "loading" ou "em progresso", utilize uma cor de laranja suave ou laranja pastel para não sobrecarregar os olhos do usuário.
+
+🎯 Resultados Esperados:
+
+    Design limpo, moderno e intuitivo, com destaque para os elementos interativos.
+
+    Paleta de cores coerente, com laranja para elementos de destaque e cinza para áreas de fundo e texto secundário.
+
+    Organização clara e eficiente, com ícones e botões bem definidos, garantindo fácil navegação e interação.
+
+    Gráficos e estatísticas bem apresentados, com uso de laranja e cinza para representar dados e indicadores.
+
+    Interface responsiva, que se adapta bem a diferentes dispositivos, mantendo o layout funcional e bonito.
