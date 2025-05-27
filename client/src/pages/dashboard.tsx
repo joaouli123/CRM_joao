@@ -8,7 +8,7 @@ import Sidebar from "@/components/sidebar";
 import MessageInterface from "@/components/message-interface-final";
 import Contacts from "@/pages/contacts";
 import ContactsManager from "@/pages/contacts-manager";
-import ContactsManagement from "@/pages/contacts-management";
+import ContactsWorking from "@/pages/contacts-working";
 import { Connection, ConnectionStats } from "@/lib/api";
 import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
@@ -300,7 +300,7 @@ export default function Dashboard() {
         );
 
       case "contacts-management":
-        return <ContactsManagement />;
+        return <ContactsWorking />;
 
       case "settings":
         return (

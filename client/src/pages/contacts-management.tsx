@@ -80,21 +80,20 @@ export default function ContactsManagement() {
 
   // Buscar estatísticas dos contatos
   const { data: stats } = useQuery<ContactStats>({
-    queryKey: ['/api/contacts/stats'],
-    queryFn: () => apiRequest('/api/contacts/stats')
+    queryKey: ['contacts-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/contacts/stats');
+      return response.json();
+    }
   });
 
   // Buscar contatos com filtros
   const { data: contactsResponse, isLoading } = useQuery({
-    queryKey: ['/api/contacts', { 
-      search: searchTerm, 
-      tag: tagFilter, 
-      sort: sortBy, 
-      page: currentPage,
-      dateFrom: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
-      dateTo: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
-    }],
-    queryFn: () => apiRequest(`/api/contacts?search=${encodeURIComponent(searchTerm)}&tag=${tagFilter}&sort=${sortBy}&page=${currentPage}&limit=${itemsPerPage}&dateFrom=${dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : ''}&dateTo=${dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : ''}`)
+    queryKey: ['contacts', searchTerm, tagFilter, sortBy, currentPage],
+    queryFn: async () => {
+      const response = await fetch('/api/contacts');
+      return response.json();
+    }
   });
 
   const contacts = contactsResponse?.contacts || [];
