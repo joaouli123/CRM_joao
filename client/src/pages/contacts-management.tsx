@@ -23,6 +23,7 @@ import {
   Trash2, 
   MessageCircle, 
   Download, 
+  Upload,
   Calendar as CalendarIcon,
   Search,
   Filter,
@@ -31,7 +32,10 @@ import {
   Phone,
   Mail,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User,
+  Edit,
+  Calendar
 } from 'lucide-react';
 
 interface Contact {
@@ -239,10 +243,10 @@ export default function ContactsManagement() {
     });
   };
 
-  const handleExport = (format: string) => {
-    const currentDate = format === 'csv' ? format(new Date(), 'dd-MM-yyyy') : format(new Date(), 'dd-MM-yyyy');
+  const handleExport = (exportFormat: string) => {
+    const currentDate = format(new Date(), 'dd-MM-yyyy');
     
-    if (format === 'csv') {
+    if (exportFormat === 'csv') {
       // Exportação CSV no padrão solicitado: NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA
       const csvContent = "data:text/csv;charset=utf-8," 
         + "NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA\n"
@@ -260,7 +264,7 @@ export default function ContactsManagement() {
       
       toast({ title: 'Lista de contatos exportada como CSV!' });
       
-    } else if (format === 'excel') {
+    } else if (exportFormat === 'excel') {
       // Exportação Excel (HTML table que o Excel pode abrir)
       const excelContent = `
         <table>
@@ -594,7 +598,106 @@ export default function ContactsManagement() {
                     Adicionar Contato
                   </Button>
                 </DialogTrigger>
-                
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>{editingContact ? 'Editar Contato' : 'Adicionar Novo Contato'}</DialogTitle>
+                    <DialogDescription>
+                      Preencha as informações do contato abaixo.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Nome *</Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Telefone *</Label>
+                        <Input
+                          id="phoneNumber"
+                          value={formData.phoneNumber}
+                          onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tag">Etiqueta</Label>
+                        <Select value={formData.tag} onValueChange={(value) => setFormData({ ...formData, tag: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma etiqueta" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="lead">Lead</SelectItem>
+                            <SelectItem value="qualificado">Qualificado</SelectItem>
+                            <SelectItem value="desqualificado">Desqualificado</SelectItem>
+                            <SelectItem value="cliente">Cliente</SelectItem>
+                            <SelectItem value="prospect">Prospect</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="origem">Origem</Label>
+                      <Select value={formData.origem} onValueChange={(value) => setFormData({ ...formData, origem: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a origem" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="website">Website</SelectItem>
+                          <SelectItem value="facebook">Facebook</SelectItem>
+                          <SelectItem value="instagram">Instagram</SelectItem>
+                          <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                          <SelectItem value="indicacao">Indicação</SelectItem>
+                          <SelectItem value="telefone">Telefone</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="observation">Observação</Label>
+                      <Textarea
+                        id="observation"
+                        value={formData.observation}
+                        onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
+                        placeholder="Observações sobre o contato..."
+                      />
+                    </div>
+                    <div className="flex justify-end gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddDialogOpen(false);
+                          setEditingContact(null);
+                          resetForm();
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button type="submit" disabled={createContactMutation.isPending || updateContactMutation.isPending}>
+                        {createContactMutation.isPending || updateContactMutation.isPending ? 'Salvando...' : (editingContact ? 'Atualizar' : 'Adicionar')}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
@@ -632,21 +735,212 @@ export default function ContactsManagement() {
                 </DialogContent>
               </Dialog>
 
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleImport}
-                className="hidden"
-                id="import-file"
-              />
-              <Button
-                onClick={() => document.getElementById('import-file')?.click()}
-                variant="outline"
-                className="btn-secondary border-blue-500 text-blue-700 hover:bg-blue-50"
-              >
-                <Download className="mr-2 h-4 w-4 rotate-180" />
-                Importar CSV/Excel
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="btn-secondary border-blue-500 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Download className="mr-2 h-4 w-4 rotate-180" />
+                    Importar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Upload className="h-5 w-5 text-blue-600" />
+                      Importar Contatos
+                    </DialogTitle>
+                    <DialogDescription>
+                      Faça upload de um arquivo CSV ou Excel com seus contatos.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-6">
+                    {/* Instruções */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-blue-900 mb-2">📋 Formato do Arquivo</h4>
+                      <p className="text-sm text-blue-700 mb-2">Seu arquivo deve conter as seguintes colunas:</p>
+                      <div className="bg-white p-2 rounded border text-xs font-mono">
+                        NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA
+                      </div>
+                      <div className="mt-2 text-sm text-blue-600">
+                        <p>• <strong>NOME:</strong> Nome do contato (obrigatório)</p>
+                        <p>• <strong>TELEFONE:</strong> Número com DDD (obrigatório)</p>
+                        <p>• <strong>EMAIL:</strong> Email do contato (opcional)</p>
+                        <p>• <strong>TAG:</strong> lead, cliente, prospect, etc. (opcional)</p>
+                        <p>• <strong>ORIGEM:</strong> website, facebook, etc. (opcional)</p>
+                        <p>• <strong>DATA:</strong> Data no formato dd/MM/yyyy (opcional)</p>
+                      </div>
+                    </div>
+
+                    {/* Formatos aceitos */}
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-semibold text-green-900 mb-2">✅ Formatos Aceitos</h4>
+                      <div className="flex gap-3">
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">.CSV</span>
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">.XLSX</span>
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">.XLS</span>
+                      </div>
+                    </div>
+
+                    {/* Área de Upload */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-lg font-medium text-gray-700 mb-2">
+                        Clique para selecionar ou arraste seu arquivo aqui
+                      </p>
+                      <p className="text-sm text-gray-500 mb-4">
+                        Arquivos CSV, XLSX ou XLS até 10MB
+                      </p>
+                      
+                      <input
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={handleImport}
+                        className="hidden"
+                        id="import-file-modal"
+                      />
+                      
+                      <Button
+                        onClick={() => document.getElementById('import-file-modal')?.click()}
+                        className="btn-primary"
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Selecionar Arquivo
+                      </Button>
+                    </div>
+
+                    {/* Exemplo */}
+                    <div className="bg-gray-50 p-4 rounded-lg border">
+                      <h4 className="font-semibold text-gray-900 mb-2">💡 Exemplo de linha no CSV:</h4>
+                      <div className="bg-white p-2 rounded border text-xs font-mono text-gray-700">
+                        João Silva;11999887766;joao@email.com;cliente;website;27/05/2025
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          {/* Dashboard de Estatísticas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <Card className="glass-panel border-0 shadow-xl">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-slate-600 text-sm">Total de Contatos</p>
+                    <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-panel border-0 shadow-xl">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                    <UserPlus className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-slate-600 text-sm">Novos Hoje</p>
+                    <p className="text-2xl font-bold text-slate-900">{stats.today}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-panel border-0 shadow-xl">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-slate-600 text-sm">Última Atualização</p>
+                    <p className="text-lg font-semibold text-slate-900">{stats.lastUpdate}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Lista de Contatos */}
+          <Card className="glass-panel border-0 shadow-xl animate-slide-up">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl text-slate-900">Lista de Contatos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredContacts.map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-green-300 hover:bg-green-50/30 transition-all duration-200">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-r from-slate-500 to-slate-600 rounded-full flex items-center justify-center">
+                          <User className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">{contact.name}</p>
+                          <p className="text-slate-600 text-sm">{contact.phoneNumber}</p>
+                          {contact.tag && (
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getTagColor(contact.tag)}`}>
+                              {contact.tag}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openWhatsAppChat(contact.phoneNumber)}
+                          className="text-green-600 border-green-300 hover:bg-green-50"
+                        >
+                          <MessageCircle className="mr-1 h-4 w-4" />
+                          Chat
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(contact)}
+                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        >
+                          <Edit className="mr-1 h-4 w-4" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(contact)}
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          <Trash2 className="mr-1 h-4 w-4" />
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {filteredContacts.length === 0 && (
+                    <div className="text-center py-8">
+                      <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                      <p className="text-slate-600">Nenhum contato encontrado</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>{editingContact ? 'Editar Contato' : 'Adicionar Novo Contato'}</DialogTitle>
