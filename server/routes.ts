@@ -273,6 +273,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const search = (req.query.search as string) || '';
 
       console.log(`🔍 GET /api/connections/${connectionId}/conversations?limit=${limit}&skip=${skip}&search="${search}"`);
+      console.log(`🔍 PARÂMETRO SEARCH: "${search}" (length: ${search.length}) (trimmed: "${search.trim()}")`);
+      console.log(`🔍 SEARCH É VÁLIDO? ${!!search.trim()}`);
+      console.log(`🔍 SERÁ APLICADO FILTRO? ${search.trim() ? 'SIM' : 'NÃO'}`);
 
       const connection = await storage.getConnection(connectionId);
 

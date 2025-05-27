@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -241,13 +241,30 @@ export default function MessageInterface({
   // Estado para busca
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Buscar conversas com paginação e filtro
-  const { data: conversations = [], error: conversationsError } = useQuery({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=${conversationsLimit}&search=${encodeURIComponent(searchQuery)}`],
+  // Buscar TODAS as conversas sem filtro do backend (deixar filtro para o frontend)
+  const { data: allConversations = [], error: conversationsError } = useQuery({
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=100`],
     enabled: !!selectedConnectionId,
     retry: 3,
     retryDelay: 1000,
   });
+
+  // Filtrar conversas no FRONTEND instantaneamente
+  const conversations = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allConversations.slice(0, conversationsLimit);
+    }
+    
+    const searchLower = searchQuery.toLowerCase().trim();
+    const filtered = allConversations.filter((conv: any) => {
+      const nameMatch = conv.contactName?.toLowerCase().includes(searchLower);
+      const phoneMatch = conv.phoneNumber?.includes(searchLower);
+      return nameMatch || phoneMatch;
+    });
+    
+    console.log(`🔍 FILTRO FRONTEND: "${searchQuery}" - ${filtered.length} resultados de ${allConversations.length} total`);
+    return filtered.slice(0, conversationsLimit);
+  }, [allConversations, searchQuery, conversationsLimit]);
 
   // Log das conversas quando carregarem
   useEffect(() => {
