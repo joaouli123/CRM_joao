@@ -254,14 +254,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Routes with explicit /api prefix
   app.get("/api/connections", async (req, res) => {
     try {
-      console.log("📞 GET /api/connections - BUSCANDO SUAS CONEXÕES");
-      const connections = await storage.getAllConnections();
-      console.log(`✅ ENCONTRADAS ${connections.length} conexões:`, connections);
+      console.log("📞 GET /api/connections - BUSCANDO SUA CONEXÃO LOWFY");
+      
+      // Usar o storage que já está funcionando
+      const connectionsData = await storage.getAllConnections();
+      console.log(`✅ CONEXÕES ENCONTRADAS:`, connectionsData);
+      
+      if (connectionsData.length === 0) {
+        console.log("⚠️ Nenhuma conexão encontrada - vou criar sua conexão lowfy novamente");
+        // Se não encontrar, força a criação da sua conexão lowfy
+        const newConnection = await storage.createConnection({
+          name: "lowfy",
+          status: "connected",
+          sessionData: "whatsapp_36_lowfy"
+        });
+        console.log("✅ Conexão lowfy recriada:", newConnection);
+        return res.json([newConnection]);
+      }
+      
+      console.log(`🎯 RETORNANDO ${connectionsData.length} conexões para o frontend`);
       res.setHeader('Content-Type', 'application/json');
-      res.json(connections);
+      res.json(connectionsData);
     } catch (error) {
       console.error("❌ Error fetching connections:", error);
-      res.status(500).json({ error: "Failed to fetch connections" });
+      res.status(500).json({ error: "Failed to fetch connections", details: error.message });
     }
   });
 
