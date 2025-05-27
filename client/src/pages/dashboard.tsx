@@ -349,6 +349,7 @@ export default function Dashboard() {
                 {activeTab === 'messages' && 'Mensagens'}
                 {activeTab === 'contacts' && 'Contatos'}
                 {activeTab === 'contacts-manager' && 'Gerenciar Contatos'}
+                {activeTab === 'contacts-dashboard' && 'Dashboard de Contatos'}
                 {activeTab === 'settings' && 'Configurações'}
               </h2>
               <p className="text-xs text-gray-500 leading-tight">

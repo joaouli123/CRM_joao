@@ -929,38 +929,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 📱 ROTAS DE CONTATOS - CRUD COMPLETO
-  // Listar contatos com paginação e busca
+  // Listar contatos com paginação e busca completa
   app.get('/api/connections/:id/contacts', async (req, res) => {
     const connectionId = parseInt(req.params.id);
-    const { page = 1, limit = 20, search = '' } = req.query;
+    const { page = 1, limit = 20, search = '', tag = '' } = req.query;
     
-    console.log(`📱 Buscando contatos da conexão ${connectionId} - Página ${page}, Limite ${limit}, Busca: "${search}"`);
+    console.log(`📱 Buscando contatos da conexão ${connectionId} - Página ${page}, Limite ${limit}, Busca: "${search}", Tag: "${tag}"`);
     
     try {
-      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      // Primeiro, buscar TODOS os contatos reais do WhatsApp
+      const whatsappContacts = await getWhatsAppContactsForConnection(connectionId);
       
-      // Se há busca, filtrar; senão, pegar todos
-      let contacts;
+      // Buscar contatos salvos no banco
+      const dbContacts = await storage.getContactsByConnection(connectionId);
+      
+      // Combinar e sincronizar contatos
+      const allContacts = await syncContactsComplete(whatsappContacts, dbContacts, connectionId);
+      
+      // Aplicar filtros de busca
+      let filteredContacts = allContacts;
+      
       if (search && search.toString().trim()) {
         const searchTerm = search.toString().toLowerCase();
-        console.log(`🔍 Filtrando contatos com termo: "${searchTerm}"`);
+        console.log(`🔍 Filtrando ${allContacts.length} contatos com termo: "${searchTerm}"`);
         
-        // Buscar no storage com filtro (implementar busca)
-        const allContacts = await storage.getContactsByConnection(connectionId);
-        contacts = allContacts.filter(contact => 
+        filteredContacts = allContacts.filter(contact => 
           contact.name.toLowerCase().includes(searchTerm) ||
           contact.phoneNumber.includes(searchTerm) ||
-          (contact.etiqueta && contact.etiqueta.toLowerCase().includes(searchTerm))
+          (contact.email && contact.email.toLowerCase().includes(searchTerm)) ||
+          (contact.tag && contact.tag.toLowerCase().includes(searchTerm))
         );
-      } else {
-        contacts = await storage.getContactsByConnection(connectionId);
+        
+        console.log(`🎯 Encontrados ${filteredContacts.length} contatos que correspondem à busca`);
       }
       
-      // Paginação manual
-      const total = contacts.length;
-      const paginatedContacts = contacts.slice(offset, offset + parseInt(limit as string));
+      // Filtro por tag
+      if (tag && tag.toString().trim() && tag !== 'all') {
+        filteredContacts = filteredContacts.filter(contact => contact.tag === tag);
+        console.log(`🏷️ Filtrados por tag "${tag}": ${filteredContacts.length} contatos`);
+      }
       
-      console.log(`✅ Retornando ${paginatedContacts.length} contatos de ${total} total`);
+      // Ordenar por nome
+      filteredContacts.sort((a, b) => a.name.localeCompare(b.name));
+      
+      // Paginação
+      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      const total = filteredContacts.length;
+      const paginatedContacts = filteredContacts.slice(offset, offset + parseInt(limit as string));
+      
+      console.log(`✅ Retornando ${paginatedContacts.length} contatos de ${total} total filtrados`);
       
       res.json({
         contacts: paginatedContacts,
@@ -977,6 +994,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
+
+  // Função para buscar contatos do WhatsApp
+  async function getWhatsAppContactsForConnection(connectionId: number) {
+    try {
+      const connection = storage.getConnection(connectionId);
+      if (!connection || connection.status !== 'connected') {
+        console.log(`⚠️ Conexão ${connectionId} não está conectada`);
+        return [];
+      }
+
+      const instanceName = connection.name;
+      console.log(`📱 Buscando contatos reais do WhatsApp para ${instanceName}`);
+      
+      const chats = await evolutionAPI.getAllChats(instanceName);
+      
+      if (!chats || !Array.isArray(chats)) {
+        console.log(`⚠️ Nenhum chat encontrado para ${instanceName}`);
+        return [];
+      }
+
+      console.log(`✅ Encontrados ${chats.length} chats no WhatsApp`);
+      
+      return chats.map(chat => ({
+        name: chat.pushName || chat.remoteJid?.replace('@s.whatsapp.net', '') || 'Contato',
+        phoneNumber: chat.remoteJid?.replace('@s.whatsapp.net', '') || '',
+        profilePicture: chat.profilePicUrl || null,
+        connectionId: connectionId
+      }));
+      
+    } catch (error) {
+      console.error(`❌ Erro ao buscar contatos do WhatsApp:`, error);
+      return [];
+    }
+  }
+
+  // Função para sincronizar contatos
+  async function syncContactsComplete(whatsappContacts: any[], dbContacts: any[], connectionId: number) {
+    const synced = [];
+    
+    console.log(`🔄 Sincronizando ${whatsappContacts.length} contatos do WhatsApp com ${dbContacts.length} do banco`);
+    
+    for (const whatsapp of whatsappContacts) {
+      if (!whatsapp.phoneNumber) continue;
+      
+      const existing = dbContacts.find(db => db.phoneNumber === whatsapp.phoneNumber);
+      
+      if (existing) {
+        // Atualizar foto se necessário
+        if (existing.profilePictureUrl !== whatsapp.profilePicture) {
+          try {
+            await storage.updateContact(existing.id, { 
+              profilePictureUrl: whatsapp.profilePicture 
+            });
+            existing.profilePictureUrl = whatsapp.profilePicture;
+          } catch (error) {
+            console.error(`❌ Erro ao atualizar foto do contato ${existing.id}:`, error);
+          }
+        }
+        synced.push(existing);
+      } else {
+        // Criar novo contato automaticamente
+        try {
+          const newContact = await storage.createContact({
+            connectionId,
+            name: whatsapp.name,
+            phoneNumber: whatsapp.phoneNumber,
+            profilePictureUrl: whatsapp.profilePicture,
+            tag: 'lead',
+            isActive: true
+          });
+          
+          console.log(`✅ Novo contato criado: ${newContact.name} (${newContact.phoneNumber})`);
+          synced.push(newContact);
+        } catch (error) {
+          console.error(`❌ Erro ao criar contato ${whatsapp.name}:`, error);
+        }
+      }
+    }
+    
+    console.log(`✅ Sincronização concluída: ${synced.length} contatos`);
+    return synced;
+  }
 
   // Criar novo contato
   app.post('/api/connections/:id/contacts', async (req, res) => {

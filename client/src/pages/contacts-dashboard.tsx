@@ -64,34 +64,42 @@ export default function ContactsDashboard({ activeConnectionId }: ContactsDashbo
   // Tags disponíveis
   const availableTags = ['lead', 'qualificado', 'cliente', 'parceiro', 'prospect', 'inativo'];
 
-  // Carregar contatos
-  const loadContacts = async () => {
+  // Carregar contatos com busca no backend
+  const loadContacts = async (searchQuery = '', tagFilter = 'all', pageNum = 1) => {
     if (!activeConnectionId) return;
 
     try {
       setLoading(true);
 
-      // Buscar contatos do WhatsApp
-      const whatsappResponse = await fetch(`/api/connections/${activeConnectionId}/conversations`);
-      const whatsappContacts = await whatsappResponse.json();
-
-      // Buscar contatos salvos no banco
-      const dbResponse = await fetch(`/api/contacts?connectionId=${activeConnectionId}`);
-      const dbContacts = await dbResponse.json();
-
-      // Combinar contatos
-      const combinedContacts = await syncContacts(whatsappContacts, dbContacts.contacts || []);
-      
-      setContacts(combinedContacts);
-      setFilteredContacts(combinedContacts);
-      
-      // Calcular estatísticas
-      calculateStats(combinedContacts);
-
-      toast({
-        title: "Contatos carregados!",
-        description: `${combinedContacts.length} contatos encontrados`,
+      // Usar a nova API de busca completa
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: contactsPerPage.toString(),
+        search: searchQuery,
+        tag: tagFilter
       });
+
+      const response = await fetch(`/api/connections/${activeConnectionId}/contacts?${params}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setContacts(data.contacts || []);
+        setFilteredContacts(data.contacts || []);
+        
+        // Calcular estatísticas
+        calculateStats(data.contacts || []);
+
+        console.log(`✅ Carregados ${data.contacts?.length || 0} contatos`);
+        
+        if (searchQuery) {
+          toast({
+            title: "Busca realizada!",
+            description: `${data.pagination?.total || 0} contatos encontrados para "${searchQuery}"`,
+          });
+        }
+      } else {
+        throw new Error(data.error || 'Erro ao carregar contatos');
+      }
     } catch (error) {
       console.error('Erro ao carregar contatos:', error);
       toast({
@@ -174,54 +182,22 @@ export default function ContactsDashboard({ activeConnectionId }: ContactsDashbo
     });
   };
 
-  // Filtrar contatos
+  // Executar busca quando filtros mudarem
   useEffect(() => {
-    let filtered = [...contacts];
+    // Usar debounce para evitar muitas requisições
+    const timeoutId = setTimeout(() => {
+      loadContacts(searchTerm, selectedTag, 1);
+    }, 500);
 
-    // Filtro por termo de pesquisa
-    if (searchTerm) {
-      filtered = filtered.filter(contact =>
-        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.phoneNumber.includes(searchTerm) ||
-        contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, selectedTag, sortBy]);
 
-    // Filtro por tag
-    if (selectedTag !== 'all') {
-      filtered = filtered.filter(contact => contact.tag === selectedTag);
+  // Carregar contatos quando página mudar
+  useEffect(() => {
+    if (currentPage > 1) {
+      loadContacts(searchTerm, selectedTag, currentPage);
     }
-
-    // Filtro por data
-    if (dateRange.from) {
-      filtered = filtered.filter(contact => {
-        const contactDate = new Date(contact.createdAt);
-        return contactDate >= dateRange.from!;
-      });
-    }
-    if (dateRange.to) {
-      filtered = filtered.filter(contact => {
-        const contactDate = new Date(contact.createdAt);
-        return contactDate <= dateRange.to!;
-      });
-    }
-
-    // Ordenação
-    switch (sortBy) {
-      case 'recent':
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        break;
-      case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-    }
-
-    setFilteredContacts(filtered);
-    setCurrentPage(1);
-  }, [contacts, searchTerm, selectedTag, dateRange, sortBy]);
+  }, [currentPage]);
 
   // Adicionar contato
   const addContact = async () => {
