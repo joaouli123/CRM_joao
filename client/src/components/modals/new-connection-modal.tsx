@@ -13,7 +13,13 @@ interface NewConnectionModalProps {
   onClose: () => void;
 }
 
-export function NewConnectionModal({ isOpen, onClose }: NewConnectionModalProps) {
+interface NewConnectionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConnectionCreated?: (connectionId: number) => void;
+}
+
+export function NewConnectionModal({ isOpen, onClose, onConnectionCreated }: NewConnectionModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const { toast } = useToast();
@@ -52,6 +58,11 @@ export function NewConnectionModal({ isOpen, onClose }: NewConnectionModalProps)
       
       // Gerar QR Code automaticamente após criar conexão
       generateQRCode(newConnection.id);
+      
+      // Chamar callback para abrir o modal QR Code
+      if (onConnectionCreated) {
+        onConnectionCreated(newConnection.id);
+      }
       
       toast({
         title: "Conexão criada!",

@@ -392,6 +392,28 @@ export default function Dashboard() {
       <NewConnectionModal
         isOpen={showNewConnectionModal}
         onClose={() => setShowNewConnectionModal(false)}
+        onConnectionCreated={(connectionId) => {
+          // Buscar a conexão criada e abrir o modal QR Code
+          setTimeout(async () => {
+            try {
+              const response = await fetch(`/api/connections/${connectionId}/qr`);
+              if (response.ok) {
+                const qrData = await response.json();
+                const connection = connections.find(c => c.id === connectionId);
+                if (connection) {
+                  setSelectedConnectionForQR({
+                    ...connection,
+                    qrCode: qrData.qrCode,
+                    qrExpiry: new Date(qrData.expiration)
+                  });
+                  setShowQRModal(true);
+                }
+              }
+            } catch (error) {
+              console.error('Erro ao buscar QR Code:', error);
+            }
+          }, 1000); // Aguardar 1 segundo para a conexão ser criada
+        }}
       />
 
       <QRCodeModal
