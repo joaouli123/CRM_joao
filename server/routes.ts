@@ -290,18 +290,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`📊 Total de conversas encontradas: ${allChats.length}`);
 
-        // Create conversations from ALL real WhatsApp contacts
+        // Create conversations from ALL real WhatsApp contacts with REAL last messages
         const allConversations = await Promise.all(
           allChats.map(async (chat, index) => {
             const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
             if (!phoneNumber) return null;
 
+            // Get REAL last messages for each chat
+            let lastMessage = `Conversa com ${chat.pushName || phoneNumber}`;
+            let realUnreadCount = 0;
+            let lastMessageTime = new Date(chat.updatedAt || Date.now());
+
+            try {
+              // Buscar as últimas mensagens reais do WhatsApp
+              const messagesResponse = await evolutionAPI.getChatMessages(activeInstanceName, chat.remoteJid, 1);
+              
+              if (messagesResponse?.messages?.records && messagesResponse.messages.records.length > 0) {
+                const lastMsg = messagesResponse.messages.records[0];
+                
+                // Formatear a última mensagem real
+                if (lastMsg.message?.conversation) {
+                  lastMessage = lastMsg.message.conversation;
+                } else if (lastMsg.message?.extendedTextMessage?.text) {
+                  lastMessage = lastMsg.message.extendedTextMessage.text;
+                } else if (lastMsg.message?.imageMessage?.caption) {
+                  lastMessage = "📷 " + lastMsg.message.imageMessage.caption;
+                } else if (lastMsg.message?.imageMessage) {
+                  lastMessage = "📷 Imagem";
+                } else if (lastMsg.message?.audioMessage) {
+                  lastMessage = "🎵 Áudio";
+                } else if (lastMsg.message?.videoMessage) {
+                  lastMessage = "🎥 Vídeo";
+                } else if (lastMsg.message?.documentMessage) {
+                  lastMessage = "📄 Documento";
+                } else {
+                  lastMessage = "Mensagem";
+                }
+
+                // Usar timestamp real da mensagem
+                if (lastMsg.messageTimestamp) {
+                  lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
+                }
+              }
+
+              // Calcular mensagens não lidas (simulado baseado no status)
+              realUnreadCount = chat.unreadCount || 0;
+              
+            } catch (error) {
+              console.log(`⚠️ Erro ao buscar última mensagem para ${phoneNumber}:`, error);
+            }
+
             const conversation = {
               phoneNumber,
               contactName: chat.pushName || phoneNumber,
-              lastMessage: `Conversa com ${chat.pushName || phoneNumber}`,
-              lastMessageTime: new Date(chat.updatedAt || Date.now()),
-              unreadCount: 0,
+              lastMessage,
+              lastMessageTime,
+              unreadCount: realUnreadCount,
               messageCount: 1,
               profilePicture: chat.profilePicUrl
             };

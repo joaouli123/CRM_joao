@@ -238,6 +238,9 @@ export default function MessageInterface({
     };
   }, [selectedConnectionId]);
 
+  // Estado para busca
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Buscar conversas com paginação e filtro
   const { data: conversations = [], error: conversationsError } = useQuery({
     queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=${conversationsLimit}&search=${encodeURIComponent(searchQuery)}`],
