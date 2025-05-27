@@ -1003,13 +1003,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/connections/:connectionId/archived-chats', async (req, res) => {
     try {
       const connectionId = parseInt(req.params.connectionId);
+      
+      if (isNaN(connectionId)) {
+        return res.status(400).json({ error: 'Invalid connection ID' });
+      }
+
+      console.log(`📂 Buscando conversas arquivadas para conexão ${connectionId}`);
+      
+      // Verificar se a conexão existe
+      const connection = await storage.getConnection(connectionId);
+      if (!connection) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+
       const archivedChats = await storage.getArchivedChatsByConnection(connectionId);
       
       console.log(`📂 Retornando ${archivedChats.length} conversas arquivadas`);
-      res.json(archivedChats);
+      res.json(archivedChats || []);
     } catch (error) {
       console.error('❌ Error fetching archived chats:', error);
-      res.status(500).json({ error: 'Failed to fetch archived chats' });
+      console.error('❌ Stack trace:', error.stack);
+      res.status(500).json({ 
+        error: 'Failed to fetch archived chats',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   });
 
