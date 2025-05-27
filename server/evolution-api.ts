@@ -39,11 +39,11 @@ class EvolutionAPI {
     // Use variáveis de ambiente para credenciais
     this.baseUrl = process.env.EVOLUTION_API_URL || "https://evolution.lowfy.com.br";
     this.apiKey = process.env.EVOLUTION_API_KEY || "";
-    
+
     if (!this.apiKey) {
       throw new Error('EVOLUTION_API_KEY must be set in environment variables');
     }
-    
+
     console.log("✅ Evolution API configurada com URL:", this.baseUrl);
   }
 
@@ -52,7 +52,7 @@ class EvolutionAPI {
     const cleanBaseUrl = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${cleanBaseUrl}${cleanEndpoint}`;
-    
+
     const options: any = {
       method,
       headers: {
@@ -66,16 +66,16 @@ class EvolutionAPI {
     }
 
     console.log(`🌐 Evolution API Request: ${method} ${url}`);
-    
+
     try {
       const response = await fetch(url, options);
       const result = await response.json();
-      
+
       if (!response.ok) {
         console.error(`❌ Evolution API Error: ${response.status}`, result);
         throw new Error(`Evolution API Error: ${response.status} - ${JSON.stringify(result)}`);
       }
-      
+
       console.log(`✅ Evolution API Response:`, result);
       return result;
     } catch (error) {
@@ -86,7 +86,7 @@ class EvolutionAPI {
 
   async createInstance(instanceName: string): Promise<EvolutionInstance> {
     console.log(`🆕 Criando instância Evolution API: ${instanceName}`);
-    
+
     const data = {
       instanceName,
       token: this.apiKey,
@@ -95,7 +95,7 @@ class EvolutionAPI {
     };
 
     const result = await this.makeRequest('/instance/create', 'POST', data);
-    
+
     // CONFIGURAR WEBHOOK SUPER AGRESSIVO IMEDIATAMENTE
     try {
       // Aguardar um pouco para a instância estar pronta
@@ -103,7 +103,7 @@ class EvolutionAPI {
         try {
           await this.configureWebhook(instanceName);
           console.log(`✅ Webhook SUPER AGRESSIVO configurado para ${instanceName}`);
-          
+
           // VERIFICAR se funcionou
           setTimeout(async () => {
             try {
@@ -113,10 +113,10 @@ class EvolutionAPI {
               console.log(`⚠️ Erro na verificação:`, checkError);
             }
           }, 2000);
-          
+
         } catch (webhookError) {
           console.log(`❌ ERRO CRÍTICO ao configurar webhook:`, webhookError);
-          
+
           // TENTAR NOVAMENTE
           setTimeout(async () => {
             try {
@@ -141,13 +141,13 @@ class EvolutionAPI {
 
   async generateQRCode(instanceName: string): Promise<string> {
     console.log(`📱 Gerando QR Code para instância: ${instanceName}`);
-    
+
     try {
       const response = await this.makeRequest(`instance/connect/${instanceName}`, 'GET');
-      
+
       // Handle different possible response formats from Evolution API
       let qrBase64 = null;
-      
+
       if (response.qrcode?.base64) {
         qrBase64 = response.qrcode.base64;
       } else if (response.base64) {
@@ -155,14 +155,14 @@ class EvolutionAPI {
       } else if (response.qr) {
         qrBase64 = response.qr;
       }
-      
+
       if (qrBase64) {
         // Clean any existing data URL prefix to avoid duplication
         const cleanBase64 = qrBase64.replace(/^data:image\/png;base64,/, '');
         console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
         return `data:image/png;base64,${cleanBase64}`;
       }
-      
+
       console.error('❌ Formato de resposta inesperado da Evolution API:', response);
       throw new Error('QR code not found in response');
     } catch (error) {
@@ -186,7 +186,7 @@ class EvolutionAPI {
     // Always use the correct instanceName for REST API calls
     const correctInstanceName = "whatsapp_36_lowfy";
     console.log(`📤 Enviando mensagem via ${correctInstanceName} para ${to}: ${message}`);
-    
+
     const data = {
       number: to.replace(/\D/g, ''), // Remove non-digits
       text: message
@@ -199,7 +199,7 @@ class EvolutionAPI {
   async sendAudio(instanceName: string, to: string, audioData: string): Promise<any> {
     const correctInstanceName = "whatsapp_36_lowfy";
     console.log(`🎵 Enviando áudio via ${correctInstanceName} para ${to}`);
-    
+
     const data = {
       number: to.replace(/\D/g, ''),
       audioMessage: {
@@ -214,7 +214,7 @@ class EvolutionAPI {
   async sendImage(instanceName: string, to: string, imageData: string, caption?: string): Promise<any> {
     const correctInstanceName = "whatsapp_36_lowfy";
     console.log(`📸 Enviando imagem via ${correctInstanceName} para ${to}`);
-    
+
     const data = {
       number: to.replace(/\D/g, ''),
       mediaMessage: {
@@ -231,7 +231,7 @@ class EvolutionAPI {
   async sendDocument(instanceName: string, to: string, documentData: string, fileName: string): Promise<any> {
     const correctInstanceName = "whatsapp_36_lowfy";
     console.log(`📄 Enviando documento via ${correctInstanceName} para ${to}: ${fileName}`);
-    
+
     const data = {
       number: to.replace(/\D/g, ''),
       mediaMessage: {
@@ -278,22 +278,22 @@ class EvolutionAPI {
       // Always use the correct instanceName for REST API calls
       const correctInstanceName = "whatsapp_36_lowfy";
       console.log(`📱 Forçando carregamento COMPLETO da instância ${correctInstanceName} - TODOS OS CONTATOS!`);
-      
+
       let allChats: any[] = [];
       let page = 1;
       const limit = 75; // Limite máximo que a API aceita
       let hasMore = true;
-      
+
       // Buscar página por página até esgotar TODOS os contatos
       while (hasMore && page <= 50) { // Máximo 50 páginas para evitar loop infinito
         console.log(`🔄 PÁGINA ${page}: Buscando ${limit} contatos (offset: ${(page-1) * limit})`);
-        
+
         const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
           where: {},
           limit: limit,
           offset: (page - 1) * limit
         });
-        
+
         if (response && Array.isArray(response) && response.length > 0) {
           // Evitar duplicatas usando remoteJid como chave única
           const newChats = response.filter(chat => 
@@ -301,9 +301,9 @@ class EvolutionAPI {
           );
           allChats = allChats.concat(newChats);
           page++;
-          
+
           console.log(`✅ PÁGINA ${page-1} processada: +${newChats.length} novos contatos (Total: ${allChats.length})`);
-          
+
           // Se retornou menos que o limite, chegamos ao fim
           if (response.length < limit) {
             hasMore = false;
@@ -312,7 +312,7 @@ class EvolutionAPI {
           hasMore = false;
         }
       }
-      
+
       console.log(`🎉 CARREGAMENTO COMPLETO! ${allChats.length} contatos únicos carregados (TODOS DISPONÍVEIS)`);
       return allChats;
     } catch (error) {
@@ -325,15 +325,15 @@ class EvolutionAPI {
     try {
       // Extract phone number from chatId (remove @s.whatsapp.net or @c.us)
       const phoneNumber = chatId.replace('@s.whatsapp.net', '').replace('@c.us', '');
-      
+
       console.log(`📱 Buscando mensagens do chat ${phoneNumber} (limit: ${limit})`);
-      
+
       // Use the correct Lowfy Evolution API endpoint for messages
       const correctInstanceName = "whatsapp_36_lowfy";
       const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}/${chatId}?limit=${limit}`, 'GET');
-      
+
       console.log(`✅ Mensagens encontradas para ${phoneNumber}:`, response?.length || 0);
-      
+
       return response || [];
     } catch (error) {
       console.log(`⚠️ Erro ao buscar mensagens do chat ${chatId}:`, error);
@@ -345,16 +345,16 @@ class EvolutionAPI {
     try {
       const cleanNumber = phoneNumber.replace(/\D/g, '');
       console.log(`📸 Buscando foto de perfil para ${cleanNumber}`);
-      
+
       const response = await this.makeRequest(`/chat/fetchProfilePictureUrl/${instanceName}`, 'POST', {
         number: cleanNumber
       });
-      
+
       if (response?.profilePictureUrl) {
         console.log(`✅ Foto encontrada para ${cleanNumber}`);
         return response.profilePictureUrl;
       }
-      
+
       return null;
     } catch (error) {
       console.log(`📸 Sem foto disponível para ${phoneNumber}`);
@@ -403,15 +403,15 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
   try {
     // SEMPRE usar a instância real conectada
     const realInstanceName = "whatsapp_36_lowfy";
-    
+
     // OBTER URL atual do Replit automaticamente
     const currentUrl = process.env.REPL_URL || 
                       `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` ||
                       'https://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev';
-    
+
     const webhookUrl = `${currentUrl}/api/webhook/messages`;
     console.log(`🔗 CONFIGURANDO WEBHOOK SUPER AGRESSIVO para ${realInstanceName}: ${webhookUrl}`);
-    
+
     const response = await this.makeRequest(`/webhook/set/${realInstanceName}`, 'POST', {
       webhook: {
         url: webhookUrl,
@@ -428,9 +428,9 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
         ]
       }
     });
-    
+
     console.log(`✅ WEBHOOK SUPER AGRESSIVO configurado para ${realInstanceName}:`, response);
-    
+
     // VERIFICAR se o webhook foi configurado corretamente
     setTimeout(async () => {
       try {
@@ -440,7 +440,7 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
         console.log(`⚠️ Erro ao verificar webhook:`, checkError);
       }
     }, 1000);
-    
+
     // CONFIGURAR TAMBÉM para a instância passada como parâmetro (backup)
     if (instanceName !== realInstanceName) {
       try {
@@ -465,7 +465,7 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
         console.log(`⚠️ Erro no backup webhook:`, backupError);
       }
     }
-    
+
     return response;
   } catch (error) {
     console.error(`❌ Erro ao configurar webhook para ${instanceName}:`, error);
