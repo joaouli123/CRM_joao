@@ -71,6 +71,17 @@ class EvolutionAPI {
 
     try {
       const response = await fetch(url, options);
+      
+      // Verificar se a resposta é JSON válido
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error(`❌ Evolution API Request Failed: ${method} ${url}`);
+        console.error(`❌ Expected JSON but got: ${contentType}`);
+        console.error(`❌ Response text: ${textResponse.substring(0, 200)}...`);
+        throw new Error(`Evolution API returned non-JSON response: ${contentType}`);
+      }
+
       const result = await response.json();
 
       if (!response.ok) {

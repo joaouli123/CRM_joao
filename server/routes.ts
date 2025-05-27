@@ -526,8 +526,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instanceName = `whatsapp_${connectionId}_${connection.name}`;
       console.log(`🔄 Sincronizando conversas reais do WhatsApp para ${instanceName}`);
 
-      // Buscar chats reais da conta conectada
-      const chats = await evolutionAPI.getAllChats(instanceName);
+      // DESABILITADO: Buscar chats reais da conta conectada (API com problemas)
+      // const chats = await evolutionAPI.getAllChats(instanceName);
+      const chats = null; // Temporariamente desabilitado devido a problemas da API
 
       if (chats && chats.length > 0) {
         console.log(`📱 Encontrados ${chats.length} chats reais na conta WhatsApp`);
