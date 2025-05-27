@@ -13,15 +13,19 @@ export function ImportModal() {
 
   const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      return apiRequest('/api/contacts/import', {
+      const response = await fetch('/api/contacts/import', {
         method: 'POST',
         body: formData,
       });
+      if (!response.ok) {
+        throw new Error('Erro na importação');
+      }
+      return await response.json();
     },
     onSuccess: (data) => {
       toast({
         title: "✅ Importação realizada com sucesso!",
-        description: `${data.imported} contatos importados.`,
+        description: data.message || `${data.imported || 0} contatos importados.`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
       setIsOpen(false);
