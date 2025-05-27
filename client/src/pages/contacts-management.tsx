@@ -117,7 +117,21 @@ export default function ContactsManagement() {
   });
 
   const updateContactMutation = useMutation({
-    mutationFn: ({ id, ...data }: any) => apiRequest(`/api/contacts/${id}`, { method: 'PUT', body: data }),
+    mutationFn: async ({ id, ...data }: any) => {
+      const response = await fetch(`/api/contacts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar contato');
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
       toast({ title: 'Contato atualizado com sucesso!' });
