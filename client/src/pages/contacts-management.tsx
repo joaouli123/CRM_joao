@@ -333,11 +333,128 @@ export default function ContactsManagement() {
             <CardTitle>Ações e Filtros</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Filtros de Pesquisa Avançados */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 p-6 bg-gradient-to-r from-slate-50 to-green-50 rounded-xl border border-green-200">
+              {/* Busca por Nome/Telefone */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">Buscar Contato</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Nome ou telefone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-white border-slate-300 focus:border-green-500 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              {/* Filtro por Tag */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">Filtrar por Tag</Label>
+                <Select value={tagFilter} onValueChange={setTagFilter}>
+                  <SelectTrigger className="bg-white border-slate-300 focus:border-green-500">
+                    <SelectValue placeholder="Todas as tags" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as tags</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                    <SelectItem value="qualificado">Qualificado</SelectItem>
+                    <SelectItem value="cliente">Cliente</SelectItem>
+                    <SelectItem value="prospect">Prospect</SelectItem>
+                    <SelectItem value="desqualificado">Desqualificado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Ordenação */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">Ordenar por</Label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="bg-white border-slate-300 focus:border-green-500">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Mais recentes</SelectItem>
+                    <SelectItem value="name">Nome A-Z</SelectItem>
+                    <SelectItem value="oldest">Mais antigos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtro por Data */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">Período</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left bg-white border-slate-300 hover:bg-slate-50"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          `${format(dateRange.from, "dd/MM/yy")} - ${format(dateRange.to, "dd/MM/yy")}`
+                        ) : (
+                          format(dateRange.from, "dd/MM/yy")
+                        )
+                      ) : (
+                        "Selecionar período"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Filtros Rápidos */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDateRange({ from: subDays(new Date(), 7), to: new Date() })}
+                className="border-green-300 text-green-700 hover:bg-green-50"
+              >
+                Últimos 7 dias
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}
+                className="border-green-300 text-green-700 hover:bg-green-50"
+              >
+                Último mês
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setTagFilter('all');
+                  setSortBy('recent');
+                  setDateRange({});
+                }}
+                className="border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
+                Limpar filtros
+              </Button>
+            </div>
+
             {/* Botões de Ação */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200">
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-orange-600 hover:bg-orange-700">
+                  <Button className="btn-primary">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Adicionar Contato
                   </Button>
