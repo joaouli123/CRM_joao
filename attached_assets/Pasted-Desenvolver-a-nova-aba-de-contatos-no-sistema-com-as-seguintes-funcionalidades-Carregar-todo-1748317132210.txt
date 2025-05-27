@@ -1,0 +1,123 @@
+Desenvolver a nova aba de contatos no sistema com as seguintes funcionalidades:
+
+    Carregar todos os contatos da conta, incluindo os novos contatos que chegam com mensagens do WhatsApp.
+
+    Armazenar os dados no banco de dados como nome, telefone, e-mail, observação e etiqueta.
+
+    Permitir adicionar novos contatos, editar contatos existentes e excluir contatos.
+
+    Exibir a lista de contatos com paginação.
+
+    Implementar uma pesquisa em tempo real para encontrar contatos na lista.
+
+    Garantir que os contatos possam ser excluídos de forma segura.
+
+✅ Tarefas a Serem Realizadas:
+1. Carregamento de Contatos
+
+    Ao iniciar a aba de contatos, o sistema deve carregar todos os contatos da conta:
+
+        Contatos carregados de novas mensagens do WhatsApp: Quando uma nova mensagem chega, o sistema deve verificar se o contato já existe. Se não, deve salvar o novo contato no banco de dados, incluindo o telefone e, se disponível, o nome.
+
+        Exibição de todos os contatos: O sistema deve exibir todos os contatos armazenados no banco de dados, com os campos nome, telefone, e-mail (se disponível), observação e etiqueta.
+
+2. Banco de Dados de Contatos
+
+    A tabela de contatos no banco de dados deve ter as seguintes colunas:
+
+        ID: Identificador único para cada contato.
+
+        Nome: Nome completo do contato.
+
+        Telefone: Número de telefone do contato.
+
+        E-mail: Endereço de e-mail do contato (opcional, mas deve ser armazenado quando fornecido).
+
+        Observação: Campo livre para anotações ou comentários sobre o contato.
+
+        Etiqueta: Para categorizar o contato, com valores como lead, qualificado, desqualificado e outros conforme a necessidade.
+
+Exemplo de Estrutura da Tabela contatos:
+
+CREATE TABLE contatos (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(255),
+  telefone VARCHAR(20) UNIQUE NOT NULL,
+  email VARCHAR(255),
+  observacao TEXT,
+  etiqueta VARCHAR(50), -- Ex: lead, qualificado, desqualificado
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+3. Adicionar e Editar Contatos
+
+    A aba de contatos deve permitir a adição de novos contatos e a edição de contatos existentes.
+
+        Adicionar Contato: O usuário pode adicionar um novo contato preenchendo os campos de nome, telefone, e-mail, observação e etiqueta.
+
+        Editar Contato: O usuário pode editar as informações de um contato existente, incluindo nome, telefone, e-mail, observação e etiqueta.
+
+    A validação deve ser feita para garantir que o telefone seja único e que o campo nome não esteja vazio, por exemplo.
+
+4. Exclusão de Contatos
+
+    A funcionalidade de exclusão de contatos deve ser implementada.
+
+    O usuário deve poder excluir um contato da lista, e o sistema deve confirmar a exclusão antes de removê-lo permanentemente do banco de dados.
+
+    A exclusão deve ser segura, garantindo que o contato seja realmente removido e que não haja erros no processo.
+
+Fluxo para Exclusão:
+
+    Quando o usuário clicar no botão de excluir, o sistema deve exibir uma confirmação, como "Você tem certeza que deseja excluir este contato?"
+
+    Se confirmado, o contato será removido do banco de dados e a lista de contatos será atualizada automaticamente sem a necessidade de recarregar a página.
+
+5. Listagem de Contatos com Paginação
+
+    A lista de contatos exibida deve ser paginada para lidar com grandes quantidades de dados.
+
+        O sistema deve exibir, por exemplo, 10 ou 20 contatos por página, com a capacidade de navegar entre as páginas.
+
+        A paginação deve ser dinâmica e fácil de usar (exemplo: botões de "Próxima Página", "Página Anterior").
+
+6. Pesquisa em Tempo Real
+
+    A aba deve ter uma caixa de pesquisa para permitir que o usuário busque contatos por nome, telefone ou etiqueta.
+
+        A pesquisa deve ser atualizada em tempo real, ou seja, conforme o usuário digitar na barra de pesquisa, a lista de contatos deve ser filtrada automaticamente sem necessidade de recarregar a página.
+
+        A busca deve ser eficiente e responsiva, mesmo com grandes volumes de dados.
+
+7. Exibição e Atualização de Dados
+
+    Exibição dos Dados:
+
+        A lista de contatos deve exibir os principais dados (nome, telefone, e-mail, observação e etiqueta) de forma clara.
+
+        As etiquetas podem ser apresentadas como botões ou tags ao lado do nome do contato.
+
+    Atualização em Tempo Real:
+
+        Se houver alterações nos contatos (adicionar, editar ou excluir), a lista deve ser atualizada automaticamente sem necessidade de recarregar a página.
+
+        A pesquisa deve ser refrescada em tempo real sempre que a lista for alterada.
+
+🎯 Resultados Esperados:
+
+    Carregamento eficiente de contatos, com capacidade de salvar novos contatos automaticamente quando novas mensagens do WhatsApp chegarem.
+
+    Capacidade de adicionar, editar e excluir contatos facilmente, com campos bem definidos e validação adequada.
+
+    Listagem de contatos paginada, permitindo navegação fácil através de páginas.
+
+    Pesquisa em tempo real, permitindo ao usuário buscar contatos rapidamente enquanto digita.
+
+    Banco de dados bem estruturado, com a capacidade de armazenar e organizar dados de contatos de forma eficiente, com etiquetas personalizáveis.
+
+    Funcionalidade de exclusão de contatos, com confirmação para evitar exclusões acidentais.
+
+📝 Conclusão:
+
+Esse fluxo de trabalho para a aba de contatos permitirá que o sistema seja dinâmico e fácil de usar, com a capacidade de adicionar, editar, excluir e pesquisar contatos de forma eficiente. A integração com a Evolution API permitirá que os contatos sejam carregados e sincronizados automaticamente, enquanto a paginacão e pesquisa melhorarão a navegação e a experiência do usuário.

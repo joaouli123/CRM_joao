@@ -896,6 +896,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 📱 ROTAS DE CONTATOS - CRUD COMPLETO
+  // Listar contatos com paginação e busca
+  app.get('/api/connections/:id/contacts', async (req, res) => {
+    const connectionId = parseInt(req.params.id);
+    const { page = 1, limit = 20, search = '' } = req.query;
+    
+    console.log(`📱 Buscando contatos da conexão ${connectionId} - Página ${page}, Limite ${limit}, Busca: "${search}"`);
+    
+    try {
+      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      
+      // Se há busca, filtrar; senão, pegar todos
+      let contacts;
+      if (search && search.toString().trim()) {
+        const searchTerm = search.toString().toLowerCase();
+        console.log(`🔍 Filtrando contatos com termo: "${searchTerm}"`);
+        
+        // Buscar no storage com filtro (implementar busca)
+        const allContacts = await storage.getContactsByConnection(connectionId);
+        contacts = allContacts.filter(contact => 
+          contact.name.toLowerCase().includes(searchTerm) ||
+          contact.phoneNumber.includes(searchTerm) ||
+          (contact.etiqueta && contact.etiqueta.toLowerCase().includes(searchTerm))
+        );
+      } else {
+        contacts = await storage.getContactsByConnection(connectionId);
+      }
+      
+      // Paginação manual
+      const total = contacts.length;
+      const paginatedContacts = contacts.slice(offset, offset + parseInt(limit as string));
+      
+      console.log(`✅ Retornando ${paginatedContacts.length} contatos de ${total} total`);
+      
+      res.json({
+        contacts: paginatedContacts,
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total,
+          pages: Math.ceil(total / parseInt(limit as string))
+        }
+      });
+      
+    } catch (error) {
+      console.error(`❌ Erro ao buscar contatos:`, error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Criar novo contato
+  app.post('/api/connections/:id/contacts', async (req, res) => {
+    const connectionId = parseInt(req.params.id);
+    const { name, phoneNumber, email, observacao, etiqueta } = req.body;
+    
+    console.log(`📱 Criando novo contato na conexão ${connectionId}:`, { name, phoneNumber, email });
+    
+    try {
+      // Verificar se já existe
+      const existingContact = await storage.getContactByPhone(connectionId, phoneNumber);
+      if (existingContact) {
+        return res.status(400).json({ error: "Contato com este telefone já existe" });
+      }
+      
+      const newContact = await storage.createContact({
+        connectionId,
+        phoneNumber,
+        name,
+        email: email || null,
+        observacao: observacao || null,
+        etiqueta: etiqueta || null,
+        isActive: true,
+        lastActivity: new Date()
+      });
+      
+      console.log(`✅ Contato criado com ID: ${newContact.id}`);
+      res.json(newContact);
+      
+    } catch (error) {
+      console.error(`❌ Erro ao criar contato:`, error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Atualizar contato
+  app.put('/api/contacts/:id', async (req, res) => {
+    const contactId = parseInt(req.params.id);
+    const { name, phoneNumber, email, observacao, etiqueta } = req.body;
+    
+    console.log(`📱 Atualizando contato ${contactId}:`, { name, phoneNumber, email });
+    
+    try {
+      const updatedContact = await storage.updateContact(contactId, {
+        name,
+        phoneNumber,
+        email: email || null,
+        observacao: observacao || null,
+        etiqueta: etiqueta || null
+      });
+      
+      if (!updatedContact) {
+        return res.status(404).json({ error: "Contato não encontrado" });
+      }
+      
+      console.log(`✅ Contato ${contactId} atualizado com sucesso`);
+      res.json(updatedContact);
+      
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar contato:`, error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Deletar contato
+  app.delete('/api/contacts/:id', async (req, res) => {
+    const contactId = parseInt(req.params.id);
+    
+    console.log(`📱 Deletando contato ${contactId}`);
+    
+    try {
+      const deleted = await storage.deleteContact(contactId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Contato não encontrado" });
+      }
+      
+      console.log(`✅ Contato ${contactId} deletado com sucesso`);
+      res.json({ success: true });
+      
+    } catch (error) {
+      console.error(`❌ Erro ao deletar contato:`, error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   // ENDPOINT ADICIONAL para simular mensagem recebida (para testes)
   app.post("/api/test/receive-message", async (req, res) => {
     try {

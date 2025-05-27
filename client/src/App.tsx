@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/protected-route";
 import { UserHeader } from "@/components/user-header";
 import Dashboard from "@/pages/dashboard";
+import ContactsPage from "@/pages/contacts";
 import SignIn from "@/pages/sign-in";
 import SignUp from "@/pages/sign-up";
 
@@ -24,6 +25,12 @@ function Router() {
         <ProtectedRoute>
           <UserHeader />
           <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/contacts">
+        <ProtectedRoute>
+          <UserHeader />
+          <ContactsPage />
         </ProtectedRoute>
       </Route>
     </Switch>
