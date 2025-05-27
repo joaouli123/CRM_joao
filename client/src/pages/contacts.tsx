@@ -29,25 +29,23 @@ export default function Contacts({ activeConnectionId }: ContactsProps) {
   const [loading, setLoading] = useState(true);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
-  // Buscar todos os contatos da conexão ativa
+  // Buscar todos os contatos salvos no banco
   const loadContacts = async () => {
-    if (!activeConnectionId) return;
-
     try {
       setLoading(true);
-      const response = await fetch(`/api/connections/${activeConnectionId}/conversations`);
+      const response = await fetch('/api/contacts');
       const data = await response.json();
 
-      if (data && Array.isArray(data)) {
-        const contactsData = data.map((conv: any) => ({
-          id: conv.phoneNumber || conv.id,
-          name: conv.contactName || conv.pushName || conv.phoneNumber || 'Contato sem nome',
-          phoneNumber: conv.phoneNumber || conv.id,
-          profilePictureUrl: conv.profilePictureUrl,
-          lastMessage: conv.lastMessage?.body || 'Sem mensagens',
-          lastMessageTime: conv.lastMessage?.timestamp,
-          unreadCount: conv.unreadCount || 0,
-          status: 'offline'
+      if (data && data.contacts && Array.isArray(data.contacts)) {
+        const contactsData = data.contacts.map((contact: any) => ({
+          id: contact.id.toString(),
+          name: contact.name || contact.phoneNumber,
+          phoneNumber: contact.phoneNumber,
+          profilePictureUrl: contact.profilePictureUrl,
+          lastMessage: contact.observation || 'Contato salvo',
+          lastMessageTime: contact.createdAt,
+          unreadCount: 0,
+          status: 'offline' as const
         }));
 
         setContacts(contactsData);
@@ -73,10 +71,10 @@ export default function Contacts({ activeConnectionId }: ContactsProps) {
     }
   }, [searchTerm, contacts]);
 
-  // Carregar contatos quando a conexão mudar
+  // Carregar contatos automaticamente
   useEffect(() => {
     loadContacts();
-  }, [activeConnectionId]);
+  }, []);
 
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '');
@@ -102,13 +100,13 @@ export default function Contacts({ activeConnectionId }: ContactsProps) {
     }
   };
 
-  if (!activeConnectionId) {
+  if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Phone className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Selecione uma Conexão</h3>
-          <p className="text-gray-500">Escolha uma conexão WhatsApp para ver os contatos</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Carregando Contatos...</h3>
+          <p className="text-gray-500">Aguarde enquanto carregamos seus contatos salvos</p>
         </div>
       </div>
     );
