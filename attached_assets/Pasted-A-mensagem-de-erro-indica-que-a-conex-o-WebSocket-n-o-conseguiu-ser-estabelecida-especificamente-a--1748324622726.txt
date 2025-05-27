@@ -1,0 +1,71 @@
+A mensagem de erro indica que a conexão WebSocket não conseguiu ser estabelecida, especificamente a partir do cliente para o servidor WebSocket. O erro ocorre na linha WebSocket connection failed, indicando que o cliente não conseguiu se conectar ao servidor WebSocket na URL fornecida.
+
+Aqui estão algumas possíveis causas e soluções para esse problema:
+Causas Comuns do Erro de WebSocket e Soluções:
+1. Problema de Conectividade de Rede
+
+    Causa: Pode haver problemas de rede entre o cliente e o servidor, como o servidor não estar acessível ou o WebSocket estar bloqueado por algum motivo.
+
+    Solução:
+
+        Verifique a conectividade do servidor: Certifique-se de que o servidor WebSocket está ativo e acessível na URL wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev:24678/.
+
+        Teste com outro WebSocket: Verifique se o WebSocket está funcionando corretamente tentando conectar-se a outro servidor WebSocket ou utilizando uma ferramenta como Postman ou WebSocket Test Client.
+
+        Firewall ou Proxy: Se você estiver atrás de um firewall ou proxy, verifique se as conexões WebSocket não estão sendo bloqueadas.
+
+2. URL ou Porta WebSocket Inválida
+
+    Causa: O erro também pode ocorrer se a URL do WebSocket ou a porta estiverem erradas ou não estiverem disponíveis.
+
+    Solução:
+
+        Verifique a URL e a porta do WebSocket: Certifique-se de que a URL wss://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev:24678/ está correta e que a porta 24678 está configurada corretamente para aceitar conexões WebSocket.
+
+        Reinicie o servidor: Se possível, tente reiniciar o servidor do Replit para garantir que a porta esteja aberta e o servidor WebSocket esteja ativo.
+
+3. Token de Autenticação Inválido ou Expirado
+
+    Causa: A autenticação através do token pode não estar funcionando corretamente, resultando em falha na conexão WebSocket.
+
+    Solução:
+
+        Verifique o token: Certifique-se de que o token TBVkWWU6w67N esteja válido e não expirado.
+
+        Se o token for inválido ou expirado, você precisará gerar um novo token e passar no URL do WebSocket.
+
+        Exemplo de token: Se o token estiver sendo gerado automaticamente no backend, revise a lógica de geração do token.
+
+4. Problema de Configuração do WebSocket no Backend
+
+    Causa: Pode haver um problema com a configuração do servidor WebSocket que está impedindo as conexões.
+
+    Solução:
+
+        Revise as configurações do WebSocket no servidor: Verifique se o backend está configurado corretamente para aceitar conexões WebSocket.
+
+        Logs do servidor: Verifique os logs do servidor para qualquer erro relacionado ao WebSocket ou à autenticação do token.
+
+5. Problema com o Vite ou o Ambiente de Desenvolvimento
+
+    Causa: O Vite pode estar enfrentando problemas de reconexão, conforme indicado pela mensagem Polling for restart....
+
+    Solução:
+
+        Reinicie o servidor Vite: Se o problema persistir, tente reiniciar o servidor Vite ou a aplicação no ambiente Replit. Isso pode ajudar a restabelecer a conexão e resolver problemas de reconexão.
+
+        Verifique o ambiente Replit: Se o problema for específico do Replit, certifique-se de que o ambiente está configurado corretamente e que o WebSocket está habilitado.
+
+Soluções Rápidas para Tentar:
+
+    Reiniciar o servidor Vite: Tente reiniciar o ambiente de desenvolvimento ou o servidor WebSocket no Replit.
+
+    Testar o WebSocket: Utilize ferramentas como o WebSocket Test Client ou Postman para testar a conectividade WebSocket com a URL fornecida. Isso ajudará a identificar se o problema está no backend ou no frontend.
+
+    Verificar o Token: Se você estiver usando tokens de autenticação, verifique se o token está correto e válido. Regenerar o token, se necessário, pode resolver o problema.
+
+    Testar Localmente: Se possível, teste o servidor e o WebSocket localmente para ver se o problema está no ambiente de desenvolvimento (Replit) ou se o problema é geral.
+
+Conclusão:
+
+Esse erro está relacionado à falha de conexão WebSocket, o que pode ser causado por problemas de rede, URL incorreta, token inválido ou configuração do servidor. Siga as soluções sugeridas para verificar a conectividade, revisar a configuração do servidor e reiniciar o ambiente de desenvolvimento.
