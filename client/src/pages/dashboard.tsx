@@ -20,6 +20,21 @@ export default function Dashboard() {
   const [qrData, setQrData] = useState<{ connectionId: number; qrCode: string; expiration: Date } | null>(null);
   const { toast } = useToast();
 
+  // Listener para mudanças de hash na URL
+  useState(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && ['dashboard', 'connections', 'messages', 'settings'].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Verificar hash inicial
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  });
+
   // Real-time WebSocket connection
   useWebSocket({
     onQRCodeReceived: (data) => {

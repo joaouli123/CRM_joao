@@ -34,7 +34,7 @@ export default function MessageInterface({
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [historyMessages, setHistoryMessages] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // SET para controlar IDs únicos e evitar duplicação
   const processedMessageIds = useRef(new Set<string>());
 
@@ -43,7 +43,7 @@ export default function MessageInterface({
     if (!selectedConnectionId) return;
 
     console.log(`🔌 INICIANDO WEBSOCKET para conexão ${selectedConnectionId}`);
-    
+
     let socket: WebSocket | null = null;
     let reconnectTimer: NodeJS.Timeout | null = null;
 
@@ -51,7 +51,7 @@ export default function MessageInterface({
       try {
         const wsUrl = `wss://${window.location.host}/api/ws`;
         console.log(`📡 Conectando WebSocket: ${wsUrl}`);
-        
+
         socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
@@ -67,14 +67,14 @@ export default function MessageInterface({
             // Processar APENAS UM evento por mensagem para evitar duplicação
             if ((data.type === "newMessage") && data.data) {
               const msgData = data.data;
-              
+
               // Só processar se for para a conexão ativa
               if (msgData.connectionId === selectedConnectionId) {
                 console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
-                
+
                 setRealtimeMessages((prev) => {
                   const messageKey = `${msgData.id || msgData.tempId}`;
-                  
+
                   // 1. VERIFICAÇÃO RIGOROSA - Se já foi processada, ignorar completamente
                   if (processedMessageIds.current.has(messageKey)) {
                     console.log(`🚫 DUPLICAÇÃO DETECTADA - Ignorando mensagem já processada: ${messageKey}`);
@@ -87,7 +87,7 @@ export default function MessageInterface({
                   // 3. Substituição de mensagem temporária com tempId
                   if (msgData.direction === 'sent' && msgData.tempId) {
                     console.log(`🔍 BUSCANDO mensagem temporária para ${msgData.content}`);
-                    
+
                     let tempIndex = prev.findIndex((m: any) => m.tempId === msgData.tempId);
 
                     if (tempIndex !== -1) {
@@ -95,7 +95,7 @@ export default function MessageInterface({
                       // Remover tempId do conjunto e adicionar ID oficial
                       processedMessageIds.current.delete(msgData.tempId);
                       processedMessageIds.current.add(msgData.id);
-                      
+
                       const newMessages = [...prev];
                       newMessages[tempIndex] = {
                         id: msgData.id,
@@ -124,12 +124,12 @@ export default function MessageInterface({
                 });
               }
             }
-            
+
             // 4. ATUALIZAÇÃO DE STATUS DE ENTREGA (messageReceived)
             if (data.type === 'messageReceived' && data.data) {
               const msgData = data.data;
               console.log(`📬 CONFIRMAÇÃO DE ENTREGA recebida para mensagem ${msgData.id}`);
-              
+
               setRealtimeMessages((prev) => 
                 prev.map((msg) => 
                   msg.id === msgData.id 
@@ -144,7 +144,7 @@ export default function MessageInterface({
             if (data.type === 'messageFailed' && data.data) {
               const msgData = data.data;
               console.log(`❌ FALHA NA ENTREGA para mensagem ${msgData.id}`);
-              
+
               setRealtimeMessages((prev) => 
                 prev.map((msg) => 
                   msg.id === msgData.id 
@@ -240,13 +240,13 @@ export default function MessageInterface({
     .filter((m) => m.phoneNumber === selectedConversation)
     .forEach((msg) => {
       const contentHash = createContentHash(msg);
-      
+
       // Evitar duplicatas por conteúdo
       if (contentHashes.has(contentHash)) {
         console.log(`🚫 DUPLICATA DETECTADA POR CONTEÚDO: ${msg.content}`);
         return;
       }
-      
+
       if (msg.id && !allMessagesMap.has(msg.id)) {
         // Mensagem oficial nova
         allMessagesMap.set(msg.id, msg);
@@ -371,6 +371,8 @@ export default function MessageInterface({
     );
   }
 
+  const isLoadingConversations = false;
+
   return (
     <div className="flex h-full max-h-[calc(100vh-140px)]">
       {/* Lista de Conversas */}
@@ -396,78 +398,127 @@ export default function MessageInterface({
             </div>
           </CardHeader>
           <CardContent className="p-0 flex-1 min-h-0">
-            <ScrollArea className="h-full">
-              {filteredConversations.map((conv: any) => (
-                <div
-                  key={conv.phoneNumber}
-                  className={`p-4 border-b cursor-pointer hover:bg-muted transition-colors ${
-                    selectedConversation === conv.phoneNumber ? 'bg-muted' : ''
-                  }`}
-                  onClick={() => {
-                    console.log(`📱 SELECIONANDO CONVERSA: ${conv.phoneNumber}`);
-                    setSelectedConversation(conv.phoneNumber);
-                  }}
-                >
-                  <div className="flex items-center space-x-3">
-                    <ContactAvatar 
+            {/* Lista de conversas */}
+          <ScrollArea className="flex-1">
+            {isLoadingConversations ? (
+              <div className="p-6 text-center text-gray-500">
+                <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Carregando conversas...</p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">
+                {searchFilter ? (
+                  <>
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhuma conversa encontrada</p>
+                    <p className="text-xs">Tente buscar por outro termo</p>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhuma conversa encontrada</p>
+                    <p className="text-xs">As conversas aparecerão aqui</p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {filteredConversations.map((conv: any) => (
+                  <div
+                    key={conv.phoneNumber}
+                    className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
+                      selectedConversation === conv.phoneNumber ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
+                    }`}
+                    onClick={() => {
+                      console.log(`📱 SELECIONANDO CONVERSA: ${conv.phoneNumber}`);
+                      setSelectedConversation(conv.phoneNumber);
+                    }}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <ContactAvatar 
                       profilePicture={conv.profilePicture}
                       contactName={conv.contactName}
                       phoneNumber={conv.phoneNumber}
                       size="md"
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium truncate">
-                          {conv.contactName || conv.phoneNumber}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium truncate">
+                            {conv.contactName || conv.phoneNumber}
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            {formatTime(new Date(conv.lastMessageTime))}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {conv.lastMessage}
                         </p>
-                        <span className="text-xs text-muted-foreground">
-                          {formatTime(new Date(conv.lastMessageTime))}
-                        </span>
+                        {conv.unreadCount > 0 && (
+                          <Badge variant="default" className="mt-1">
+                            {conv.unreadCount}
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {conv.lastMessage}
-                      </p>
-                      {conv.unreadCount > 0 && (
-                        <Badge variant="default" className="mt-1">
-                          {conv.unreadCount}
-                        </Badge>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
-              
-              {/* Botão Carregar Mais */}
-              {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
-                <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 border-t">
-                  <Button 
-                    variant="default" 
-                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-3 shadow-lg transform transition-all duration-200 hover:scale-105"
-                    onClick={async () => {
-                      setLoadingMoreConversations(true);
-                      setConversationsLimit(prev => prev + 10);
-                      setTimeout(() => setLoadingMoreConversations(false), 1000);
-                    }}
-                    disabled={loadingMoreConversations}
-                  >
-                    {loadingMoreConversations ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Carregando mais conversas...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Carregar Mais Conversas</span>
-                      </div>
-                    )}
-                  </Button>
-                  <p className="text-xs text-center mt-2 text-gray-600">
-                    Mostrando {conversations.length} de 75+ conversas
-                  </p>
-                </div>
-              )}
-            </ScrollArea>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Botão Carregar Mais */}
+          {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
+            
+              <Button 
+                variant="default" 
+                className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-3 shadow-lg transform transition-all duration-200 hover:scale-105"
+                onClick={async () => {
+                  setLoadingMoreConversations(true);
+                  setConversationsLimit(prev => prev + 10);
+                  setTimeout(() => setLoadingMoreConversations(false), 1000);
+                }}
+                disabled={loadingMoreConversations}
+              >
+                {loadingMoreConversations ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Carregando mais conversas...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Carregar Mais Conversas</span>
+                  </div>
+                )}
+              </Button>
+             
+            )}
+             {/* Botão Nova Conexão fixo no rodapé */}
+          <div className="p-4 border-t border-gray-200 bg-white">
+            <Button 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+              onClick={() => {
+                // Navegar para a aba de conexões
+                window.location.href = '#connections';
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Nova Conexão
+            </Button>
+          </div>
           </CardContent>
         </Card>
       </div>
@@ -507,66 +558,6 @@ export default function MessageInterface({
             {/* Mensagens */}
             <ScrollArea className="flex-1 p-4 min-h-0">
               <div className="space-y-4">
-                {/* Botão Carregar Mais - Estilo WhatsApp Clean e Discreto */}
-                {selectedConversation && hasMoreHistory && (
-                  <div className="flex justify-center py-2">
-                    <button 
-                      onClick={async () => {
-                        setLoadingHistory(true);
-                        try {
-                          const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages/history?page=${historyPage + 1}&limit=20`);
-                          const data = await response.json();
-                          
-                          if (data.messages && data.messages.length > 0) {
-                            setHistoryMessages(prev => [...data.messages, ...prev]);
-                            setHistoryPage(data.page);
-                            setHasMoreHistory(data.hasMore);
-                          } else {
-                            setHasMoreHistory(false);
-                          }
-                        } catch (error) {
-                          console.error('Erro ao carregar histórico:', error);
-                        } finally {
-                          setLoadingHistory(false);
-                        }
-                      }}
-                      disabled={loadingHistory}
-                      className="text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-full border border-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loadingHistory ? "Carregando..." : "Carregar mais"}
-                    </button>
-                  </div>
-                )}
-
-                {/* Mensagens do histórico carregado */}
-                {historyMessages.map((message) => (
-                  <div
-                    key={`history_${message.id}`}
-                    className={`flex ${
-                      message.direction === "sent" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[70%] rounded-lg px-3 py-2 ${
-                        message.direction === "sent"
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <div className="flex items-center justify-end space-x-1 mt-1">
-                        <Clock className="h-3 w-3 opacity-70" />
-                        <span className="text-xs opacity-70">
-                          {formatTime(new Date(message.timestamp))}
-                        </span>
-                        <span className="text-xs opacity-50 ml-1">
-                          📚
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
                 {allMessages.map((message, index) => (
                   <div
                     key={`${message.id || index}-${message.timestamp}`}
@@ -597,7 +588,7 @@ export default function MessageInterface({
                     </div>
                   </div>
                 ))}
-                
+
                 {/* Indicador "Digitando..." */}
                 {typing && (
                   <div className="flex justify-start">
@@ -606,7 +597,7 @@ export default function MessageInterface({
                     </div>
                   </div>
                 )}
-                
+
                 {/* Referência para scroll automático */}
                 <div ref={messagesEndRef} />
               </div>
