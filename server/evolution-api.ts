@@ -188,6 +188,55 @@ class EvolutionAPI {
     return await this.makeRequest(`/message/sendText/${correctInstanceName}`, 'POST', data);
   }
 
+  // 🎵 ENVIAR ÁUDIO
+  async sendAudio(instanceName: string, to: string, audioData: string): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`🎵 Enviando áudio via ${correctInstanceName} para ${to}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      audioMessage: {
+        audio: audioData
+      }
+    };
+
+    return await this.makeRequest(`/message/sendWhatsAppAudio/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 📸 ENVIAR IMAGEM
+  async sendImage(instanceName: string, to: string, imageData: string, caption?: string): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📸 Enviando imagem via ${correctInstanceName} para ${to}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      mediaMessage: {
+        media: imageData,
+        caption: caption || '',
+        mediaType: 'image'
+      }
+    };
+
+    return await this.makeRequest(`/message/sendMedia/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 📄 ENVIAR DOCUMENTO
+  async sendDocument(instanceName: string, to: string, documentData: string, fileName: string): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📄 Enviando documento via ${correctInstanceName} para ${to}: ${fileName}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      mediaMessage: {
+        media: documentData,
+        fileName: fileName,
+        mediaType: 'document'
+      }
+    };
+
+    return await this.makeRequest(`/message/sendMedia/${correctInstanceName}`, 'POST', data);
+  }
+
   async deleteInstance(instanceName: string): Promise<void> {
     console.log(`🗑️ Deletando instância Evolution API: ${instanceName}`);
     await this.makeRequest(`/instance/delete/${instanceName}`, 'DELETE');
