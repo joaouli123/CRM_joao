@@ -316,12 +316,27 @@ class EvolutionAPI {
 
   async getChatMessages(instanceName: string, chatId: string, limit: number = 50): Promise<any> {
     try {
-      // Always use the correct instanceName for REST API calls
-      const correctInstanceName = "whatsapp_36_lowfy";
-      console.log(`💬 Buscando mensagens reais do chat ${chatId} com instanceName ${correctInstanceName}`);
-      const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}`, 'POST', {
-        where: {
-          key: {
+      // Extract phone number from chatId (remove @s.whatsapp.net or @c.us)
+      const phoneNumber = chatId.replace('@s.whatsapp.net', '').replace('@c.us', '');
+      
+      console.log(`📱 Buscando mensagens do chat ${phoneNumber} (limit: ${limit})`);
+      
+      // Use the correct Evolution API v2 endpoint for messages
+      const response = await fetch(`${this.baseUrl}/v2/messages?instance_id=${instanceName}&token=${this.apiKey}&phone=${phoneNumber}&limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Mensagens encontradas para ${phoneNumber}: ${data.messages?.length || 0}`);
+      
+      return data;
             remoteJid: chatId
           }
         },
