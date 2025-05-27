@@ -16,7 +16,7 @@ interface WhatsAppSession {
 const sessions = new Map<string, WhatsAppSession>();
 let wss: WebSocketServer;
 
-function broadcast(data: any) {
+export function broadcast(data: any) {
   if (wss) {
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -142,16 +142,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // 🔄 CONFIGURAR SINCRONIZAÇÃO EM TEMPO REAL
         try {
-          const instanceName = `whatsapp_${connectionId}_${connection.name}`;
-          console.log(`🔄 Configurando sincronização WebSocket para ${instanceName}`);
+          console.log(`🔄 Ativando sincronização em tempo real para conexão ${connectionId}`);
           
-          // Configurar WebSocket na Evolution API
-          await evolutionAPI.setWebSocket("whatsapp_36_lowfy");
-          console.log(`✅ WebSocket configurado para tempo real`);
-          
-          // Configurar webhook também
+          // Configurar webhook usando a instância real
           await evolutionAPI.configureWebhook("whatsapp_36_lowfy");
-          console.log(`✅ Webhook configurado para tempo real`);
+          console.log(`✅ Webhook configurado para sincronização em tempo real`);
           
         } catch (syncError: any) {
           console.log(`⚠️ Erro na configuração de tempo real:`, syncError.message);
@@ -433,5 +428,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🚀 INICIAR SISTEMA DE SINCRONIZAÇÃO EM TEMPO REAL
+  console.log('🚀 Iniciando sistema de sincronização em tempo real...');
+  syncManager.start();
+  
   return httpServer;
 }
