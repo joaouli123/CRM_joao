@@ -414,11 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      // TIMEOUT DE SEGURANÇA para evitar travamento
-      const TIMEOUT = 10000; // 10 segundos máximo
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout: Operação muito lenta')), TIMEOUT);
-      });
+      // Sistema otimizado sem timeout
 
       try {
         console.log(`🎯 Carregando conversas do banco de dados local (connectionId: ${connectionId})`);
