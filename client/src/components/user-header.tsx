@@ -27,17 +27,17 @@ export function UserHeader() {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
-      <div className="flex items-center space-x-3">
-        <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-          <User className="h-5 w-5 text-orange-600" />
+    <div className="flex items-center justify-between p-6 glass-panel border-b border-white/20 shadow-lg">
+      <div className="flex items-center space-x-4">
+        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg">
+          <User className="h-6 w-6 text-white" />
         </div>
-        <div>
-          <h2 className="text-lg font-semibold text-gray-800">{user.name}</h2>
-          <p className="text-sm text-gray-600">{user.email}</p>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold text-gradient-green">{displayName}</h2>
+          <p className="text-sm text-slate-600">{user.emailAddress}</p>
         </div>
-        {user.role === 'superadmin' && (
-          <span className="bg-orange-100 text-orange-800 border-orange-300 px-3 py-1 font-medium">
+        {user.emailAddress?.includes('admin') && (
+          <span className="badge-success">
             Super Admin
           </span>
         )}
@@ -47,7 +47,7 @@ export function UserHeader() {
         onClick={handleLogout}
         variant="outline"
         size="sm"
-        className="text-gray-600 hover:text-gray-800 border-gray-300 hover:bg-gray-50"
+        className="btn-secondary"
       >
         <LogOut className="h-4 w-4 mr-2" />
         Sair
