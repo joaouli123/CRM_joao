@@ -1178,6 +1178,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return synced;
   }
 
+  // Listar todos os contatos com ordenação por mais recentes
+  app.get('/api/contacts', async (req, res) => {
+    const { search = '', tag = '', sortBy = 'recent', page = 1, limit = 50 } = req.query;
+    
+    console.log(`📋 Listando contatos: search="${search}", tag="${tag}", sortBy="${sortBy}"`);
+    
+    try {
+      const contacts = await storage.getAllContacts();
+      let filteredContacts = contacts;
+      
+      // Filtrar por pesquisa
+      if (search) {
+        filteredContacts = filteredContacts.filter(contact => 
+          contact.name?.toLowerCase().includes(search.toString().toLowerCase()) ||
+          contact.phoneNumber?.includes(search.toString())
+        );
+      }
+      
+      // Filtrar por tag
+      if (tag && tag !== 'all') {
+        filteredContacts = filteredContacts.filter(contact => contact.tag === tag);
+      }
+      
+      // Ordenar - padrão por mais recentes
+      switch (sortBy) {
+        case 'recent':
+          filteredContacts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          break;
+        case 'oldest':
+          filteredContacts.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+          break;
+        case 'name':
+          filteredContacts.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          break;
+      }
+      
+      // Paginação
+      const startIndex = (parseInt(page.toString()) - 1) * parseInt(limit.toString());
+      const paginatedContacts = filteredContacts.slice(startIndex, startIndex + parseInt(limit.toString()));
+      
+      res.json({
+        contacts: paginatedContacts,
+        total: filteredContacts.length,
+        page: parseInt(page.toString()),
+        totalPages: Math.ceil(filteredContacts.length / parseInt(limit.toString()))
+      });
+      
+    } catch (error) {
+      console.error(`❌ Erro ao listar contatos:`, error);
+      res.status(500).json({ error: "Erro ao listar contatos" });
+    }
+  });
+
+  // Estatísticas dos contatos
+  app.get('/api/contacts/stats', async (req, res) => {
+    try {
+      const contacts = await storage.getAllContacts();
+      const total = contacts.length;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const addedToday = contacts.filter(contact => 
+        contact.createdAt && new Date(contact.createdAt) >= today
+      ).length;
+      
+      const lastUpdate = contacts.reduce((latest, contact) => {
+        if (!contact.updatedAt) return latest;
+        if (!latest || new Date(contact.updatedAt) > new Date(latest)) return contact.updatedAt;
+        return latest;
+      }, null);
+      
+      res.json({
+        total,
+        today: addedToday,
+        lastUpdate
+      });
+      
+    } catch (error) {
+      console.error(`❌ Erro ao buscar estatísticas:`, error);
+      res.status(500).json({ error: "Erro ao buscar estatísticas" });
+    }
+  });
+
   // Importar contatos do WhatsApp para a tabela
   app.post('/api/contacts/import-from-whatsapp', async (req, res) => {
     const { limit = 12, connectionId = 36 } = req.body;
