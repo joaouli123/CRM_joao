@@ -1,0 +1,81 @@
+❌ Erros que Devem Ser Corrigidos
+
+    Chat parou de funcionar corretamente:
+
+        As conversas não são exibidas (ativas e arquivadas).
+
+        O histórico de mensagens não carrega ao abrir uma conversa.
+
+        O envio de mensagens está travado ou inoperante.
+
+    Erro no console ao tentar buscar arquivadas:
+
+GET /api/connections/36/archived-chats 500 (Internal Server Error)
+
+    Esse erro aparece na linha:
+
+    message-interface-complete.tsx:98 ❌ Erro ao buscar arquivados: 500 Internal Server Error
+
+Stack trace da falha (React Query):
+
+    queryFn @ message-interface-complete.tsx:96
+    fetchFn @ @tanstack_react-query.js
+    ...
+    flushSyncCallbacks @ chunk-RPCDYKBN.js
+
+✅ Correções e Ajustes Solicitados
+🔄 1. Corrigir a Rota de Arquivados
+
+    Corrigir a falha (erro 500) ao fazer GET /api/connections/:connectionId/archived-chats
+
+    Verificar se o ID da conexão (connectionId) está sendo passado corretamente no fetch/query.
+
+    Garantir que o backend esteja respondendo JSON válido com status 200.
+
+📂 2. Reorganizar Interface Visual
+
+    Mover a seção de conversas arquivadas para acima da lista de conversas ativas.
+
+    Adicionar um título claro: 📂 Conversas Arquivadas
+
+    Manter a lista de arquivadas visível e funcional mesmo se nenhuma estiver arquivada (mostrar mensagem de vazio).
+
+🗑️ 3. Botões na interface
+
+Cada conversa arquivada deve ter:
+
+    🔄 Desarquivar → PUT /api/archived-chats/:chatId/unarchive
+
+    🗑️ Excluir permanentemente → DELETE /api/archived-chats/:chatId
+
+    🔕 Silenciar (apenas visual, sem funcionalidade)
+
+    🏷️ Etiquetar (apenas visual, placeholder para uso futuro)
+
+💬 4. Restaurar funcionalidades do chat
+
+    Corrigir o carregamento do histórico de mensagens.
+
+    Corrigir o envio de mensagens, garantindo que:
+
+        A caixa de texto esteja habilitada.
+
+        O evento de envio esteja funcionando corretamente.
+
+        O backend esteja recebendo e processando a mensagem.
+
+⚠️ Importante
+
+    O erro 500 está impedindo o carregamento da interface inteira.
+
+    A falha na queryFn do React Query está bloqueando renderizações subsequentes.
+
+    A interface deve continuar carregando as conversas ativas normalmente mesmo se a listagem de arquivadas falhar (usar try/catch ou fallback na query).
+
+✅ Requisitos finais esperados:
+Item	Comportamento Esperado
+Seção Arquivadas	Visível acima da lista de conversas ativas
+Listagem de Arquivadas	Funcional, com opções de ação
+Histórico de Mensagens	Carregando corretamente ao abrir uma conversa
+Envio de Mensagens	Operacional
+API /archived-chats	Respondendo com status 200

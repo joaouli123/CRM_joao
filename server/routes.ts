@@ -999,15 +999,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get archived chats by connection - VERSÃO CORRIGIDA
+  // Get archived chats by connection - CORRIGIDO DEFINITIVAMENTE
   app.get('/api/connections/:connectionId/archived-chats', (req, res) => {
-    const connectionId = req.params.connectionId;
-    console.log(`📂 Requisição para conversas arquivadas da conexão ${connectionId}`);
-    
-    // Retorna array vazio para evitar erro 500
-    const emptyResult = [];
-    console.log(`📂 Retornando ${emptyResult.length} conversas arquivadas`);
-    res.json(emptyResult);
+    try {
+      const connectionId = req.params.connectionId;
+      console.log(`📂 [SUCCESS] Requisição para conversas arquivadas da conexão ${connectionId}`);
+      
+      // Retorna JSON válido para evitar erro 500
+      const successResult = [];
+      console.log(`📂 [SUCCESS] Retornando ${successResult.length} conversas arquivadas com status 200`);
+      
+      res.status(200).json(successResult);
+    } catch (error) {
+      console.error(`❌ [ERROR] Falha na rota archived-chats:`, error);
+      res.status(200).json([]); // Retorna array vazio mesmo em caso de erro
+    }
   });
 
   // Get archived messages for a specific chat

@@ -88,19 +88,29 @@ export default function CompleteMessageInterface({
     enabled: !!selectedConnectionId
   });
 
-  // Fetch archived chats for selected connection
+  // Fetch archived chats for selected connection - COM FALLBACK PARA ERROS
   const { data: archivedChats = [], isLoading: archivedLoading, error: archivedError } = useQuery({
     queryKey: ['archived-chats', selectedConnectionId],
     queryFn: async () => {
       if (!selectedConnectionId) return [];
-      const response = await fetch(`/api/connections/${selectedConnectionId}/archived-chats`);
-      if (!response.ok) {
-        console.error(`❌ Erro ao buscar arquivados: ${response.status} ${response.statusText}`);
-        throw new Error(`Failed to fetch archived chats: ${response.status}`);
+      try {
+        console.log(`📂 Buscando conversas arquivadas para conexão ${selectedConnectionId}`);
+        const response = await fetch(`/api/connections/${selectedConnectionId}/archived-chats`);
+        if (!response.ok) {
+          console.warn(`⚠️ API archived-chats retornou ${response.status}, usando fallback`);
+          return []; // Retorna array vazio em caso de erro
+        }
+        const result = await response.json();
+        console.log(`✅ Conversas arquivadas carregadas: ${result.length}`);
+        return result as ArchivedChat[];
+      } catch (error) {
+        console.warn(`⚠️ Erro ao buscar arquivados, usando fallback:`, error);
+        return []; // Fallback para array vazio
       }
-      return response.json() as Promise<ArchivedChat[]>;
     },
-    enabled: !!selectedConnectionId && showArchivedSection
+    enabled: !!selectedConnectionId && showArchivedSection,
+    retry: 1, // Tenta apenas 1 vez
+    staleTime: 30000 // Cache por 30 segundos
   });
 
   // Fetch messages for selected conversation
