@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Phone, Mail, User, Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, Users, Tag } from 'lucide-react';
+import { Phone, Mail, User, Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, Users, Tag, MessageCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import type { Contact } from '@shared/schema';
 
@@ -22,6 +22,10 @@ interface ContactsResponse {
     total: number;
     pages: number;
   };
+}
+
+interface ContactsPageProps {
+  onOpenChat?: (phoneNumber: string, contactName: string) => void;
 }
 
 interface ContactFormData {
@@ -41,7 +45,7 @@ const ETIQUETAS = [
   { value: 'importante', label: 'Importante', color: 'bg-orange-500' }
 ];
 
-export default function ContactsPage() {
+export default function ContactsPage({ onOpenChat }: ContactsPageProps = {}) {
   const [selectedConnection] = useState(36); // Conexão padrão
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -453,6 +457,25 @@ export default function ContactsPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Botão para abrir conversa */}
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          if (onOpenChat) {
+                            onOpenChat(contact.phoneNumber, contact.name);
+                          } else {
+                            toast({
+                              title: "Conversa",
+                              description: `Abrindo conversa com ${contact.name}`,
+                            });
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button
