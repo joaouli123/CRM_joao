@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,7 +79,7 @@ export default function MessageInterface({
 
         socket.onmessage = (event) => {
           if (!mountedRef.current) return;
-          
+
           try {
             const data = JSON.parse(event.data);
             console.log(`📨 WEBSOCKET EVENTO RECEBIDO:`, data);
@@ -95,7 +94,7 @@ export default function MessageInterface({
 
                 setRealtimeMessages((prev) => {
                   if (!mountedRef.current) return prev;
-                  
+
                   const messageKey = `${msgData.id || msgData.tempId}`;
 
                   // 1. VERIFICAÇÃO RIGOROSA - Se já foi processada, ignorar completamente
@@ -192,15 +191,15 @@ export default function MessageInterface({
 
         socket.onclose = () => {
           if (!mountedRef.current) return;
-          
+
           console.log("🔴 WebSocket fechado");
           setIsConnected(false);
-          
+
           if (shouldReconnect && reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
             console.log(`🔄 Tentando reconectar em ${delay}ms (tentativa ${reconnectAttempts}/${maxReconnectAttempts})`);
-            
+
             reconnectTimeoutRef.current = setTimeout(() => {
               if (mountedRef.current && shouldReconnect) {
                 connectWebSocket();
@@ -213,7 +212,7 @@ export default function MessageInterface({
 
       } catch (error) {
         console.error("❌ Erro ao criar WebSocket:", error);
-        
+
         if (shouldReconnect && reconnectAttempts < maxReconnectAttempts && mountedRef.current) {
           reconnectAttempts++;
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
@@ -452,7 +451,7 @@ export default function MessageInterface({
       {/* Lista de Conversas */}
       <div className="w-80 border-r border-gray-200 flex flex-col h-full bg-gray-50">
         {/* Header das Conversas */}
-        <div className="p-4 bg-white border-b border-gray-200 flex-shrink-0">
+        <div className="p-3 bg-white border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold text-gray-900">Conversas</h3>
             {isConnected && (
@@ -539,7 +538,7 @@ export default function MessageInterface({
 
         {/* Botão Carregar Mais */}
         {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
-          <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
+          <div className="p-3 bg-white border-t border-gray-200 flex-shrink-0">
             <Button 
               variant="default" 
               size="sm"
@@ -572,7 +571,7 @@ export default function MessageInterface({
         {selectedConversation ? (
           <>
             {/* Header do Chat */}
-            <div className="p-4 bg-white border-b border-gray-200 flex-shrink-0">
+            <div className="p-2 bg-white border-b border-gray-200 flex-shrink-0">
               <div className="flex items-center space-x-3">
                 <ContactAvatar 
                   profilePicture={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.profilePicture}
@@ -646,7 +645,7 @@ export default function MessageInterface({
             </div>
 
             {/* Input de Mensagem */}
-            <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
+            <div className="p-2 bg-white border-t border-gray-200 flex-shrink-0">
               <div className="flex space-x-3">
                 <Input
                   placeholder="Digite sua mensagem..."

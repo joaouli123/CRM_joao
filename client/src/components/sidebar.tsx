@@ -16,7 +16,7 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
   ];
 
   return (
-    <div className="w-80 h-screen bg-surface border-r border-gray-200 flex flex-col flex-shrink-0">
+    <div className="w-60 h-screen bg-surface border-r border-gray-200 flex flex-col flex-shrink-0">
       {/* Header */}
       <div className="p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center space-x-3">

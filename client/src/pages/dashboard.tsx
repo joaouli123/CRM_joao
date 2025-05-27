@@ -308,16 +308,16 @@ export default function Dashboard() {
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
+        <header className="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900">
                 {activeTab === 'dashboard' && 'Dashboard'}
                 {activeTab === 'connections' && 'Conexões'}
                 {activeTab === 'messages' && 'Mensagens'}
                 {activeTab === 'settings' && 'Configurações'}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-500">
                 {activeTab === 'dashboard' && 'Visão geral do sistema'}
                 {activeTab === 'connections' && 'Gerenciar conexões WhatsApp'}
                 {activeTab === 'messages' && 'Enviar e receber mensagens'}
@@ -327,14 +327,14 @@ export default function Dashboard() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-600">Sistema Online</span>
+                <span className="text-xs text-gray-600">Sistema Online</span>
               </div>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden p-6">
+        <main className="flex-1 overflow-hidden p-3">
           {renderContent()}
         </main>
       </div>
