@@ -5,6 +5,7 @@ import { evolutionAPI } from "./evolution-api";
 import { WebSocketServer, WebSocket } from "ws";
 import { Server } from "http";
 import { syncManager } from "./sync-manager";
+import { messageLoader } from "./message-loader";
 
 interface WhatsAppSession {
   client: any;
