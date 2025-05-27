@@ -240,11 +240,11 @@ export default function ContactsManagement() {
   };
 
   const handleExport = () => {
-    // Implementar exportação CSV/Excel
+    // Exportação CSV no padrão solicitado: NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA
     const csvContent = "data:text/csv;charset=utf-8," 
-      + "Nome,Telefone,Email,Etiqueta,Observação,Data de Criação\n"
+      + "NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA\n"
       + contacts.map(contact => 
-          `"${contact.name}","${contact.phoneNumber}","${contact.email || ''}","${contact.tag || ''}","${contact.observation || ''}","${format(new Date(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}"`
+          `${contact.name};${contact.phoneNumber};${contact.email || ''};${contact.tag || ''};${contact.origem || ''};${format(new Date(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}`
         ).join("\n");
     
     const encodedUri = encodeURI(csvContent);
@@ -256,6 +256,100 @@ export default function ContactsManagement() {
     document.body.removeChild(link);
     
     toast({ title: 'Lista de contatos exportada com sucesso!' });
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n');
+        // Suporte tanto vírgula quanto ponto e vírgula como separador
+        const separator = lines[0].includes(';') ? ';' : ',';
+        const headers = lines[0].split(separator).map(h => h.replace(/"/g, '').trim().toLowerCase());
+        
+        const importedContacts = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const values = line.split(separator).map(v => v.replace(/"/g, '').trim());
+          const contact: any = { connectionId: 36 };
+          
+          headers.forEach((header, index) => {
+            const value = values[index] || '';
+            switch (header) {
+              case 'nome':
+              case 'name':
+                contact.name = value;
+                break;
+              case 'telefone':
+              case 'phone':
+              case 'phoneNumber':
+                contact.phoneNumber = value;
+                break;
+              case 'email':
+                contact.email = value;
+                break;
+              case 'tag':
+              case 'etiqueta':
+                contact.tag = value;
+                break;
+              case 'origem':
+              case 'origin':
+                contact.origem = value;
+                break;
+              case 'data':
+              case 'date':
+                // Ignorar campo de data na importação (será criado automaticamente)
+                break;
+              case 'observação':
+              case 'observacao':
+              case 'observation':
+                contact.observation = value;
+                break;
+            }
+          });
+          
+          if (contact.name && contact.phoneNumber) {
+            importedContacts.push(contact);
+          }
+        }
+        
+        // Importar contatos em lote
+        Promise.all(
+          importedContacts.map(contact => 
+            createContactMutation.mutateAsync(contact)
+          )
+        ).then(() => {
+          toast({ 
+            title: `${importedContacts.length} contatos importados com sucesso!`,
+            description: `Arquivo: ${file.name}`
+          });
+        }).catch(() => {
+          toast({ 
+            title: 'Erro ao importar alguns contatos', 
+            variant: 'destructive',
+            description: 'Verifique o formato do arquivo e tente novamente.'
+          });
+        });
+        
+      } catch (error) {
+        toast({ 
+          title: 'Erro ao processar arquivo', 
+          variant: 'destructive',
+          description: 'Verifique se o arquivo está no formato correto.'
+        });
+      }
+    };
+    
+    reader.readAsText(file);
+    // Limpar o input para permitir reimportar o mesmo arquivo
+    event.target.value = '';
   };
 
   const getTagColor = (tag: string) => {
@@ -459,6 +553,31 @@ export default function ContactsManagement() {
                     Adicionar Contato
                   </Button>
                 </DialogTrigger>
+                
+              <Button
+                onClick={handleExport}
+                variant="outline"
+                className="btn-secondary border-green-500 text-green-700 hover:bg-green-50"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Exportar CSV
+              </Button>
+
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleImport}
+                className="hidden"
+                id="import-file"
+              />
+              <Button
+                onClick={() => document.getElementById('import-file')?.click()}
+                variant="outline"
+                className="btn-secondary border-blue-500 text-blue-700 hover:bg-blue-50"
+              >
+                <Download className="mr-2 h-4 w-4 rotate-180" />
+                Importar CSV/Excel
+              </Button>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>{editingContact ? 'Editar Contato' : 'Adicionar Novo Contato'}</DialogTitle>
