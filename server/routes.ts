@@ -1462,7 +1462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const contactId = parseInt(req.params.id);
     const { name, phoneNumber, email, observacao, etiqueta, origem } = req.body;
     
-    console.log(`📱 Atualizando contato ${contactId}:`, { name, phoneNumber, email });
+    console.log(`📱 Atualizando contato ${contactId}:`, { name, phoneNumber, email, observacao, etiqueta, origem });
     
     try {
       const updatedContact = await storage.updateContact(contactId, {
