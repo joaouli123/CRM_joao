@@ -44,12 +44,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
-      <Route path="/contacts">
-        <ProtectedRoute>
-          <UserHeader />
-          <ContactsPage />
-        </ProtectedRoute>
-      </Route>
+
     </Switch>
   );
 }

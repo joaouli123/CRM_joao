@@ -985,8 +985,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phoneNumber,
         name,
         email: email || null,
-        observacao: observacao || null,
-        etiqueta: etiqueta || null,
+        observation: observacao || null,
+        tag: etiqueta || null,
+        origem: origem || null,
         isActive: true
       });
       
