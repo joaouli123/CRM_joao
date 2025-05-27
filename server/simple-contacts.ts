@@ -84,7 +84,7 @@ export function setupSimpleContactsAPI(app: Express) {
   app.put('/api/contacts/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, phoneNumber, email, observation, tag } = req.body;
+      const { name, phoneNumber, email, observation, tag, origem } = req.body;
       
       const updatedContact = await db.update(contacts)
         .set({
@@ -93,6 +93,7 @@ export function setupSimpleContactsAPI(app: Express) {
           email: email || null,
           observation: observation || null,
           tag: tag || null,
+          origem: origem || null,
           updatedAt: new Date()
         })
         .where(eq(contacts.id, parseInt(id)))
