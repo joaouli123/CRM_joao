@@ -630,7 +630,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const realInstanceName = process.env.EVOLUTION_INSTANCE_ID || "whatsapp_36_lowfy";
           console.log(`🎯 Carregando mensagens da instância: ${realInstanceName}`);
 
-          const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
+          // DESABILITADO: Buscar mensagens reais (API com problemas)
+          // const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
+          const realMessages = null; // Temporariamente desabilitado
 
           if (realMessages && realMessages.length > 0) {
             console.log(`✅ Encontradas ${realMessages.length} mensagens reais para ${phoneNumber}`);
