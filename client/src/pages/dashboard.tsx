@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/sidebar";
 import MessageInterface from "@/components/message-interface-final";
+import ContactsPage from "@/pages/contacts";
 import { Connection, ConnectionStats } from "@/lib/api";
 import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
 import { QRCodeModal } from "@/components/modals/qr-code-modal";
 
-type TabType = 'dashboard' | 'connections' | 'messages' | 'settings';
+type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'settings';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('messages');
@@ -278,6 +279,19 @@ export default function Dashboard() {
               connections={connections}
               selectedConnectionId={selectedConnectionId}
               onSelectConnection={setSelectedConnectionId}
+            />
+          </div>
+        );
+
+      case "contacts":
+        return (
+          <div className="h-full">
+            <ContactsPage 
+              onOpenChat={(phoneNumber, contactName) => {
+                setActiveTab('messages');
+                setSelectedConnectionId(36);
+                console.log(`🚀 Abrindo conversa com ${contactName} (${phoneNumber})`);
+              }}
             />
           </div>
         );
