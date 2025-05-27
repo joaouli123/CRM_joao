@@ -113,14 +113,33 @@ export default function CompleteMessageInterface({
     staleTime: 30000 // Cache por 30 segundos
   });
 
-  // Fetch messages for selected conversation
+  // Fetch messages for selected conversation - COM LOGS DETALHADOS
   const { data: chatMessages = [], isLoading: messagesLoading } = useQuery({
     queryKey: ['messages', selectedConnectionId, selectedConversation],
     queryFn: async () => {
-      if (!selectedConnectionId || !selectedConversation) return [];
-      const response = await fetch(`/api/connections/${selectedConnectionId}/messages/${selectedConversation}`);
-      if (!response.ok) throw new Error('Failed to fetch messages');
-      return response.json() as Promise<Message[]>;
+      if (!selectedConnectionId || !selectedConversation) {
+        console.log(`⚠️ Parâmetros faltando - connectionId: ${selectedConnectionId}, conversation: ${selectedConversation}`);
+        return [];
+      }
+      
+      console.log(`📨 Carregando mensagens para conexão ${selectedConnectionId}, contato ${selectedConversation}`);
+      
+      try {
+        const response = await fetch(`/api/connections/${selectedConnectionId}/messages/${selectedConversation}`);
+        console.log(`📨 Response status: ${response.status}`);
+        
+        if (!response.ok) {
+          console.error(`❌ Erro na API de mensagens: ${response.status} ${response.statusText}`);
+          return [];
+        }
+        
+        const messages = await response.json();
+        console.log(`✅ Mensagens carregadas: ${messages.length} mensagens`);
+        return messages as Message[];
+      } catch (error) {
+        console.error(`❌ Erro ao carregar mensagens:`, error);
+        return [];
+      }
     },
     enabled: !!selectedConnectionId && !!selectedConversation
   });
@@ -225,9 +244,14 @@ export default function CompleteMessageInterface({
     }
   }, [chatMessages, realtimeMessages]);
 
-  // Handle send message
+  // Handle send message - COM LOGS DETALHADOS
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConnectionId || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConnectionId || !selectedConversation) {
+      console.log(`⚠️ Envio cancelado - mensagem: "${newMessage}", conexão: ${selectedConnectionId}, contato: ${selectedConversation}`);
+      return;
+    }
+
+    console.log(`📤 Enviando mensagem: "${newMessage}" para ${selectedConversation} via conexão ${selectedConnectionId}`);
 
     const tempId = crypto.randomUUID();
     const tempMessage: RealtimeMessage = {
@@ -242,20 +266,25 @@ export default function CompleteMessageInterface({
 
     // Add temp message immediately
     setRealtimeMessages(prev => [...prev, tempMessage]);
+    const messageToSend = newMessage;
     setNewMessage("");
 
     try {
+      console.log(`📤 Fazendo POST para /api/send-message`);
       const response = await fetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           connectionId: selectedConnectionId,
           phoneNumber: selectedConversation,
-          message: newMessage
+          message: messageToSend
         })
       });
 
+      console.log(`📤 Response status: ${response.status}`);
+
       if (response.ok) {
+        console.log(`✅ Mensagem enviada com sucesso!`);
         // Update temp message status
         setRealtimeMessages(prev => 
           prev.map(msg => 
