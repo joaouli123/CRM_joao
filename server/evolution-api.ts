@@ -294,11 +294,7 @@ class EvolutionAPI {
         console.log(`🔄 PÁGINA ${page}/${MAX_PAGES}: Buscando ${SAFE_LIMIT} contatos`);
 
         try {
-          const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
-            where: {},
-            limit: SAFE_LIMIT,
-            offset: (page - 1) * SAFE_LIMIT
-          });
+          const response = await this.makeRequest(`/chat/findMany/${correctInstanceName}`, 'GET');
 
           if (response && Array.isArray(response) && response.length > 0) {
             // Evitar duplicatas usando remoteJid como chave única
