@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { evolutionAPI } from "./evolution-api";
 import { WebSocketServer, WebSocket } from "ws";
 import { Server } from "http";
+import { syncManager } from "./sync-manager";
 
 interface WhatsAppSession {
   client: any;
@@ -140,7 +141,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🎯 Carregando conversas do banco de dados local (connectionId: ${connectionId})`);
 
         // 🔄 CONFIGURAR SINCRONIZAÇÃO EM TEMPO REAL
-        console.log(`🔄 Sistema de sincronização em tempo real ativo para conexão ${connectionId}`);
+        try {
+          const instanceName = `whatsapp_${connectionId}_${connection.name}`;
+          console.log(`🔄 Configurando sincronização WebSocket para ${instanceName}`);
+          
+          // Configurar WebSocket na Evolution API
+          await evolutionAPI.setWebSocket("whatsapp_36_lowfy");
+          console.log(`✅ WebSocket configurado para tempo real`);
+          
+          // Configurar webhook também
+          await evolutionAPI.configureWebhook("whatsapp_36_lowfy");
+          console.log(`✅ Webhook configurado para tempo real`);
+          
+        } catch (syncError: any) {
+          console.log(`⚠️ Erro na configuração de tempo real:`, syncError.message);
+        }
 
         // Carregar conversas do banco de dados local (agora com mensagens atualizadas)
         const dbMessages = await storage.getMessagesByConnection(connectionId);
