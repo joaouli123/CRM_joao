@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +26,7 @@ export default function SignUp() {
       // Simular criação de conta - quando Clerk estiver completo, será substituído
       const session = await clerk.signIn(email, password);
       if (session.isSignedIn) {
-        navigate('/');
+        setLocation('/');
       }
     } catch (err) {
       setError('Erro ao criar conta. Tente novamente.');
@@ -139,7 +139,7 @@ export default function SignUp() {
               <p className="text-sm text-gray-600">
                 Já tem uma conta?{' '}
                 <button
-                  onClick={() => navigate('/sign-in')}
+                  onClick={() => setLocation('/sign-in')}
                   className="font-medium text-blue-600 hover:text-blue-500"
                 >
                   Fazer login

@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/sidebar";
 import MessageInterface from "@/components/message-interface-final";
-import { Connection, ConnectionStatus } from "@/lib/api";
+import { Connection, ConnectionStats } from "@/lib/api";
 import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock } from "lucide-react";
-import NewConnectionModal from "@/components/modals/new-connection-modal";
-import QRCodeModal from "@/components/modals/qr-code-modal";
+import { NewConnectionModal } from "@/components/modals/new-connection-modal";
+import { QRCodeModal } from "@/components/modals/qr-code-modal";
 
 type TabType = 'dashboard' | 'connections' | 'messages' | 'settings';
 

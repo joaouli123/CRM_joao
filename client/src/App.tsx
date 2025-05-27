@@ -3,13 +3,29 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ProtectedRoute } from "@/components/protected-route";
+import { UserHeader } from "@/components/user-header";
 import Dashboard from "@/pages/dashboard";
+import SignIn from "@/pages/sign-in";
+import SignUp from "@/pages/sign-up";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/sign-in" component={SignIn} />
+      <Route path="/sign-up" component={SignUp} />
+      <Route path="/">
+        <ProtectedRoute>
+          <UserHeader />
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard">
+        <ProtectedRoute>
+          <UserHeader />
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
     </Switch>
   );
 }
