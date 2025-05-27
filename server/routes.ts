@@ -270,8 +270,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectionId = parseInt(req.params.id);
       const limit = parseInt(req.query.limit as string) || 12;
       const skip = parseInt(req.query.skip as string) || 0;
+      const search = (req.query.search as string) || '';
 
-      console.log(`🔍 GET /api/connections/${connectionId}/conversations?limit=${limit}&skip=${skip}`);
+      console.log(`🔍 GET /api/connections/${connectionId}/conversations?limit=${limit}&skip=${skip}&search="${search}"`);
 
       const connection = await storage.getConnection(connectionId);
 
@@ -284,16 +285,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Force use the actual connected instance name
         const activeInstanceName = "whatsapp_36_lowfy";
 
-        console.log(`🎯 Usando instância real conectada: ${activeInstanceName} - Skip: ${skip}, Limit: ${limit}`);
+        console.log(`🎯 Usando instância real conectada: ${activeInstanceName} - Buscando TODAS as conversas para filtrar`);
         const allChats = await evolutionAPI.getAllChats(activeInstanceName);
 
-        // Apply pagination to the chats
-        const paginatedChats = allChats.slice(skip, skip + limit);
-        console.log(`✅ Encontrados ${paginatedChats.length} contatos paginados de ${activeInstanceName}! (Total: ${allChats.length})`);
+        console.log(`📊 Total de conversas encontradas: ${allChats.length}`);
 
-        // Create conversations from paginated real WhatsApp contacts with profile pictures
-        const realConversations = await Promise.all(
-          paginatedChats.map(async (chat, index) => {
+        // Create conversations from ALL real WhatsApp contacts
+        const allConversations = await Promise.all(
+          allChats.map(async (chat, index) => {
             const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
             if (!phoneNumber) return null;
 
@@ -307,18 +306,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
               profilePicture: chat.profilePicUrl
             };
 
-            console.log(`✅ ${index + 1}. ${chat.pushName || phoneNumber} (${phoneNumber}) ${chat.profilePicUrl ? '📸' : '👤'}`);
-            if (chat.profilePicUrl) {
-              console.log(`📸 FOTO REAL: ${chat.profilePicUrl}`);
-            }
             return conversation;
           })
         );
         
-        const validConversations = realConversations.filter(Boolean);
+        const validConversations = allConversations.filter(Boolean);
 
-        console.log(`🎉 Retornando ${realConversations.length} conversas dos seus contatos reais!`);
-        res.json(realConversations);
+        // Apply search filter to ALL conversations
+        let filteredConversations = validConversations;
+        
+        if (search.trim()) {
+          const searchLower = search.toLowerCase().trim();
+          filteredConversations = validConversations.filter(conv => {
+            const nameMatch = conv.contactName.toLowerCase().includes(searchLower);
+            const phoneMatch = conv.phoneNumber.includes(searchLower);
+            return nameMatch || phoneMatch;
+          });
+          console.log(`🔍 Filtro aplicado: "${search}" - ${filteredConversations.length} resultados de ${validConversations.length} total`);
+        }
+
+        // Apply pagination AFTER filtering
+        const totalFiltered = filteredConversations.length;
+        const paginatedConversations = filteredConversations.slice(skip, skip + limit);
+
+        console.log(`📋 Retornando ${paginatedConversations.length} conversas (${totalFiltered} total após filtro)`);
+
+        // Log some results for debugging
+        paginatedConversations.forEach((conv, index) => {
+          console.log(`✅ ${skip + index + 1}. ${conv.contactName} (${conv.phoneNumber}) ${conv.profilePicture ? '📸' : '👤'}`);
+          if (conv.profilePicture) {
+            console.log(`📸 FOTO REAL: ${conv.profilePicture}`);
+          }
+        });
+
+        console.log(`🎉 Retornando ${paginatedConversations.length} conversas dos seus contatos reais!`);
+        res.json(paginatedConversations);
 
       } catch (apiError) {
         console.log(`❌ Erro na Evolution API:`, apiError);
