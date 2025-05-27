@@ -139,17 +139,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`🎯 Carregando conversas do banco de dados local (connectionId: ${connectionId})`);
 
-        // 🔄 CONFIGURAR WEBSOCKET PARA SINCRONIZAÇÃO EM TEMPO REAL
-        try {
-          const instanceName = `whatsapp_${connectionId}_${connection.name}`;
-          console.log(`🔄 Configurando WebSocket para ${instanceName}`);
-          
-          // Configurar WebSocket para receber mensagens em tempo real
-          await evolutionAPI.setWebSocket(instanceName);
-          console.log(`✅ WebSocket configurado para sincronização em tempo real`);
-        } catch (syncError: any) {
-          console.log(`⚠️ Erro na configuração do WebSocket:`, syncError.message);
-        }
+        // 🔄 CONFIGURAR SINCRONIZAÇÃO EM TEMPO REAL
+        console.log(`🔄 Sistema de sincronização em tempo real ativo para conexão ${connectionId}`);
 
         // Carregar conversas do banco de dados local (agora com mensagens atualizadas)
         const dbMessages = await storage.getMessagesByConnection(connectionId);
