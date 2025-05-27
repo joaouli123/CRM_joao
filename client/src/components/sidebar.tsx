@@ -16,9 +16,9 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
   ];
 
   return (
-    <div className="w-80 bg-surface border-r border-gray-200 flex flex-col">
+    <div className="w-80 h-screen bg-surface border-r border-gray-200 flex flex-col flex-shrink-0">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
             <MessageSquare className="text-white text-xl" />
@@ -31,7 +31,7 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
       </div>
 
       {/* Navigation */}
-      <div className="p-4">
+      <div className="p-4 flex-1 overflow-y-auto">
         <nav className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -56,7 +56,7 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
       </div>
 
       {/* Quick Actions */}
-      <div className="p-4 border-t border-gray-200 mt-auto">
+      <div className="p-4 border-t border-gray-200 flex-shrink-0">
         <Button 
           onClick={onNewConnection}
           className="w-full bg-primary text-white hover:bg-blue-700 flex items-center justify-center space-x-2"

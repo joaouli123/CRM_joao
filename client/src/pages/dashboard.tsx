@@ -303,16 +303,16 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab}
         onNewConnection={() => setShowNewConnectionModal(true)}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
-        <header className="bg-surface border-b border-gray-200 px-6 py-4">
+        <header className="bg-surface border-b border-gray-200 px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
@@ -338,7 +338,7 @@ export default function Dashboard() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6 min-h-0">
           {renderTabContent()}
         </main>
       </div>

@@ -372,10 +372,10 @@ export default function MessageInterface({
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full max-h-[calc(100vh-140px)]">
       {/* Lista de Conversas */}
-      <div className="w-1/3 border-r">
-        <Card className="h-full rounded-none border-0">
+      <div className="w-1/3 border-r flex flex-col min-h-0">
+        <Card className="h-full rounded-none border-0 flex flex-col min-h-0">
           <CardHeader>
             <CardTitle className="text-lg flex items-center justify-between">
               Conversas
@@ -395,8 +395,8 @@ export default function MessageInterface({
               />
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-200px)]">
+          <CardContent className="p-0 flex-1 min-h-0">
+            <ScrollArea className="h-full">
               {filteredConversations.map((conv: any) => (
                 <div
                   key={conv.phoneNumber}
@@ -473,11 +473,11 @@ export default function MessageInterface({
       </div>
 
       {/* Chat */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {selectedConversation ? (
           <>
             {/* Header do Chat */}
-            <Card className="rounded-none border-0 border-b">
+            <Card className="rounded-none border-0 border-b flex-shrink-0">
               <CardHeader className="pb-3">
                 <div className="flex items-center space-x-3">
                   <ContactAvatar 
@@ -505,79 +505,8 @@ export default function MessageInterface({
             </Card>
 
             {/* Mensagens */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4 min-h-0">
               <div className="space-y-4">
-                {/* Botão Carregar Histórico Antigo */}
-                {selectedConversation && hasMoreHistory && (
-                  <div className="flex justify-center mb-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white border-none shadow-lg transform transition-all duration-200 hover:scale-105"
-                      onClick={async () => {
-                        setLoadingHistory(true);
-                        try {
-                          const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages/history?page=${historyPage + 1}&limit=20`);
-                          const data = await response.json();
-                          
-                          if (data.messages && data.messages.length > 0) {
-                            setHistoryMessages(prev => [...data.messages, ...prev]);
-                            setHistoryPage(data.page);
-                            setHasMoreHistory(data.hasMore);
-                          } else {
-                            setHasMoreHistory(false);
-                          }
-                        } catch (error) {
-                          console.error('Erro ao carregar histórico:', error);
-                        } finally {
-                          setLoadingHistory(false);
-                        }
-                      }}
-                      disabled={loadingHistory}
-                    >
-                      {loadingHistory ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Carregando histórico...</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <Clock className="w-4 h-4" />
-                          <span>Carregar Mensagens Antigas</span>
-                        </div>
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Mensagens do histórico carregado */}
-                {historyMessages.map((message) => (
-                  <div
-                    key={`history_${message.id}`}
-                    className={`flex ${
-                      message.direction === "sent" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[70%] rounded-lg px-3 py-2 ${
-                        message.direction === "sent"
-                          ? "bg-green-500 text-white ml-auto"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs opacity-70">
-                          {formatTime(new Date(message.timestamp))}
-                        </span>
-                        <span className="text-xs opacity-50 ml-2">
-                          📚 Histórico
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
                 {allMessages.map((message, index) => (
                   <div
                     key={`${message.id || index}-${message.timestamp}`}
@@ -624,7 +553,7 @@ export default function MessageInterface({
             </ScrollArea>
 
             {/* Input de Mensagem */}
-            <Card className="rounded-none border-0 border-t">
+            <Card className="rounded-none border-0 border-t flex-shrink-0">
               <CardContent className="p-4">
                 <div className="flex space-x-2">
                   <Input
@@ -650,12 +579,10 @@ export default function MessageInterface({
             </Card>
           </>
         ) : (
-          <Card className="h-full rounded-none border-0">
-            <CardContent className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Selecione uma conversa para começar</p>
-              </div>
+          <Card className="h-full rounded-none border-0 flex items-center justify-center">
+            <CardContent className="text-center">
+              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Selecione uma conversa para começar</p>
             </CardContent>
           </Card>
         )}
