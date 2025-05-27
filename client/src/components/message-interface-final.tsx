@@ -30,37 +30,57 @@ export default function MessageInterface({
   const [typing, setTyping] = useState(false);
   const [conversationsLimit, setConversationsLimit] = useState(10);
   const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
-  const [historyPage, setHistoryPage] = useState(1);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  const [historyMessages, setHistoryMessages] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
   // SET para controlar IDs únicos e evitar duplicação
   const processedMessageIds = useRef(new Set<string>());
 
+  // Cleanup quando componente desmonta
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
+
   // WebSocket para mensagens em tempo real
   useEffect(() => {
-    if (!selectedConnectionId) return;
+    if (!selectedConnectionId || !mountedRef.current) return;
 
     console.log(`🔌 INICIANDO WEBSOCKET para conexão ${selectedConnectionId}`);
 
-    let socket: WebSocket | null = null;
-    let reconnectTimer: NodeJS.Timeout | null = null;
+    let shouldReconnect = true;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
 
     const connectWebSocket = () => {
+      if (!mountedRef.current || !shouldReconnect) return;
+
       try {
         const wsUrl = `wss://${window.location.host}/api/ws`;
         console.log(`📡 Conectando WebSocket: ${wsUrl}`);
 
-        socket = new WebSocket(wsUrl);
+        const socket = new WebSocket(wsUrl);
+        socketRef.current = socket;
 
         socket.onopen = () => {
+          if (!mountedRef.current) return;
           console.log(`✅ WEBSOCKET CONECTADO! Conexão: ${selectedConnectionId}`);
           setIsConnected(true);
+          reconnectAttempts = 0;
         };
 
         socket.onmessage = (event) => {
+          if (!mountedRef.current) return;
+          
           try {
             const data = JSON.parse(event.data);
             console.log(`📨 WEBSOCKET EVENTO RECEBIDO:`, data);
@@ -74,6 +94,8 @@ export default function MessageInterface({
                 console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
 
                 setRealtimeMessages((prev) => {
+                  if (!mountedRef.current) return prev;
+                  
                   const messageKey = `${msgData.id || msgData.tempId}`;
 
                   // 1. VERIFICAÇÃO RIGOROSA - Se já foi processada, ignorar completamente
@@ -105,7 +127,7 @@ export default function MessageInterface({
                         direction: msgData.direction,
                         timestamp: new Date(msgData.timestamp),
                         status: 'sent',
-                        tempId: undefined, // Remove tempId na mensagem oficial
+                        tempId: undefined,
                       };
                       return newMessages;
                     }
@@ -126,40 +148,36 @@ export default function MessageInterface({
               }
             }
 
-            // 4. ATUALIZAÇÃO DE STATUS DE ENTREGA (messageReceived)
+            // Atualização de status de entrega
             if (data.type === 'messageReceived' && data.data) {
               const msgData = data.data;
               console.log(`📬 CONFIRMAÇÃO DE ENTREGA recebida para mensagem ${msgData.id}`);
 
-              setRealtimeMessages((prev) => 
-                prev.map((msg) => 
+              setRealtimeMessages((prev) => {
+                if (!mountedRef.current) return prev;
+                return prev.map((msg) => 
                   msg.id === msgData.id 
-                    ? { ...msg, status: 'delivered' } // ✔✔ Atualizar para 'delivered'
+                    ? { ...msg, status: 'delivered' }
                     : msg
-                )
-              );
-              return; // Evitar processamento adicional
+                );
+              });
             }
 
-            // 5. STATUS DE FALHA NA ENTREGA
+            // Status de falha na entrega
             if (data.type === 'messageFailed' && data.data) {
               const msgData = data.data;
               console.log(`❌ FALHA NA ENTREGA para mensagem ${msgData.id}`);
 
-              setRealtimeMessages((prev) => 
-                prev.map((msg) => 
+              setRealtimeMessages((prev) => {
+                if (!mountedRef.current) return prev;
+                return prev.map((msg) => 
                   msg.id === msgData.id 
-                    ? { ...msg, status: 'failed' } // ❌ Marcar como falha
+                    ? { ...msg, status: 'failed' }
                     : msg
-                )
-              );
-              return; // Evitar processamento adicional
+                );
+              });
             }
 
-            // Ignorar outros eventos duplicados
-            if (data.type === "messageSent") {
-              console.log(`🔇 Ignorando evento duplicado: ${data.type}`);
-            }
           } catch (error) {
             console.error("❌ Erro ao processar WebSocket:", error);
           }
@@ -167,37 +185,70 @@ export default function MessageInterface({
 
         socket.onerror = (error) => {
           console.error("❌ WebSocket erro:", error);
-          setIsConnected(false);
+          if (mountedRef.current) {
+            setIsConnected(false);
+          }
         };
 
         socket.onclose = () => {
-          console.log("🔴 WebSocket fechado, tentando reconectar...");
+          if (!mountedRef.current) return;
+          
+          console.log("🔴 WebSocket fechado");
           setIsConnected(false);
-          reconnectTimer = setTimeout(connectWebSocket, 3000);
+          
+          if (shouldReconnect && reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            console.log(`🔄 Tentando reconectar em ${delay}ms (tentativa ${reconnectAttempts}/${maxReconnectAttempts})`);
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (mountedRef.current && shouldReconnect) {
+                connectWebSocket();
+              }
+            }, delay);
+          } else {
+            console.log("❌ Máximo de tentativas de reconexão atingido");
+          }
         };
 
       } catch (error) {
         console.error("❌ Erro ao criar WebSocket:", error);
-        reconnectTimer = setTimeout(connectWebSocket, 3000);
+        
+        if (shouldReconnect && reconnectAttempts < maxReconnectAttempts && mountedRef.current) {
+          reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current && shouldReconnect) {
+              connectWebSocket();
+            }
+          }, delay);
+        }
       }
     };
 
     connectWebSocket();
 
     return () => {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (socket) socket.close();
+      shouldReconnect = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
     };
   }, [selectedConnectionId]);
 
   // Buscar conversas com paginação
-  const { data: conversations = [] } = useQuery({
+  const { data: conversations = [], error: conversationsError } = useQuery({
     queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=${conversationsLimit}`],
     enabled: !!selectedConnectionId,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Log das conversas quando carregarem
-  React.useEffect(() => {
+  useEffect(() => {
     if (conversations && conversations.length > 0) {
       console.log("📸 DADOS DAS CONVERSAS RECEBIDAS:", conversations);
       conversations.forEach((conv: any, index: number) => {
@@ -209,55 +260,66 @@ export default function MessageInterface({
     }
   }, [conversations]);
 
-  // Buscar mensagens do chat selecionado COM ATUALIZAÇÃO EM TEMPO REAL
-  const { data: chatMessages = [] } = useQuery({
+  // Buscar mensagens do chat selecionado
+  const { data: chatMessages = [], error: messagesError } = useQuery({
     queryKey: [`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConnectionId && !!selectedConversation,
-    refetchInterval: 2000, // Verificar novas mensagens a cada 2 segundos
-    refetchIntervalInBackground: true
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // DEDUPLICAÇÃO ROBUSTA - Combinar mensagens sem duplicatas
   const allMessagesMap = new Map();
-  const contentHashes = new Set(); // Para detectar duplicatas por conteúdo + timestamp
+  const contentHashes = new Set();
 
-  // Função para criar hash único baseado em conteúdo + timestamp + telefone
   const createContentHash = (msg: any) => {
-    const timestamp = new Date(msg.timestamp).getTime();
-    return `${msg.content}_${msg.phoneNumber}_${msg.direction}_${Math.floor(timestamp / 1000)}`;
+    try {
+      const timestamp = new Date(msg.timestamp).getTime();
+      return `${msg.content}_${msg.phoneNumber}_${msg.direction}_${Math.floor(timestamp / 1000)}`;
+    } catch (error) {
+      console.warn("Erro ao criar hash do conteúdo:", error);
+      return `${msg.content}_${msg.phoneNumber}_${msg.direction}_${Date.now()}`;
+    }
   };
 
-  // 1. PRIMEIRO: Adicionar mensagens da API (sempre prioridade)
-  (Array.isArray(chatMessages) ? chatMessages : []).forEach((msg) => {
-    if (msg.id) {
-      const contentHash = createContentHash(msg);
-      allMessagesMap.set(msg.id, msg);
-      contentHashes.add(contentHash);
-    }
-  });
-
-  // 2. SEGUNDO: Adicionar mensagens do WebSocket com verificação rigorosa
-  realtimeMessages
-    .filter((m) => m.phoneNumber === selectedConversation)
-    .forEach((msg) => {
-      const contentHash = createContentHash(msg);
-
-      // Evitar duplicatas por conteúdo
-      if (contentHashes.has(contentHash)) {
-        console.log(`🚫 DUPLICATA DETECTADA POR CONTEÚDO: ${msg.content}`);
-        return;
-      }
-
-      if (msg.id && !allMessagesMap.has(msg.id)) {
-        // Mensagem oficial nova
+  // 1. PRIMEIRO: Adicionar mensagens da API
+  try {
+    (Array.isArray(chatMessages) ? chatMessages : []).forEach((msg) => {
+      if (msg && msg.id) {
+        const contentHash = createContentHash(msg);
         allMessagesMap.set(msg.id, msg);
-        contentHashes.add(contentHash);
-      } else if (msg.tempId && !msg.id && !allMessagesMap.has(msg.tempId)) {
-        // Mensagem temporária nova
-        allMessagesMap.set(msg.tempId, msg);
         contentHashes.add(contentHash);
       }
     });
+  } catch (error) {
+    console.error("Erro ao processar mensagens da API:", error);
+  }
+
+  // 2. SEGUNDO: Adicionar mensagens do WebSocket
+  try {
+    realtimeMessages
+      .filter((m) => m && m.phoneNumber === selectedConversation)
+      .forEach((msg) => {
+        const contentHash = createContentHash(msg);
+
+        if (contentHashes.has(contentHash)) {
+          console.log(`🚫 DUPLICATA DETECTADA POR CONTEÚDO: ${msg.content}`);
+          return;
+        }
+
+        if (msg.id && !allMessagesMap.has(msg.id)) {
+          allMessagesMap.set(msg.id, msg);
+          contentHashes.add(contentHash);
+        } else if (msg.tempId && !msg.id && !allMessagesMap.has(msg.tempId)) {
+          allMessagesMap.set(msg.tempId, msg);
+          contentHashes.add(contentHash);
+        }
+      });
+  } catch (error) {
+    console.error("Erro ao processar mensagens em tempo real:", error);
+  }
 
   const allMessages = Array.from(allMessagesMap.values()).sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -265,28 +327,29 @@ export default function MessageInterface({
 
   // Função para rolar automaticamente para o final do chat
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    try {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    } catch (error) {
+      console.warn("Erro ao rolar para o final:", error);
+    }
   };
 
   // Rolar automaticamente quando mensagens mudarem
   useEffect(() => {
-    scrollToBottom();
+    const timeout = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeout);
   }, [allMessages]);
-
-  // Debug - mostrar contagem de mensagens
-  useEffect(() => {
-    console.log(`📊 CONTAGEM MENSAGENS: API=${chatMessages.length}, Tempo Real=${realtimeMessages.length}, Total=${allMessages.length}`);
-  }, [chatMessages.length, realtimeMessages.length, allMessages.length]);
 
   // Enviar mensagem
   const sendMessage = async (message: string) => {
     if (!selectedConversation || !selectedConnectionId || !message.trim()) return;
 
-    // 1. Criar mensagem temporária com tempId
     const tempId = crypto.randomUUID();
     const tempMessage = {
-      id: tempId, // ID temporário para renderização
-      tempId: tempId, // Campo específico para identificar mensagens temporárias
+      id: tempId,
+      tempId: tempId,
       content: message.trim(),
       phoneNumber: selectedConversation,
       direction: 'sent',
@@ -294,7 +357,6 @@ export default function MessageInterface({
       status: 'pending'
     };
 
-    // 2. Adicionar mensagem temporária IMEDIATAMENTE
     setRealtimeMessages((prev) => [...prev, tempMessage]);
     setNewMessage('');
     console.log(`⏳ MENSAGEM TEMPORÁRIA ADICIONADA: ${tempId}`, tempMessage);
@@ -311,7 +373,6 @@ export default function MessageInterface({
       });
 
       if (response.ok) {
-        // 3. Se enviou com sucesso, marcar como 'sent' imediatamente
         setRealtimeMessages((prev) => 
           prev.map((msg) => 
             msg.tempId === tempId 
@@ -319,20 +380,12 @@ export default function MessageInterface({
               : msg
           )
         );
-        console.log(`✅ MENSAGEM ENVIADA COM SUCESSO - Atualizando status para 'sent'`);
+        console.log(`✅ MENSAGEM ENVIADA COM SUCESSO`);
       } else {
-        // 4. Em caso de erro, marcar como falha
-        setRealtimeMessages((prev) => 
-          prev.map((msg) => 
-            msg.tempId === tempId 
-              ? { ...msg, status: 'failed' }
-              : msg
-          )
-        );
-        console.error('❌ Erro ao enviar mensagem');
+        throw new Error(`HTTP ${response.status}`);
       }
     } catch (error) {
-      // 5. Em caso de erro de rede, marcar como falha
+      console.error('❌ Erro ao enviar mensagem:', error);
       setRealtimeMessages((prev) => 
         prev.map((msg) => 
           msg.tempId === tempId 
@@ -340,22 +393,33 @@ export default function MessageInterface({
             : msg
         )
       );
-      console.error('❌ Erro de rede:', error);
     }
   };
 
-  const filteredConversations = (conversations as any[]).filter((conv: any) =>
-    conv.contactName?.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    conv.phoneNumber.includes(searchFilter)
-  );
+  const filteredConversations = (conversations as any[]).filter((conv: any) => {
+    try {
+      return conv && (
+        (conv.contactName && conv.contactName.toLowerCase().includes(searchFilter.toLowerCase())) ||
+        (conv.phoneNumber && conv.phoneNumber.includes(searchFilter))
+      );
+    } catch (error) {
+      console.warn("Erro ao filtrar conversa:", error);
+      return false;
+    }
+  });
 
   const formatTime = (date: Date) => {
-    if (isToday(date)) {
-      return format(date, 'HH:mm');
-    } else if (isYesterday(date)) {
-      return 'Ontem';
-    } else {
-      return format(date, 'dd/MM');
+    try {
+      if (isToday(date)) {
+        return format(date, 'HH:mm');
+      } else if (isYesterday(date)) {
+        return 'Ontem';
+      } else {
+        return format(date, 'dd/MM');
+      }
+    } catch (error) {
+      console.warn("Erro ao formatar data:", error);
+      return '';
     }
   };
 
@@ -370,7 +434,18 @@ export default function MessageInterface({
     );
   }
 
-  const isLoadingConversations = false;
+  // Mostrar erro se houver
+  if (conversationsError || messagesError) {
+    return (
+      <div className="h-full bg-white rounded-lg shadow-sm border flex items-center justify-center">
+        <div className="text-center">
+          <MessageCircle className="h-12 w-12 text-red-300 mx-auto mb-4" />
+          <p className="text-red-500">Erro ao carregar dados</p>
+          <p className="text-sm text-gray-400">Verifique a conexão</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -400,24 +475,17 @@ export default function MessageInterface({
         {/* Lista de conversas */}
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
-            {isLoadingConversations ? (
-              <div className="p-6 text-center text-gray-500">
-                <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Carregando conversas...</p>
-              </div>
-            ) : filteredConversations.length === 0 ? (
+            {filteredConversations.length === 0 ? (
               <div className="p-6 text-center text-gray-500">
                 {searchFilter ? (
                   <>
                     <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">Nenhuma conversa encontrada</p>
-                    <p className="text-xs">Tente buscar por outro termo</p>
                   </>
                 ) : (
                   <>
                     <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">Nenhuma conversa encontrada</p>
-                    <p className="text-xs">As conversas aparecerão aqui</p>
                   </>
                 )}
               </div>
@@ -449,11 +517,11 @@ export default function MessageInterface({
                             {conv.contactName || conv.phoneNumber}
                           </p>
                           <span className="text-xs text-gray-500">
-                            {formatTime(new Date(conv.lastMessageTime))}
+                            {conv.lastMessageTime ? formatTime(new Date(conv.lastMessageTime)) : ''}
                           </span>
                         </div>
                         <p className="text-sm text-gray-500 truncate">
-                          {conv.lastMessage}
+                          {conv.lastMessage || ''}
                         </p>
                         {conv.unreadCount > 0 && (
                           <Badge variant="default" className="mt-1 bg-blue-500">
@@ -535,7 +603,7 @@ export default function MessageInterface({
                 <div className="space-y-4">
                   {allMessages.map((message, index) => (
                     <div
-                      key={`${message.id || index}-${message.timestamp}`}
+                      key={`${message.id || message.tempId || index}-${message.timestamp}`}
                       className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
@@ -564,7 +632,6 @@ export default function MessageInterface({
                     </div>
                   ))}
 
-                  {/* Indicador "Digitando..." */}
                   {typing && (
                     <div className="flex justify-start">
                       <div className="bg-gray-100 text-gray-900 rounded-2xl px-4 py-3 max-w-[70%]">
@@ -573,7 +640,6 @@ export default function MessageInterface({
                     </div>
                   )}
 
-                  {/* Referência para scroll automático */}
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
