@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ContactAvatar } from "@/components/ui/contact-avatar";
 import { MessageCircle, Send, Phone, Clock, User, Search } from "lucide-react";
 import { Connection, Conversation, Message } from "@/lib/api";
 import { format, isToday, isYesterday } from "date-fns";
@@ -403,39 +403,12 @@ export default function MessageInterface({
                   }}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted overflow-hidden">
-                      {conv.profilePicture ? (
-                        <img
-                          src={conv.profilePicture}
-                          alt={`${conv.contactName || conv.phoneNumber}'s avatar`}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            console.log(`❌ Erro ao carregar foto de ${conv.contactName}: ${conv.profilePicture}`);
-                            e.currentTarget.style.display = 'none';
-                            const parent = e.currentTarget.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-gray-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
-                            }
-                          }}
-                        />
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="h-6 w-6 text-gray-500"
-                        >
-                          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                      )}
-                    </div>
+                    <ContactAvatar 
+                      profilePicture={conv.profilePicture}
+                      contactName={conv.contactName}
+                      phoneNumber={conv.phoneNumber}
+                      size="md"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium truncate">
@@ -470,11 +443,12 @@ export default function MessageInterface({
             <Card className="rounded-none border-0 border-b">
               <CardHeader className="pb-3">
                 <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <ContactAvatar 
+                    profilePicture={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.profilePicture}
+                    contactName={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName}
+                    phoneNumber={selectedConversation}
+                    size="md"
+                  />
                   <div>
                     <CardTitle className="text-base">
                       {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}

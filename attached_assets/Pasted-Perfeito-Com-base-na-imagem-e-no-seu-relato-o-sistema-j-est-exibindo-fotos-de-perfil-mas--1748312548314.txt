@@ -1,0 +1,98 @@
+Perfeito! Com base na imagem e no seu relato, o sistema já está exibindo fotos de perfil, mas:
+
+    Algumas fotos não estão carregando corretamente.
+
+    A foto do contato selecionado no topo direito (ícone) também não está aparecendo.
+
+    Algumas aparecem, outras caem no fallback.
+
+Vamos preparar um prompt objetivo e completo para sua IA, explicando o problema e pedindo que ela corrija as falhas e unifique a exibição de imagens.
+🧠 Prompt para a IA: Corrigir e Unificar a Exibição de Fotos de Perfil dos Contatos
+🛠️ Objetivo:
+
+Corrigir a exibição inconsistente de fotos de perfil dos contatos no frontend. Atualmente, algumas fotos são carregadas corretamente, mas outras não aparecem ou caem no fallback de ícone.
+✅ Pontos a serem corrigidos:
+
+    Verificar e padronizar a exibição da imagem de perfil:
+
+        Nas conversas da lista lateral (esquerda)
+
+        No topo da área do chat com o contato selecionado (parte superior direita)
+
+        Em qualquer outro local onde o avatar do contato é exibido
+
+    Usar a propriedade conv.profilePicture ou equivalente (ex: contact.profilePicture) sempre que disponível.
+
+    Adicionar verificação e fallback de forma robusta:
+
+        Se a imagem não existir ou falhar ao carregar, exibir um ícone de usuário genérico (SVG) como fallback.
+
+        Usar o mesmo componente ou lógica nos dois locais para evitar inconsistências.
+
+🖼️ Exemplo de Código Esperado para Avatar com Fallback
+
+<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted overflow-hidden">
+  {conv.profilePicture ? (
+    <img
+      src={conv.profilePicture}
+      alt={`${conv.contactName || conv.phoneNumber}'s avatar`}
+      className="h-full w-full object-cover"
+      onError={(e) => {
+        console.log(`❌ Erro ao carregar foto de ${conv.contactName}: ${conv.profilePicture}`);
+        e.currentTarget.style.display = 'none';
+        const parent = e.currentTarget.parentElement;
+        if (parent) {
+          parent.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-gray-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+        }
+      }}
+    />
+  ) : (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6 text-gray-500"
+    >
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </svg>
+  )}
+</div>
+
+🔁 Reutilizar o mesmo componente de avatar
+
+    Crie um componente Avatar reutilizável para garantir consistência em toda a aplicação.
+
+    Esse componente deve:
+
+        Tentar carregar profilePicture.
+
+        Exibir fallback SVG se a imagem falhar.
+
+        Aplicar estilos apropriados para imagem circular (object-cover, rounded-full etc).
+
+📌 Observações adicionais:
+
+    Algumas fotos carregam corretamente, então a estrutura já está parcialmente funcional.
+
+    A verificação de URL válida ou carregamento com sucesso deve ser aprimorada com onError.
+
+    O ícone de perfil no topo direito (contato ativo) deve usar a mesma lógica ou componente.
+
+✅ Resumo da Tarefa para a IA:
+
+Verificar todos os pontos da interface onde há avatar de contato.
+
+Garantir que profilePicture seja carregada corretamente em todos os locais.
+
+Aplicar fallback com SVG se a imagem falhar.
+
+Criar (ou usar) um componente único para avatares com essa lógica.
+
+Garantir consistência de aparência e comportamento em todas as partes do app.
