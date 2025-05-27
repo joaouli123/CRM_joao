@@ -431,7 +431,9 @@ class EvolutionAPI {
       const correctInstanceName = "whatsapp_36_lowfy";
       const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}`, 'POST', {
         where: {
-          remoteJid: chatId
+          key: {
+            remoteJid: chatId
+          }
         },
         limit: limit
       });
@@ -441,6 +443,7 @@ class EvolutionAPI {
       return response || [];
     } catch (error) {
       console.log(`⚠️ Erro ao buscar mensagens do chat ${chatId}:`, error);
+      // Retornar mensagens vazias em caso de erro para não quebrar o sistema
       return [];
     }
   }
