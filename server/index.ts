@@ -30,7 +30,10 @@ async function main() {
   const { setupContactsFix } = await import("./contacts-fix");
   setupContactsFix(app);
   
-  // Set up Vite or serve static files BEFORE API routes registration
+  // Register ALL API routes BEFORE Vite middleware
+  await registerRoutes(app);
+  
+  // Set up Vite or serve static files AFTER API routes registration
   let server;
   if (app.get("env") === "development") {
     server = await setupVite(app, undefined as any);
@@ -45,9 +48,6 @@ async function main() {
     const http = await import('http');
     server = http.createServer(app);
   }
-  
-  // Skip problematic routes temporarily to fix contacts
-  // await registerRoutes(app);
   
   // Add logging middleware AFTER routes are registered
   app.use('/api/*', (req, res, next) => {
