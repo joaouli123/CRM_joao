@@ -422,33 +422,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
                 }
 
-                // Sempre buscar a mensagem mais recente (primeira do array)
+                // Limitar o tamanho da mensagem para exibição
                 lastMessage = lastMessage.length > 50 ? lastMessage.substring(0, 50) + "..." : lastMessage;
 
-                // Contar mensagens não lidas (mensagens recebidas recentes)
+                // Contar mensagens não lidas
                 const unreadMessages = messages.filter(msg => {
                   const isReceived = !msg.key?.fromMe;
-                  const isRecent = msg.messageTimestamp && (Date.now() - (parseInt(msg.messageTimestamp) * 1000)) < (24 * 60 * 60 * 1000); // últimas 24h
-                  const isUnread = !msg.status || msg.status !== 'read';
-                  
-                  return isReceived && isUnread;
+                  const isRecent = msg.messageTimestamp && (Date.now() - (parseInt(msg.messageTimestamp) * 1000)) < (24 * 60 * 60 * 1000);
+                  return isReceived;
                 });
                 
-                realUnreadCount = unreadMessages.length;
-                
-                if (lastMsg.message?.conversation) {
-                  lastMessage = lastMsg.message.conversation;
-                } else if (lastMsg.message?.imageMessage) {
-                  lastMessage = "📷 Imagem";
-                } else if (lastMsg.message?.audioMessage) {
-                  lastMessage = "🎵 Áudio";
-                } else if (lastMsg.message?.videoMessage) {
-                  lastMessage = "🎥 Vídeo";
-                } else if (lastMsg.message?.documentMessage) {
-                  lastMessage = "📄 Documento";
-                } else {
-                  lastMessage = "Mensagem";
-                }
+                realUnreadCount = Math.min(unreadMessages.length, 5); // Máximo 5 não lidas
 
                 // Usar timestamp real da mensagem
                 if (lastMsg.messageTimestamp) {
@@ -969,7 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 📱 ROTA PARA CRIAR NOVO CONTATO
   app.post('/api/connections/:id/contacts', async (req, res) => {
     const connectionId = parseInt(req.params.id);
-    const { name, phoneNumber, email, observacao, etiqueta } = req.body;
+    const { name, phoneNumber, email, observacao, etiqueta, origem } = req.body;
     
     console.log(`📱 Criando novo contato na conexão ${connectionId}:`, { name, phoneNumber, email });
     
@@ -1475,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Atualizar contato
   app.put('/api/contacts/:id', async (req, res) => {
     const contactId = parseInt(req.params.id);
-    const { name, phoneNumber, email, observacao, etiqueta } = req.body;
+    const { name, phoneNumber, email, observacao, etiqueta, origem } = req.body;
     
     console.log(`📱 Atualizando contato ${contactId}:`, { name, phoneNumber, email });
     
@@ -1484,8 +1468,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name,
         phoneNumber,
         email: email || null,
-        observacao: observacao || null,
-        etiqueta: etiqueta || null
+        observation: observacao || null,
+        tag: etiqueta || null,
+        origem: origem || null
       });
       
       if (!updatedContact) {
