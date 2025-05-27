@@ -80,10 +80,20 @@ export default function ContactsPage() {
   // Mutation para criar contato
   const createContactMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
-      return apiRequest(`/api/connections/${selectedConnection}/contacts`, {
+      const response = await fetch(`/api/connections/${selectedConnection}/contacts`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data)
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao criar contato');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
@@ -106,10 +116,20 @@ export default function ContactsPage() {
   // Mutation para atualizar contato
   const updateContactMutation = useMutation({
     mutationFn: async (data: ContactFormData & { id: number }) => {
-      return apiRequest(`/api/contacts/${data.id}`, {
+      const response = await fetch(`/api/contacts/${data.id}`, {
         method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data)
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao atualizar contato');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
@@ -132,9 +152,16 @@ export default function ContactsPage() {
   // Mutation para deletar contato
   const deleteContactMutation = useMutation({
     mutationFn: async (contactId: number) => {
-      return apiRequest(`/api/contacts/${contactId}`, {
-        method: 'DELETE'
+      const response = await fetch(`/api/contacts/${contactId}`, {
+        method: 'DELETE',
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao deletar contato');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });

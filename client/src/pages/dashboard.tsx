@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/sidebar";
 import MessageInterface from "@/components/message-interface-final";
 import { Connection, ConnectionStats } from "@/lib/api";
-import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock } from "lucide-react";
+import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
 import { QRCodeModal } from "@/components/modals/qr-code-modal";
 
