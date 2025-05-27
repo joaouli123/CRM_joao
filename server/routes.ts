@@ -39,6 +39,8 @@ function broadcast(data: any) {
   console.log(`📊 BROADCAST finalizado: ${sentCount}/${clients.size} clientes alcançados`);
 }
 
+
+
 // GLOBAL SEND MESSAGE FUNCTION - FOR IMMEDIATE REGISTRATION
 export function setupSendMessageRoute(app: Express) {
   app.post("/api/connections/:id/send", async (req, res) => {
@@ -250,6 +252,9 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // ⚡ ATIVAR ROTAS DE MÍDIA PRIMEIRO
+  setupMediaRoutes(app);
 
   // API Routes with explicit /api prefix
   // API WHATSAPP - BUSCAR CONEXÕES (SIMPLES)
