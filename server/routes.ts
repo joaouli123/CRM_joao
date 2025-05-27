@@ -619,62 +619,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔍 Buscando mensagens para ${phoneNumber} na conexão ${connectionId}`);
 
-      // First try to get real messages from Evolution API
+      // Carregar apenas mensagens do banco de dados local (API Evolution desabilitada)
       const connection = await storage.getConnection(connectionId);
-      if (connection && connection.status === "connected") {
-        try {
-          const sessionName = connection.name;
-          console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
+      if (connection) {
+        console.log(`📱 Carregando mensagens do banco local para ${phoneNumber}`);
 
-          // Use your Evolution API instance
-          const realInstanceName = process.env.EVOLUTION_INSTANCE_ID || "whatsapp_36_lowfy";
-          console.log(`🎯 Carregando mensagens da instância: ${realInstanceName}`);
+        // Buscar mensagens do banco de dados local
+        const dbMessages = await storage.getMessagesByConnection(connectionId);
+        const filteredMessages = dbMessages.filter(msg => 
+          msg.from === phoneNumber || msg.to === phoneNumber
+        );
 
-          // DESABILITADO: Buscar mensagens reais (API com problemas)
-          // const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
-          const realMessages = null; // Temporariamente desabilitado
+        if (filteredMessages && filteredMessages.length > 0) {
+            console.log(`✅ Encontradas ${filteredMessages.length} mensagens para ${phoneNumber}`);
 
-          if (realMessages && realMessages.length > 0) {
-            console.log(`✅ Encontradas ${realMessages.length} mensagens reais para ${phoneNumber}`);
-
-            // Convert Evolution API messages to our format (reverse for correct display order)
-            const formattedMessages = realMessages.reverse().map((msg: any, index: number) => {
-              const messageContent = msg.message?.conversation || 
-                                   msg.message?.extendedTextMessage?.text || 
-                                   msg.message?.imageMessage?.caption ||
-                                   msg.message?.documentMessage?.caption ||
-                                   "Mensagem de mídia";
-
-              console.log(`📝 Mensagem ${index + 1}: "${messageContent}" - ${msg.key?.fromMe ? "Enviada" : "Recebida"}`);
-
+            // Converter mensagens do banco para o formato da interface
+            const formattedMessages = filteredMessages.map((msg: any, index: number) => {
               return {
-                id: msg.key?.id || `msg_${index}`,
+                id: msg.id || `msg_${index}`,
                 connectionId,
-                direction: msg.key?.fromMe ? "sent" : "received",
+                direction: msg.direction,
                 phoneNumber: phoneNumber,
-                content: messageContent,
-                status: "delivered",
-                timestamp: new Date(msg.messageTimestamp * 1000)
+                content: msg.body,
+                status: msg.status || "delivered",
+                timestamp: msg.timestamp
               };
             });
 
-            console.log(`🚀 Retornando ${formattedMessages.length} mensagens formatadas para o frontend`);
+            console.log(`🚀 Retornando ${formattedMessages.length} mensagens do banco para o frontend`);
             return res.json(formattedMessages);
-          }
-        } catch (apiError) {
-          console.log(`⚠️ Erro ao buscar mensagens reais, usando mensagens de exemplo:`, apiError);
         }
       }
 
-      // Get stored messages or return empty for now
-      const storedMessages = await storage.getMessagesByConversation(connectionId, phoneNumber, limit);
-
-      if (storedMessages.length === 0) {
-        console.log(`📝 Nenhuma mensagem encontrada para ${phoneNumber} - retornando array vazio`);
-        return res.json([]);
-      }
-
-      res.json(storedMessages);
+      // Se não encontrou mensagens, retornar array vazio
+      console.log(`📝 Nenhuma mensagem encontrada para ${phoneNumber} - retornando array vazio`);
+      res.json([]);
     } catch (error) {
       console.error("❌ Erro ao buscar mensagens da conversa:", error);
       res.status(500).json({ error: "Erro interno do servidor" });
