@@ -200,9 +200,4 @@ export type InsertArchivedChat = z.infer<typeof insertArchivedChatSchema>;
 export type ArchivedMessage = typeof archivedMessages.$inferSelect;
 export type InsertArchivedMessage = z.infer<typeof insertArchivedMessageSchema>;
 
-
-  isActive: true,
-  lastActivity: true
-});
-
 export type InsertContactType = z.infer<typeof insertContactSchema>;
