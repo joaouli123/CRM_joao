@@ -257,6 +257,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // setupMediaRoutes(app); // Comentado temporariamente
 
   // API Routes with explicit /api prefix
+  
+  // Endpoint para buscar conversas
+  app.get("/api/conversations/:connectionId", async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.connectionId);
+      console.log(`🔍 Buscando conversas para conexão ${connectionId}`);
+      
+      const connection = await storage.getConnection(connectionId);
+      if (!connection || connection.status !== 'connected') {
+        console.log(`⚠️ Conexão ${connectionId} não encontrada ou não conectada`);
+        return res.json([]);
+      }
+
+      const instanceName = `whatsapp_${connectionId}_${connection.name}`;
+      
+      try {
+        // Buscar chats da Evolution API
+        const chats = await evolutionAPI.getAllChats(instanceName);
+        
+        if (!chats || !Array.isArray(chats)) {
+          console.log("❌ Nenhum chat encontrado na Evolution API");
+          return res.json([]);
+        }
+
+        // Mapear chats para formato de conversas
+        const conversations = chats.map((chat: any) => ({
+          phoneNumber: chat.id?.replace('@s.whatsapp.net', '') || 'unknown',
+          contactName: chat.pushName || chat.name || 'Contato',
+          lastMessage: chat.lastMessage?.message || 'Sem mensagens',
+          lastMessageTime: chat.lastMessage?.timestamp || new Date().toISOString(),
+          unreadCount: chat.unreadCount || 0,
+          messageCount: chat.messagesCount || 0,
+          profilePicture: chat.profilePictureUrl || null
+        }));
+
+        console.log(`✅ Retornando ${conversations.length} conversas`);
+        res.json(conversations);
+
+      } catch (apiError) {
+        console.error("❌ Erro na Evolution API:", apiError);
+        res.json([]);
+      }
+
+    } catch (error) {
+      console.error("❌ Erro geral no endpoint de conversas:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   // API WHATSAPP - BUSCAR CONEXÕES (SIMPLES)
   app.get("/api/connections", async (req, res) => {
     try {
