@@ -55,6 +55,7 @@ export default function ModernMessageInterface({ activeConnectionId }: ModernMes
         const response = await fetch(`/api/connections/${activeConnectionId}/conversations`);
         if (response.ok) {
           const data = await response.json();
+          console.log('💬 CONVERSAS CARREGADAS:', data);
           setConversations(data);
         }
       } catch (error) {
@@ -72,13 +73,17 @@ export default function ModernMessageInterface({ activeConnectionId }: ModernMes
     if (selectedConversation) {
       const fetchMessages = async () => {
         try {
+          console.log('📱 CARREGANDO MENSAGENS PARA:', selectedConversation);
           const response = await fetch(`/api/connections/${activeConnectionId}/conversations/${selectedConversation}/messages`);
           if (response.ok) {
             const data = await response.json();
+            console.log('✅ MENSAGENS CARREGADAS:', data.length, 'mensagens');
             setMessages(data);
+          } else {
+            console.error('❌ Erro na resposta:', response.status);
           }
         } catch (error) {
-          console.error('Erro ao carregar mensagens:', error);
+          console.error('❌ Erro ao carregar mensagens:', error);
         }
       };
 
@@ -186,7 +191,10 @@ export default function ModernMessageInterface({ activeConnectionId }: ModernMes
                       ? 'bg-gradient-to-r from-green-100 to-emerald-100 border-green-300 shadow-md'
                       : 'bg-white/60 hover:bg-white/80 border-green-100'
                   }`}
-                  onClick={() => setSelectedConversation(conversation.phoneNumber)}
+                  onClick={() => {
+                    console.log('🔍 SELECIONANDO CONVERSA:', conversation.phoneNumber);
+                    setSelectedConversation(conversation.phoneNumber);
+                  }}
                 >
                   <CardContent className="p-3">
                     <div className="flex items-center space-x-3">
