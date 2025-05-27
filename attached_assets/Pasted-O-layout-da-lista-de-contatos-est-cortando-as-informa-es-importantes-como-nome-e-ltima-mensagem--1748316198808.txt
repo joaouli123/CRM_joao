@@ -1,0 +1,45 @@
+O layout da lista de contatos está cortando as informações importantes (como nome e última mensagem) dos contatos. Precisamos ajustar essa parte do sistema para que todas as informações sejam visíveis corretamente sem que sejam cortadas ou ocultas.
+✅ Tarefas para Ajustar a Exibição da Lista de Contatos:
+
+    Ajuste da Largura da Lista de Contatos:
+
+        A lista de contatos precisa ocupar toda a largura disponível do contêiner (sem ser cortada).
+
+        Certifique-se de que a largura do contêiner da lista seja dinâmica e se ajuste de acordo com o espaço disponível, sem ultrapassar a área visível da tela.
+
+        Evite a configuração de uma largura fixa para a lista de contatos, especialmente se ela for renderizada com mais itens.
+
+    Uso de flexbox ou grid para Layout Flexível:
+
+        Utilize o flexbox ou grid layout para organizar os itens dentro da lista de forma que se ajustem de maneira responsiva.
+
+        Exemplo: Com flexbox, as informações dentro de cada item de contato podem ser distribuídas de maneira proporcional para que o nome, foto e última mensagem sejam exibidos corretamente.
+
+    Evitar Overflow e Cortes:
+
+        Aplique a propriedade overflow: hidden ou overflow-x: auto apenas nas partes onde for necessário, como imagens ou ícones, e certifique-se de que textos e informações principais não sejam cortados horizontalmente.
+
+        Use white-space: nowrap ou text-overflow: ellipsis para garantir que textos longos (como o nome dos contatos ou mensagens) não ultrapassem os limites da área, mas sem cortar as informações.
+
+    Ajuste de Altura e Espaçamento:
+
+        Ajuste a altura das linhas para que cada item da lista tenha o suficiente espaço para exibir todas as informações, sem cortar o texto.
+
+        Use um padding adequado para garantir que o nome, foto e última mensagem fiquem bem distribuídos dentro de cada item da lista.
+
+    Responsividade:
+
+        Adapte o layout para dispositivos móveis e telas menores. Se a lista de contatos for exibida em telas menores, o layout deve ser flexível, com a exibição de texto ajustada para garantir que todas as informações se ajustem sem cortes.
+
+    Ajustes no Botão de "Carregar Mais":
+
+        O botão de "Carregar Mais" deve estar fora do contêiner da lista de contatos, de modo que ele não seja cortado quando a lista atingir a altura máxima ou não sobreponha outros elementos da página.
+
+🎯 Resultado Esperado:
+
+    Todas as informações dos contatos (nome, foto, última mensagem) devem ser visíveis corretamente e não cortadas.
+
+    O layout deve ser dinâmico e responsivo, ajustando-se ao tamanho da tela do usuário sem afetar a visibilidade dos itens.
+
+    O botão de "Carregar Mais" deve estar posicionado de maneira que não interfira no layout da lista de contatos, garantindo uma navegação intuitiva.
+
