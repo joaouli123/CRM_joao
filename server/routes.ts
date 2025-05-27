@@ -254,12 +254,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Routes with explicit /api prefix
   app.get("/api/connections", async (req, res) => {
     try {
-      console.log("📞 GET /api/connections");
+      console.log("📞 GET /api/connections - BUSCANDO SUAS CONEXÕES");
       const connections = await storage.getAllConnections();
+      console.log(`✅ ENCONTRADAS ${connections.length} conexões:`, connections);
       res.setHeader('Content-Type', 'application/json');
       res.json(connections);
     } catch (error) {
-      console.error("Error fetching connections:", error);
+      console.error("❌ Error fetching connections:", error);
       res.status(500).json({ error: "Failed to fetch connections" });
     }
   });
