@@ -39,8 +39,7 @@ function Router() {
       
       <Route path="/contacts-management">
         <ProtectedRoute>
-          <UserHeader />
-          <ContactsManagement />
+          <Dashboard />
         </ProtectedRoute>
       </Route>
 

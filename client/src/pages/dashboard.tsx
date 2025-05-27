@@ -17,7 +17,15 @@ import { NewConnectionModal } from "@/components/modals/new-connection-modal";
 type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'contacts-dashboard' | 'contacts-management' | 'settings';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<TabType>('messages');
+  // Detectar a aba correta baseada na URL atual
+  const currentPath = window.location.pathname;
+  const getInitialTab = (): TabType => {
+    if (currentPath === '/contacts-management') return 'contacts-management';
+    if (currentPath === '/dashboard') return 'dashboard';
+    return 'messages';
+  };
+  
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null);
   const [showNewConnectionModal, setShowNewConnectionModal] = useState(false);
   const [showQRSection, setShowQRSection] = useState(false);
