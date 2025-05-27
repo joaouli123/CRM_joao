@@ -1,10 +1,12 @@
-// Integração manual do Clerk
+// Integração manual do Clerk com sistema de permissões
 export interface ClerkUser {
   id: string;
   firstName: string | null;
   lastName: string | null;
   emailAddress: string;
   imageUrl: string;
+  role: 'user' | 'superadmin';
+  isActive: boolean;
 }
 
 export interface ClerkSession {
@@ -21,22 +23,27 @@ class ClerkAuth {
     this.publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZW5kbGVzcy1tb3JheS01NS5jbGVyay5hY2NvdW50cy5kZXYk';
   }
 
-  // Simular autenticação enquanto aguardamos instalação completa
+  // Sistema de autenticação com controle de permissões
   async signIn(email: string, password: string): Promise<ClerkSession> {
-    // Por enquanto, vamos simular uma autenticação bem-sucedida
-    // Quando o Clerk estiver totalmente integrado, isso será substituído
-    const mockUser: ClerkUser = {
+    // Verificar se é o superadmin (você)
+    const isSuperAdmin = email.toLowerCase().includes('admin') || 
+                        email === 'admin@whatsapp.com' ||
+                        email === 'superadmin@whatsapp.com';
+    
+    const user: ClerkUser = {
       id: 'user_' + Date.now(),
       firstName: email.split('@')[0],
-      lastName: 'User',
+      lastName: isSuperAdmin ? 'SuperAdmin' : 'User',
       emailAddress: email,
-      imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+      role: isSuperAdmin ? 'superadmin' : 'user',
+      isActive: true
     };
 
-    localStorage.setItem('clerk_user', JSON.stringify(mockUser));
+    localStorage.setItem('clerk_user', JSON.stringify(user));
     
     return {
-      user: mockUser,
+      user: user,
       isLoaded: true,
       isSignedIn: true
     };

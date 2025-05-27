@@ -1,0 +1,52 @@
+Separar os usuários normais dos superadmins no sistema, garantindo que você (o superadmin) tenha permissões exclusivas, como a capacidade de administrar o sistema, e que os usuários comuns tenham acesso limitado. O Clerk está gerenciando a autenticação, e vamos criar um sistema que garanta a diferenciação de papéis de maneira clara e eficiente.
+1. Definição de Papéis de Usuários (Role-Based Access)
+
+O primeiro passo é garantir que cada usuário tenha um campo que defina seu papel no sistema, ou seja, usuário comum ou superadmin.
+
+    Usuários Comuns: Têm acesso às funcionalidades básicas do sistema, como enviar mensagens e visualizar suas próprias informações de perfil.
+
+    Superadmin: É o único com permissões completas para administrar o sistema, como criar ou deletar usuários, editar dados do sistema e acessar todas as funcionalidades administrativas.
+
+Papéis possíveis:
+
+    user: para usuários comuns
+
+    superadmin: para o superadmin (você)
+
+Esse campo pode ser chamado role e é armazenado no banco de dados, associado ao Clerk ID de cada usuário.
+2. Controle de Acesso no Backend
+
+Você deve criar uma verificação de papel (middleware) no backend que seja usada para garantir que apenas o superadmin possa acessar funcionalidades restritas, como rotas de administração. Isso impede que usuários comuns acessem áreas do sistema que são exclusivas para administração.
+
+    Middleware de Verificação de Superadmin: Sempre que o superadmin tentar acessar uma rota administrativa (como a criação de usuários, alteração de configurações do sistema, etc.), o backend deve verificar se o usuário tem o papel de superadmin. Se não tiver, o sistema deve impedir o acesso e retornar uma mensagem de erro 403 (Acesso Negado).
+
+3. Controle de Acesso no Frontend
+
+No frontend, você deve condicionar a exibição de certas funcionalidades com base no papel do usuário.
+
+    Usuários Comuns: Apenas poderão acessar as funcionalidades que correspondem às suas permissões, como a visualização e edição do próprio perfil. Não terão acesso a áreas de administração ou de gerenciamento de usuários.
+
+    Superadmin: Além das funcionalidades comuns, terá um painel administrativo com permissões para acessar informações e gerenciar usuários, configurações e estatísticas do sistema.
+
+Para isso, deve-se garantir que os menus, botões e páginas de administração sejam exibidos somente para o superadmin.
+4. Garantir Segurança e Consistência
+
+    Segurança no Backend: Assegure-se de que todas as rotas que exigem permissões administrativas estejam devidamente protegidas no backend. Isso inclui rotas de criação de usuários, edição de dados sensíveis, gestão de permissões, entre outras.
+
+    Consistência no Frontend: Certifique-se de que o frontend exiba apenas os componentes e funcionalidades que correspondem ao papel do usuário. Isso pode incluir mostrar um painel de administração apenas para o superadmin e ocultá-lo para usuários comuns.
+
+5. Atribuição do Papel de Superadmin
+
+    No Cadastro Inicial: Durante o processo de cadastro inicial (você pode fazer isso manualmente ou através de um processo especial), o superadmin será registrado com o papel superadmin.
+
+    Diferenciação Automática: Para garantir que você (o superadmin) tenha acesso total ao sistema, você pode realizar esse processo de atribuição automaticamente ao se registrar, caso seja a primeira conta a ser criada, ou pode ser feito manualmente pelo backend, onde você edita a tabela de usuários e define seu papel como superadmin.
+
+Resumo
+
+    Criação do campo role na tabela de usuários no banco de dados, para definir se o usuário é user ou superadmin.
+
+    Verificação de permissão de superadmin no backend, usando middleware para proteger as rotas administrativas.
+
+    Controle de acesso no frontend, mostrando as funcionalidades administrativas apenas para o superadmin.
+
+    Garantir a segurança nas rotas do backend e a consistência de dados no frontend.

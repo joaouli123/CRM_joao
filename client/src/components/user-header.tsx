@@ -30,11 +30,21 @@ export function UserHeader() {
     <div className="flex items-center justify-between p-4 border-b bg-white">
       <div className="flex items-center space-x-3">
         <div className="text-2xl font-bold text-green-600">WhatsApp Manager</div>
+        {user.role === 'superadmin' && (
+          <span className="px-2 py-1 text-xs font-semibold text-red-700 bg-red-100 rounded-full">
+            SUPERADMIN
+          </span>
+        )}
       </div>
       
       <div className="flex items-center space-x-4">
         <div className="text-sm text-gray-600">
           Olá, <span className="font-medium">{displayName}</span>
+          {user.role === 'superadmin' && (
+            <span className="ml-2 text-xs text-red-600 font-semibold">
+              (Administrador)
+            </span>
+          )}
         </div>
         
         <DropdownMenu>

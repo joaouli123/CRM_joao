@@ -2,6 +2,19 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Tabela de usuários com sistema de permissões
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  clerkId: text("clerk_id").notNull().unique(),
+  email: text("email").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  role: text("role").notNull().default("user"), // user, superadmin
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastLogin: timestamp("last_login"),
+});
+
 export const connections = pgTable("connections", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
@@ -46,8 +59,36 @@ export const sendMessageSchema = z.object({
   message: z.string().min(1),
 });
 
+// Schemas para usuários
+export const insertUserSchema = createInsertSchema(users).pick({
+  clerkId: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  role: true,
+});
+
+export const updateUserSchema = createInsertSchema(users).pick({
+  firstName: true,
+  lastName: true,
+  role: true,
+  isActive: true,
+}).partial();
+
+// Tipos
 export type InsertConnection = z.infer<typeof insertConnectionSchema>;
 export type Connection = typeof connections.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
+
+// Enums para roles
+export const UserRole = {
+  USER: 'user' as const,
+  SUPERADMIN: 'superadmin' as const,
+} as const;
+
+export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type SendMessage = z.infer<typeof sendMessageSchema>;
