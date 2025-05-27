@@ -14,7 +14,7 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
     { id: "connections", label: "Conexões", icon: Plug },
     { id: "messages", label: "Mensagens", icon: MessageSquare },
     { id: "contacts", label: "Contatos", icon: Contact },
-    { id: "contacts-manager", label: "Gerenciar Contatos", icon: Users },
+    { id: "contacts-management", label: "Gerenciar Contatos", icon: Users },
     { id: "settings", label: "Configurações", icon: Settings },
   ];
 

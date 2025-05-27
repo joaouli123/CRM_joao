@@ -8,12 +8,13 @@ import Sidebar from "@/components/sidebar";
 import MessageInterface from "@/components/message-interface-final";
 import Contacts from "@/pages/contacts";
 import ContactsManager from "@/pages/contacts-manager";
+import ContactsManagement from "@/pages/contacts-management";
 import { Connection, ConnectionStats } from "@/lib/api";
 import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
 import { QRCodeModal } from "@/components/modals/qr-code-modal";
 
-type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'contacts-dashboard' | 'settings';
+type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'contacts-dashboard' | 'contacts-management' | 'settings';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('messages');
@@ -298,6 +299,9 @@ export default function Dashboard() {
           </div>
         );
 
+      case "contacts-management":
+        return <ContactsManagement />;
+
       case "settings":
         return (
           <div className="max-w-4xl space-y-6">
@@ -349,6 +353,7 @@ export default function Dashboard() {
                 {activeTab === 'messages' && 'Mensagens'}
                 {activeTab === 'contacts' && 'Contatos'}
                 {activeTab === 'contacts-manager' && 'Gerenciar Contatos'}
+                {activeTab === 'contacts-management' && 'Gerenciamento de Contatos'}
                 {activeTab === 'contacts-dashboard' && 'Dashboard de Contatos'}
                 {activeTab === 'settings' && 'Configurações'}
               </h2>
