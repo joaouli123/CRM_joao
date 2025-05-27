@@ -291,23 +291,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paginatedChats = allChats.slice(skip, skip + limit);
         console.log(`✅ Encontrados ${paginatedChats.length} contatos paginados de ${activeInstanceName}! (Total: ${allChats.length})`);
 
-        // Create conversations from paginated real WhatsApp contacts
-        const realConversations = paginatedChats.map((chat, index) => {
-          const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
-          if (!phoneNumber) return null;
+        // Create conversations from paginated real WhatsApp contacts with profile pictures
+        const realConversations = await Promise.all(
+          paginatedChats.map(async (chat, index) => {
+            const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+            if (!phoneNumber) return null;
 
-          const conversation = {
-            phoneNumber,
-            contactName: chat.pushName || phoneNumber,
-            lastMessage: `Conversa com ${chat.pushName || phoneNumber}`,
-            lastMessageTime: new Date(chat.updatedAt || Date.now()),
-            unreadCount: 0,
-            messageCount: 1
-          };
+            // Buscar foto de perfil do contato
+            let profilePicture = null;
+            try {
+              profilePicture = await evolutionAPI.getProfilePicture(activeInstanceName, phoneNumber);
+            } catch (err) {
+              // Silently continue without profile picture
+            }
 
-          console.log(`✅ ${index + 1}. ${chat.pushName || phoneNumber} (${phoneNumber})`);
-          return conversation;
-        }).filter(Boolean);
+            const conversation = {
+              phoneNumber,
+              contactName: chat.pushName || phoneNumber,
+              lastMessage: `Conversa com ${chat.pushName || phoneNumber}`,
+              lastMessageTime: new Date(chat.updatedAt || Date.now()),
+              unreadCount: 0,
+              messageCount: 1,
+              profilePicture
+            };
+
+            console.log(`✅ ${index + 1}. ${chat.pushName || phoneNumber} (${phoneNumber}) ${profilePicture ? '📸' : '👤'}`);
+            return conversation;
+          })
+        );
+        
+        const validConversations = realConversations.filter(Boolean);
 
         console.log(`🎉 Retornando ${realConversations.length} conversas dos seus contatos reais!`);
         res.json(realConversations);

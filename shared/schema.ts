@@ -60,6 +60,7 @@ export interface Conversation {
   lastMessageTime: Date;
   unreadCount: number;
   messageCount: number;
+  profilePicture?: string | null;
 }
 
 // Tabela para arquivamento de conversas
