@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/sidebar";
-import MessageInterface from "@/components/message-interface-final";
+import ModernMessageInterface from "@/components/modern-message-interface";
 import Contacts from "@/pages/contacts";
 import ContactsManager from "@/pages/contacts-manager";
 import ContactsWorking from "@/pages/contacts-working";
 import { Connection, ConnectionStats } from "@/lib/api";
-import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact, Search, Filter, Download, Upload, UserPlus, Edit3, Trash2, Calendar as CalendarIcon, Tag, Phone, Mail, ChevronLeft, ChevronRight, Smartphone, QrCode, RotateCcw, Power, Settings } from "lucide-react";
+import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact, Search, Filter, Download, Upload, UserPlus, Edit3, Trash2, Calendar as CalendarIcon, Tag, Phone, Mail, ChevronLeft, ChevronRight, Smartphone, QrCode, RotateCcw, Power, Settings, Eye, Zap, CheckCircle } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
@@ -961,10 +961,8 @@ export default function Dashboard() {
       case "messages":
         return (
           <div className="h-full w-full">
-            <MessageInterface
-              connections={connections}
-              selectedConnectionId={selectedConnectionId}
-              onSelectConnection={setSelectedConnectionId}
+            <ModernMessageInterface
+              activeConnectionId={connections[0]?.id || 1}
             />
           </div>
         );
