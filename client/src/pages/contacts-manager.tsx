@@ -179,10 +179,20 @@ export default function ContactsManager({ activeConnectionId }: ContactsManagerP
   // Atualizar contato
   const updateContact = async (id: number, updates: Partial<Contact>) => {
     try {
+      // Mapear os campos para os nomes que o backend espera
+      const mappedData = {
+        ...updates,
+        observacao: updates.observation, // Backend espera 'observacao'
+        etiqueta: updates.tag, // Backend espera 'etiqueta'
+        origem: updates.origem // Backend já espera 'origem'
+      };
+      
+      console.log('🔧 DADOS MAPEADOS SENDO ENVIADOS:', mappedData);
+      
       const response = await fetch(`/api/contacts/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(mappedData)
       });
 
       if (response.ok) {
