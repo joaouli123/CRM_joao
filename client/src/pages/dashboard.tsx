@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/sidebar";
 import MessageInterface from "@/components/message-interface-final";
 import Contacts from "@/pages/contacts";
+import ContactsManager from "@/pages/contacts-manager";
 import { Connection, ConnectionStats } from "@/lib/api";
 import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
 import { QRCodeModal } from "@/components/modals/qr-code-modal";
 
-type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'settings';
+type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'settings';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('messages');
@@ -287,6 +288,13 @@ export default function Dashboard() {
         return (
           <div className="h-full">
             <Contacts activeConnectionId={selectedConnectionId || 36} />
+          </div>
+        );
+
+      case "contacts-manager":
+        return (
+          <div className="h-full">
+            <ContactsManager activeConnectionId={selectedConnectionId || 36} />
           </div>
         );
 
