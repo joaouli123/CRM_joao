@@ -22,12 +22,16 @@ export function QRCodeModal({ open, onClose, qrData }: QRCodeModalProps) {
   const queryClient = useQueryClient();
 
   const startConnectionMutation = useMutation({
-    mutationFn: api.startConnection,
+    mutationFn: async (connectionId: number) => {
+      const response = await fetch(`/api/connections/${connectionId}/qr`);
+      if (!response.ok) throw new Error('Failed to generate QR code');
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/connections"] });
       toast({
-        title: "Conexão iniciada",
-        description: "Aguardando escaneamento do QR Code",
+        title: "QR Code gerado",
+        description: "Escaneie o código para conectar",
       });
     },
     onError: (error: any) => {
