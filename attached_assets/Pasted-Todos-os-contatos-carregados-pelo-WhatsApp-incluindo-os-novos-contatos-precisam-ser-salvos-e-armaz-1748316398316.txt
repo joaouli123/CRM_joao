@@ -1,0 +1,105 @@
+Todos os contatos carregados pelo WhatsApp, incluindo os novos contatos, precisam ser salvos e armazenados no banco de dados. O banco de dados será utilizado para consultar e gerenciar os contatos em diferentes partes do sistema.
+✅ Requisitos para Armazenamento dos Contatos:
+
+    Banco de Dados para Contatos:
+
+        O banco de dados deve ser estruturado para armazenar os contatos em uma tabela chamada contatos.
+
+        A tabela deve conter as seguintes colunas:
+
+            Etiqueta: Um campo que pode ser usado para categorizar ou adicionar tags aos contatos (ex: "amigos", "clientes", etc.).
+
+            Nome: O nome completo do contato.
+
+            Telefone: O número de telefone do contato.
+
+            E-mail: O endereço de e-mail do contato (opcional, mas importante para certos casos de contato).
+
+            Observação: Um campo para anotações ou informações adicionais sobre o contato.
+
+    Estrutura da Tabela de Contatos (exemplo):
+
+    CREATE TABLE contatos (
+      id SERIAL PRIMARY KEY,
+      etiqueta VARCHAR(255),  -- Etiqueta (tag)
+      nome VARCHAR(255) NOT NULL,  -- Nome completo
+      telefone VARCHAR(20) NOT NULL,  -- Número de telefone
+      email VARCHAR(255),  -- E-mail (opcional)
+      observacao TEXT,  -- Observações adicionais
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Data de criação
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Data de atualização
+    );
+
+    Sincronização de Contatos:
+
+        Todos os contatos carregados do WhatsApp, incluindo os novos contatos que o usuário adicionar, devem ser salvos automaticamente no banco de dados assim que forem carregados ou atualizados.
+
+        A sincronização deve ocorrer sempre que um novo contato for detectado no WhatsApp.
+
+    Campos de Armazenamento:
+
+        Etiqueta: Permite categorizar os contatos. No futuro, você poderá adicionar categorias ou tags para facilitar a organização.
+
+        Nome: Esse é o nome completo do contato, que será usado para exibir a lista de contatos no sistema.
+
+        Telefone: O número de telefone do contato deve ser armazenado como um identificador único.
+
+        E-mail: O endereço de e-mail do contato (se disponível) pode ser opcional para o armazenamento inicial, mas deve ser considerado em futuras versões.
+
+        Observação: Um campo onde informações adicionais sobre o contato podem ser adicionadas, como histórico de conversas, preferências, etc.
+
+    Futuras Expansões:
+
+        Outros campos poderão ser incluídos no futuro, como endereço, data de nascimento, status de relacionamento, etc. Isso pode ser feito adicionando novas colunas à tabela contatos conforme necessário.
+
+        O sistema deve ser flexível para adicionar mais informações sobre os contatos sem afetar os dados existentes.
+
+✅ Integração do Armazenamento de Contatos com o Sistema:
+
+    Adicionar Novos Contatos:
+
+        Sempre que um novo contato for carregado do WhatsApp ou adicionado manualmente pelo usuário, o sistema deve inserir esse contato no banco de dados.
+
+        O sistema deve verificar se o contato já existe (baseado no número de telefone) antes de inserir um novo registro, para evitar duplicatas.
+
+    Atualização de Contatos:
+
+        Se um contato já existir e for alterado (ex: troca de número de telefone, e-mail ou nome), o sistema deve atualizar o registro correspondente no banco de dados.
+
+        O sistema deve ser capaz de sincronizar as informações de forma eficiente para garantir que as alterações sejam refletidas no banco de dados.
+
+    Consultas ao Banco de Dados:
+
+        O sistema deve ser capaz de consultar o banco de dados para mostrar a lista de contatos em diferentes seções, como chats, histórico de conversas, etc.
+
+        A consulta pode incluir filtros, como pesquisa por nome, telefone ou etiqueta.
+
+    Garantir Performance:
+
+        A inserção e atualização de contatos deve ser realizada de maneira eficiente para que não haja impacto na performance do sistema, especialmente quando houver muitos contatos.
+
+✅ Exemplo de Fluxo do Processo:
+
+    O sistema carrega os contatos do WhatsApp.
+
+    Para cada contato carregado:
+
+        O sistema verifica se o contato já existe no banco de dados (baseado no telefone).
+
+        Se o contato não existir, o sistema insere os dados do contato na tabela contatos.
+
+        Se o contato existir, o sistema atualiza os dados existentes (por exemplo, se o nome ou email foi alterado).
+
+    O sistema exibe a lista de contatos no frontend, com as informações armazenadas (nome, telefone, e-mail, etc.), permitindo que o usuário adicione etiquetas e observações.
+
+🎯 Resultados Esperados:
+
+    Todos os contatos carregados ou adicionados manualmente pelo usuário são armazenados e atualizados no banco de dados.
+
+    O banco de dados contém os campos principais: etiqueta, nome, telefone, e-mail, e observação.
+
+    O sistema permite consultar e exibir os contatos em diversas seções, e a futura expansão do banco de dados será simples e sem impacto.
+
+📝 Conclusão:
+
+Esse fluxo de armazenamento de contatos permitirá que o sistema guarde e gerencie todos os contatos de forma eficiente. O banco de dados contatos será a base para consultas futuras e possibilitará adicionar mais informações conforme o sistema evolui.
