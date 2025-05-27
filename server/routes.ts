@@ -372,9 +372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🔍 Filtro aplicado: "${search}" - ${filteredConversations.length} resultados de ${validConversations.length} total`);
         }
 
-        // Apply pagination AFTER filtering
+        // Apply pagination AFTER filtering (se limit for muito alto, retorna todos)
         const totalFiltered = filteredConversations.length;
-        const paginatedConversations = filteredConversations.slice(skip, skip + limit);
+        const paginatedConversations = limit >= 1000 ? filteredConversations : filteredConversations.slice(skip, skip + limit);
 
         console.log(`📋 Retornando ${paginatedConversations.length} conversas (${totalFiltered} total após filtro)`);
 

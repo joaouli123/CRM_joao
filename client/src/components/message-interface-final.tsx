@@ -243,7 +243,7 @@ export default function MessageInterface({
 
   // Buscar TODAS as conversas sem filtro do backend (deixar filtro para o frontend)
   const { data: allConversations = [], error: conversationsError } = useQuery({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=100`],
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=1000`],
     enabled: !!selectedConnectionId,
     retry: 3,
     retryDelay: 1000,
