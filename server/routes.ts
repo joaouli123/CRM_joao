@@ -297,14 +297,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
             if (!phoneNumber) return null;
 
-            // Buscar foto de perfil do contato
-            let profilePicture = null;
-            try {
-              profilePicture = await evolutionAPI.getProfilePicture(activeInstanceName, phoneNumber);
-            } catch (err) {
-              // Silently continue without profile picture
-            }
-
             const conversation = {
               phoneNumber,
               contactName: chat.pushName || phoneNumber,
@@ -312,10 +304,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastMessageTime: new Date(chat.updatedAt || Date.now()),
               unreadCount: 0,
               messageCount: 1,
-              profilePicture
+              profilePicture: chat.profilePicUrl || null
             };
 
-            console.log(`✅ ${index + 1}. ${chat.pushName || phoneNumber} (${phoneNumber}) ${profilePicture ? '📸' : '👤'}`);
+            console.log(`✅ ${index + 1}. ${chat.pushName || phoneNumber} (${phoneNumber}) ${chat.profilePicUrl ? '📸' : '👤'}`);
             return conversation;
           })
         );

@@ -1,0 +1,116 @@
+Você precisa corrigir o código para garantir que as fotos dos contatos sejam exibidas corretamente nas conversas arquivadas. Atualmente, a imagem de usuário genérico está sendo exibida em vez da foto real do contato.
+✅ Ação Requerida:
+
+    Verifique a URL da Foto do Contato:
+
+        A API já está retornando a URL da foto do contato no campo photo.
+
+        Certifique-se de que a URL da foto seja válida e acessível.
+
+        Caso a URL da foto seja inválida ou não esteja sendo retornada, deve-se garantir que um fallback (foto padrão) seja usado.
+
+    Corrigir a Exibição da Imagem:
+
+        Exibir a foto real do contato na interface de conversas arquivadas, em vez do ícone padrão de usuário.
+
+        Quando a foto do contato não estiver disponível (ou a URL não for válida), exibir uma foto de fallback (como um ícone genérico ou imagem padrão).
+
+    Verifique o Código no Frontend:
+
+        A seguir, um exemplo de código para exibir corretamente as fotos dos contatos ou usar a foto de fallback.
+
+Código de Exibição das Fotos:
+
+Aqui está como você pode modificar o React para exibir as fotos corretamente:
+
+import React, { useState, useEffect } from 'react';
+
+const ArchivedChats = ({ connectionId }) => {
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchArchivedChats = async () => {
+      try {
+        const response = await fetch(`/api/connections/${connectionId}/archived-chats`);
+        if (response.ok) {
+          const data = await response.json();
+          setChats(data.chats);
+        } else {
+          throw new Error('Failed to fetch archived chats');
+        }
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArchivedChats();
+  }, [connectionId]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div className="archived-chats">
+      <h3>Archived Chats</h3>
+      {chats.map((chat) => (
+        <div key={chat.contact_phone} className="chat-item">
+          {/* Exibe a foto do contato */}
+          <img 
+            src={chat.photo || 'https://example.com/default-avatar.jpg'} 
+            alt={`${chat.contact_name}'s photo`} 
+            className="contact-photo"
+          />
+          
+          <div className="contact-info">
+            <h3>{chat.contact_name}</h3>
+            <p>{chat.contact_phone}</p>
+          </div>
+          
+          <div className="last-message">
+            <p>{chat.messages[chat.messages.length - 1].content}</p>
+          </div>
+          
+          <button>Unarchive</button>
+          <button>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default ArchivedChats;
+
+🖼️ Imagem de Fallback (Caso a Foto Não Seja Encontrada):
+
+Caso a foto do contato não esteja disponível, use uma imagem de fallback. Isso pode ser um ícone genérico de "usuário" ou qualquer imagem padrão.
+
+Exemplo de fallback:
+
+<img 
+  src={chat.photo || 'https://example.com/default-avatar.jpg'} 
+  alt={`${chat.contact_name}'s photo`} 
+  className="contact-photo"
+/>
+
+O link 'https://example.com/default-avatar.jpg' pode ser substituído por qualquer imagem genérica que você queira exibir quando o contato não tiver foto.
+✅ Verificações Necessárias:
+
+    Validar URL da Foto:
+
+        Certifique-se de que a API está fornecendo URLs válidas de fotos. A API já deve retornar uma URL pública acessível que pode ser usada diretamente no frontend.
+
+    Testar a Exibição das Fotos:
+
+        Verifique no Replit se as fotos estão sendo carregadas corretamente para todos os contatos.
+
+        Se não houver foto disponível, a foto padrão (fallback) deve ser exibida automaticamente.
+
+✅ Conclusão
+
+Com essas modificações, a IA deve ser capaz de corrigir o problema das fotos dos contatos sendo exibidas como ícones padrão de usuário, e as fotos reais dos contatos serão mostradas adequadamente na interface.
+
+Se a IA precisar de mais contexto sobre como recuperar ou validar as fotos do backend, posso ajudá-lo a ajustar o código da API ou a lógica de verificação.
