@@ -75,6 +75,7 @@ export default function ContactsManagement() {
     phoneNumber: '',
     email: '',
     tag: '',
+    origem: '',
     observation: ''
   });
 
@@ -148,6 +149,7 @@ export default function ContactsManagement() {
       phoneNumber: '',
       email: '',
       tag: '',
+      origem: '',
       observation: ''
     });
   };
@@ -168,6 +170,7 @@ export default function ContactsManagement() {
       phoneNumber: contact.phoneNumber,
       email: contact.email || '',
       tag: contact.tag || '',
+      origem: contact.origem || '',
       observation: contact.observation || ''
     });
   };
@@ -181,6 +184,21 @@ export default function ContactsManagement() {
     if (contactToDelete) {
       deleteContactMutation.mutate(contactToDelete.id);
     }
+  };
+
+  // 💬 ABRIR CONVERSA WHATSAPP
+  const openWhatsApp = (phoneNumber: string) => {
+    // Redirecionar para a aba de mensagens com o contato selecionado
+    const event = new CustomEvent('openWhatsAppChat', {
+      detail: { phoneNumber: phoneNumber.replace(/\D/g, '') }
+    });
+    window.dispatchEvent(event);
+    
+    // Notificar usuário
+    toast({
+      title: "Redirecionando para WhatsApp",
+      description: `Abrindo conversa com ${phoneNumber}`,
+    });
   };
 
   const handleExport = () => {
@@ -666,7 +684,7 @@ export default function ContactsManagement() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-tag">Etiqueta</Label>
-                  <Select value={formData.tag} onValueChange={(value) => setFormData({ ...formData, tag: value })}>
+                  <Select value={formData.tag || ''} onValueChange={(value) => setFormData({ ...formData, tag: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma etiqueta" />
                     </SelectTrigger>
@@ -679,6 +697,23 @@ export default function ContactsManagement() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              
+              {/* Nova linha com Origem */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-origem">Origem</Label>
+                <Select value={formData.origem || ''} onValueChange={(value) => setFormData({ ...formData, origem: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a origem" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="site">Site</SelectItem>
+                    <SelectItem value="organico">Orgânico</SelectItem>
+                    <SelectItem value="indicacao">Indicação</SelectItem>
+                    <SelectItem value="publicidade">Publicidade</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-observation">Observações</Label>
