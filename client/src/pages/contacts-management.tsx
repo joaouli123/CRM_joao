@@ -350,6 +350,23 @@ export default function ContactsManagement() {
                         </Select>
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="origem">Origem</Label>
+                        <Select value={formData.origem} onValueChange={(value) => setFormData({ ...formData, origem: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a origem" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                            <SelectItem value="site">Site</SelectItem>
+                            <SelectItem value="organico">Orgânico</SelectItem>
+                            <SelectItem value="indicacao">Indicação</SelectItem>
+                            <SelectItem value="publicidade">Publicidade</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="observation">Observações</Label>
                       <Textarea
