@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -360,46 +361,45 @@ export default function MessageInterface({
 
   if (!selectedConnectionId) {
     return (
-      <Card className="h-full">
-        <CardContent className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Selecione uma conexão para ver as mensagens</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="h-full bg-white rounded-lg shadow-sm border flex items-center justify-center">
+        <div className="text-center">
+          <MessageCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500">Selecione uma conexão para ver as mensagens</p>
+        </div>
+      </div>
     );
   }
 
   const isLoadingConversations = false;
 
   return (
-    <div className="flex h-full max-h-[calc(100vh-140px)]">
+    <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden">
       {/* Lista de Conversas */}
-      <div className="w-1/3 border-r flex flex-col min-h-0">
-        <Card className="h-full rounded-none border-0 flex flex-col min-h-0">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center justify-between">
-              Conversas
-              {isConnected && (
-                <Badge variant="outline" className="text-xs bg-green-100">
-                  Online
-                </Badge>
-              )}
-            </CardTitle>
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar conversas..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 flex-1 min-h-0">
-            {/* Lista de conversas */}
-          <ScrollArea className="flex-1">
+      <div className="w-80 border-r border-gray-200 flex flex-col h-full bg-gray-50">
+        {/* Header das Conversas */}
+        <div className="p-4 bg-white border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Conversas</h3>
+            {isConnected && (
+              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                Online
+              </Badge>
+            )}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar conversas..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-10 h-9 bg-gray-50 border-gray-200 focus:bg-white"
+            />
+          </div>
+        </div>
+
+        {/* Lista de conversas */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
             {isLoadingConversations ? (
               <div className="p-6 text-center text-gray-500">
                 <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -422,12 +422,14 @@ export default function MessageInterface({
                 )}
               </div>
             ) : (
-              <div className="space-y-0">
+              <div className="divide-y divide-gray-100">
                 {filteredConversations.map((conv: any) => (
                   <div
                     key={conv.phoneNumber}
-                    className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedConversation === conv.phoneNumber ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
+                    className={`p-4 cursor-pointer hover:bg-white transition-colors duration-150 ${
+                      selectedConversation === conv.phoneNumber 
+                        ? 'bg-blue-50 border-r-3 border-r-blue-500' 
+                        : ''
                     }`}
                     onClick={() => {
                       console.log(`📱 SELECIONANDO CONVERSA: ${conv.phoneNumber}`);
@@ -436,25 +438,25 @@ export default function MessageInterface({
                   >
                     <div className="flex items-center space-x-3">
                       <ContactAvatar 
-                      profilePicture={conv.profilePicture}
-                      contactName={conv.contactName}
-                      phoneNumber={conv.phoneNumber}
-                      size="md"
-                    />
+                        profilePicture={conv.profilePicture}
+                        contactName={conv.contactName}
+                        phoneNumber={conv.phoneNumber}
+                        size="md"
+                      />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium truncate">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">
                             {conv.contactName || conv.phoneNumber}
                           </p>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-gray-500">
                             {formatTime(new Date(conv.lastMessageTime))}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-sm text-gray-500 truncate">
                           {conv.lastMessage}
                         </p>
                         {conv.unreadCount > 0 && (
-                          <Badge variant="default" className="mt-1">
+                          <Badge variant="default" className="mt-1 bg-blue-500">
                             {conv.unreadCount}
                           </Badge>
                         )}
@@ -465,211 +467,152 @@ export default function MessageInterface({
               </div>
             )}
           </ScrollArea>
+        </div>
 
-          {/* Botão Carregar Mais */}
-          {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
-            <div className="p-4">
-              <Button 
-                variant="default" 
-                className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-3 shadow-lg transform transition-all duration-200 hover:scale-105"
-                onClick={async () => {
-                  setLoadingMoreConversations(true);
-                  setConversationsLimit(prev => prev + 10);
-                  setTimeout(() => setLoadingMoreConversations(false), 1000);
-                }}
-                disabled={loadingMoreConversations}
-              >
-                {loadingMoreConversations ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Carregando mais conversas...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Carregar Mais Conversas</span>
-                  </div>
-                )}
-              </Button>
-            </div>
-          )}
-          </CardContent>
-        </Card>
+        {/* Botão Carregar Mais */}
+        {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
+          <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
+            <Button 
+              variant="default" 
+              size="sm"
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium py-2 shadow-md transform transition-all duration-200 hover:scale-105"
+              onClick={async () => {
+                setLoadingMoreConversations(true);
+                setConversationsLimit(prev => prev + 10);
+                setTimeout(() => setLoadingMoreConversations(false), 1000);
+              }}
+              disabled={loadingMoreConversations}
+            >
+              {loadingMoreConversations ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Carregando...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Carregar Mais</span>
+                </div>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Chat */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col h-full bg-white">
         {selectedConversation ? (
           <>
             {/* Header do Chat */}
-            <Card className="rounded-none border-0 border-b flex-shrink-0">
-              <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
-                  <ContactAvatar 
-                    profilePicture={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.profilePicture}
-                    contactName={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName}
-                    phoneNumber={selectedConversation}
-                    size="md"
-                  />
-                  <div>
-                    <CardTitle className="text-base">
-                      {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
-                    </CardTitle>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Phone className="h-3 w-3" />
-                      <span>{selectedConversation}</span>
-                      {isConnected && (
-                        <Badge variant="outline" className="text-xs">
-                          Online
-                        </Badge>
-                      )}
-                    </div>
+            <div className="p-4 bg-white border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center space-x-3">
+                <ContactAvatar 
+                  profilePicture={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.profilePicture}
+                  contactName={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName}
+                  phoneNumber={selectedConversation}
+                  size="md"
+                />
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900">
+                    {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
+                  </h4>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <Phone className="h-3 w-3" />
+                    <span>{selectedConversation}</span>
+                    {isConnected && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                        Online
+                      </Badge>
+                    )}
                   </div>
                 </div>
-              </CardHeader>
-            </Card>
+              </div>
+            </div>
 
             {/* Mensagens */}
-            <ScrollArea className="flex-1 p-4 min-h-0">
-              <div className="space-y-4">
-                {/* Botão Carregar Mais - Estilo WhatsApp Clean e Discreto */}
-                {selectedConversation && (
-                  <div className="flex justify-center py-2">
-                    <button 
-                      onClick={async () => {
-                        setLoadingHistory(true);
-                        try {
-                          const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages/history?page=${historyPage + 1}&limit=20`);
-                          const data = await response.json();
-                          
-                          if (data.messages && data.messages.length > 0) {
-                            setHistoryMessages(prev => [...data.messages, ...prev]);
-                            setHistoryPage(data.page);
-                            setHasMoreHistory(data.hasMore);
-                          } else {
-                            setHasMoreHistory(false);
-                          }
-                        } catch (error) {
-                          console.error('Erro ao carregar histórico:', error);
-                        } finally {
-                          setLoadingHistory(false);
-                        }
-                      }}
-                      disabled={loadingHistory}
-                      className="text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-full border border-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loadingHistory ? "Carregando..." : "Carregar mais"}
-                    </button>
-                  </div>
-                )}
-
-                {/* Mensagens do histórico carregado */}
-                {historyMessages.map((message) => (
-                  <div
-                    key={`history_${message.id}`}
-                    className={`flex ${
-                      message.direction === "sent" ? "justify-end" : "justify-start"
-                    }`}
-                  >
+            <div className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full p-4">
+                <div className="space-y-4">
+                  {allMessages.map((message, index) => (
                     <div
-                      className={`max-w-[70%] rounded-lg px-3 py-2 ${
-                        message.direction === "sent"
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
+                      key={`${message.id || index}-${message.timestamp}`}
+                      className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <div className="flex items-center justify-end space-x-1 mt-1">
-                        <Clock className="h-3 w-3 opacity-70" />
-                        <span className="text-xs opacity-70">
-                          {formatTime(new Date(message.timestamp))}
-                        </span>
-                        <span className="text-xs opacity-50 ml-1">
-                          📚
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {allMessages.map((message, index) => (
-                  <div
-                    key={`${message.id || index}-${message.timestamp}`}
-                    className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[70%] rounded-lg px-3 py-2 ${
-                        message.direction === 'sent'
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-100 text-gray-900'
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <div className="flex items-center justify-end space-x-1 mt-1">
-                        <Clock className="h-3 w-3 opacity-70" />
-                        <span className="text-xs opacity-70">
-                          {formatTime(new Date(message.timestamp))}
-                        </span>
-                        {message.direction === 'sent' && (
-                          <span className="text-xs ml-1">
-                            {message.status === 'pending' && '⏳'}
-                            {message.status === 'sent' && '✔'}
-                            {message.status === 'delivered' && '✔✔'}
-                            {message.status === 'failed' && '❌'}
+                      <div
+                        className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+                          message.direction === 'sent'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-900'
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed">{message.content}</p>
+                        <div className="flex items-center justify-end space-x-1 mt-2">
+                          <Clock className="h-3 w-3 opacity-70" />
+                          <span className="text-xs opacity-70">
+                            {formatTime(new Date(message.timestamp))}
                           </span>
-                        )}
+                          {message.direction === 'sent' && (
+                            <span className="text-xs ml-1">
+                              {message.status === 'pending' && '⏳'}
+                              {message.status === 'sent' && '✔'}
+                              {message.status === 'delivered' && '✔✔'}
+                              {message.status === 'failed' && '❌'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {/* Indicador "Digitando..." */}
-                {typing && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 text-gray-900 rounded-lg px-3 py-2 max-w-[70%]">
-                      <p className="text-sm italic">O contato está digitando...</p>
+                  {/* Indicador "Digitando..." */}
+                  {typing && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-100 text-gray-900 rounded-2xl px-4 py-3 max-w-[70%]">
+                        <p className="text-sm italic">O contato está digitando...</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Referência para scroll automático */}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                  {/* Referência para scroll automático */}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+            </div>
 
             {/* Input de Mensagem */}
-            <Card className="rounded-none border-0 border-t flex-shrink-0">
-              <CardContent className="p-4">
-                <div className="flex space-x-2">
-                  <Input
-                    placeholder="Digite sua mensagem..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        sendMessage(newMessage);
-                      }
-                    }}
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={() => sendMessage(newMessage)}
-                    disabled={!newMessage.trim()}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
+              <div className="flex space-x-3">
+                <Input
+                  placeholder="Digite sua mensagem..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      sendMessage(newMessage);
+                    }
+                  }}
+                  className="flex-1 h-10 px-4 bg-gray-50 border-gray-200 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <Button 
+                  onClick={() => sendMessage(newMessage)}
+                  disabled={!newMessage.trim()}
+                  className="h-10 w-10 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300"
+                  size="sm"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </>
         ) : (
-          <Card className="h-full rounded-none border-0 flex items-center justify-center">
-            <CardContent className="text-center">
-              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Selecione uma conversa para começar</p>
-            </CardContent>
-          </Card>
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <MessageCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-lg text-gray-500 font-medium">Selecione uma conversa</p>
+              <p className="text-sm text-gray-400">Escolha um contato para começar a conversar</p>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -1,119 +1,108 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/sidebar";
-import ConnectionCard from "@/components/connection-card";
-import MessageInterface from "@/components/message-interface-final";
-import NewConnectionModal from "@/components/new-connection-modal";
-import { QRCodeModal } from "@/components/modals/qr-code-modal";
-import { Card, CardContent } from "@/components/ui/card";
+
+import React, { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, MessageSquare, Clock, Zap } from "lucide-react";
-import { useWebSocket } from "@/lib/websocket";
-import { useToast } from "@/hooks/use-toast";
-import type { Connection } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import Sidebar from "@/components/sidebar";
+import MessageInterface from "@/components/message-interface-final";
+import { Connection, ConnectionStatus } from "@/lib/api";
+import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock } from "lucide-react";
+import NewConnectionModal from "@/components/modals/new-connection-modal";
+import QRCodeModal from "@/components/modals/qr-code-modal";
+
+type TabType = 'dashboard' | 'connections' | 'messages' | 'settings';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [selectedConnection, setSelectedConnection] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('messages');
+  const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null);
   const [showNewConnectionModal, setShowNewConnectionModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [qrData, setQrData] = useState<{ connectionId: number; qrCode: string; expiration: Date } | null>(null);
-  const { toast } = useToast();
+  const [selectedConnectionForQR, setSelectedConnectionForQR] = useState<Connection | null>(null);
+  const queryClient = useQueryClient();
 
-  // Listener para mudanças de hash na URL
-  useState(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (hash && ['dashboard', 'connections', 'messages', 'settings'].includes(hash)) {
-        setActiveTab(hash);
-      }
-    };
-
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // Verificar hash inicial
-
-    return () => window.removeEventListener('hashchange', handleHashChange);
+  // Buscar conexões
+  const { data: connections = [], isLoading: connectionsLoading } = useQuery({
+    queryKey: ['/api/connections'],
   });
 
-  // Real-time WebSocket connection
-  useWebSocket({
-    onQRCodeReceived: (data) => {
-      setQrData(data);
-      setShowQRModal(true);
-    },
-    onConnectionStatusChanged: (data) => {
-      console.log(`🔄 Status mudou:`, data);
-      console.log(`📱 QR Data atual:`, qrData);
-      
-      // Refetch connections when status changes
-      refetchConnections();
-      
-      // Check if connection was established successfully
-      if (data.status === 'connected') {
-        console.log(`✅ Conexão estabelecida! Fechando modal para conexão ${data.id}`);
-        
-        // Close QR modal if it's open for this connection
-        if (qrData && qrData.connectionId === data.id) {
-          console.log(`🚪 Fechando modal para conexão ${data.id}`);
-          setShowQRModal(false);
-          setQrData(null);
-        } else {
-          // Force close modal if any QR modal is open
-          console.log(`🚪 Forçando fechamento do modal`);
-          setShowQRModal(false);
-          setQrData(null);
-        }
-        
-        // Show success notification
-        toast({
-          title: "WhatsApp Conectado!",
-          description: `Conexão estabelecida com sucesso.`,
-          variant: "default",
-        });
-      }
-    },
-  });
-
-  // Fetch connections
-  const { data: connections = [], refetch: refetchConnections } = useQuery<Connection[]>({
-    queryKey: ["/api/connections"],
-  });
-
-  // Fetch dashboard stats
+  // Buscar estatísticas do dashboard
   const { data: stats } = useQuery({
-    queryKey: ["/api/stats"],
+    queryKey: ['/api/dashboard/stats'],
+    enabled: activeTab === 'dashboard',
   });
 
-  const formatLastActivity = (date: Date | null) => {
-    if (!date) return "Nunca";
-    const now = new Date();
-    const diff = now.getTime() - new Date(date).getTime();
-    const minutes = Math.floor(diff / (1000 * 60));
-    
-    if (minutes < 1) return "Agora";
-    if (minutes < 60) return `${minutes} min atrás`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h atrás`;
-    const days = Math.floor(hours / 24);
-    return `${days}d atrás`;
+  // Selecionar primeira conexão automaticamente
+  useEffect(() => {
+    if (connections.length > 0 && !selectedConnectionId) {
+      setSelectedConnectionId(connections[0].id);
+    }
+  }, [connections, selectedConnectionId]);
+
+  // Mutation para excluir conexão
+  const deleteConnectionMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/connections/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete connection');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+      if (selectedConnectionId === deleteConnectionMutation.variables) {
+        setSelectedConnectionId(null);
+      }
+    },
+  });
+
+  const handleShowQR = (connection: Connection) => {
+    setSelectedConnectionForQR(connection);
+    setShowQRModal(true);
   };
 
-  const renderTabContent = () => {
+  const getStatusColor = (status: ConnectionStatus) => {
+    switch (status) {
+      case 'connected':
+        return 'bg-green-500';
+      case 'connecting':
+        return 'bg-yellow-500';
+      case 'disconnected':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getStatusIcon = (status: ConnectionStatus) => {
+    switch (status) {
+      case 'connected':
+        return <Wifi className="h-4 w-4" />;
+      case 'connecting':
+        return <Clock className="h-4 w-4" />;
+      case 'disconnected':
+        return <WifiOff className="h-4 w-4" />;
+      default:
+        return <WifiOff className="h-4 w-4" />;
+    }
+  };
+
+  const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
         return (
-          <div className="space-y-8">
-            {/* Stats Cards */}
+          <div className="max-w-6xl space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total de Conexões</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.totalConnections || 0}</p>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Users className="h-6 w-6 text-blue-600" />
                     </div>
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Zap className="text-primary text-xl" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Conexões</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.totalConnections || 0}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -121,13 +110,13 @@ export default function Dashboard() {
 
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Conexões Ativas</p>
-                      <p className="text-3xl font-bold text-secondary">{stats?.activeConnections || 0}</p>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Wifi className="h-6 w-6 text-green-600" />
                     </div>
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="text-secondary text-xl" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Conectadas</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.connectedConnections || 0}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -135,13 +124,13 @@ export default function Dashboard() {
 
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Mensagens Hoje</p>
-                      <p className="text-3xl font-bold text-gray-900">{stats?.todayMessages || 0}</p>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <MessageSquare className="h-6 w-6 text-purple-600" />
                     </div>
-                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                      <MessageSquare className="text-warning text-xl" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Mensagens</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.totalMessages || 0}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -149,49 +138,39 @@ export default function Dashboard() {
 
               <Card>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Última Atividade</p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatLastActivity(stats?.lastActivity)}
-                      </p>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Activity className="h-6 w-6 text-orange-600" />
                     </div>
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Clock className="text-purple-600 text-xl" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Hoje</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.todayMessages || 0}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Recent Activity */}
             <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Conexões Recentes</h3>
+              <CardHeader>
+                <CardTitle>Conexões Recentes</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-4">
-                  {connections.slice(0, 5).map((connection) => (
-                    <div key={connection.id} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        connection.status === 'connected' ? 'bg-secondary' : 
-                        connection.status === 'qr_pending' ? 'bg-warning' : 'bg-gray-400'
-                      }`}>
-                        <MessageSquare className="text-white text-sm" />
+                  {connections.slice(0, 5).map((connection: Connection) => (
+                    <div key={connection.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(connection.status)}`} />
+                        <div>
+                          <p className="font-medium">{connection.name}</p>
+                          <p className="text-sm text-gray-500">{connection.phoneNumber}</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{connection.name}</p>
-                        <p className="text-sm text-gray-500">
-                          Status: {connection.status === 'connected' ? 'Conectado' : 
-                                  connection.status === 'qr_pending' ? 'Aguardando QR' : 'Desconectado'}
-                        </p>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {formatLastActivity(connection.lastActivity)}
-                      </div>
+                      <Badge variant={connection.status === 'connected' ? 'default' : 'secondary'}>
+                        {connection.status}
+                      </Badge>
                     </div>
                   ))}
-                  {connections.length === 0 && (
-                    <p className="text-gray-500 text-center py-8">Nenhuma conexão encontrada</p>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -200,49 +179,78 @@ export default function Dashboard() {
 
       case "connections":
         return (
-          <div className="space-y-6">
+          <div className="max-w-6xl space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Gerenciar Conexões</h3>
-              <Button 
-                onClick={() => setShowNewConnectionModal(true)}
-                className="flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Nova Conexão</span>
+              <Button onClick={() => setShowNewConnectionModal(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Conexão
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {connections.map((connection) => (
-                <ConnectionCard 
-                  key={connection.id} 
-                  connection={connection}
-                  onShowQR={(conn) => {
-                    if (conn.qrCode) {
-                      setQrData({
-                        connectionId: conn.id,
-                        qrCode: conn.qrCode,
-                        expiration: conn.qrExpiry || new Date()
-                      });
-                      setShowQRModal(true);
-                    }
-                  }}
-                  onOpenMessages={(connId) => {
-                    setSelectedConnection(connId);
-                    setActiveTab("messages");
-                  }}
-                />
-              ))}
-              {connections.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma conexão</h3>
-                  <p className="text-gray-500 mb-4">Crie sua primeira conexão WhatsApp para começar</p>
-                  <Button onClick={() => setShowNewConnectionModal(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Criar Conexão
-                  </Button>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {connectionsLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="space-y-3">
+                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                connections.map((connection: Connection) => (
+                  <Card key={connection.id}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-3 h-3 rounded-full ${getStatusColor(connection.status)}`} />
+                          <h4 className="font-medium">{connection.name}</h4>
+                        </div>
+                        <Badge 
+                          variant={connection.status === 'connected' ? 'default' : 'secondary'}
+                          className="flex items-center space-x-1"
+                        >
+                          {getStatusIcon(connection.status)}
+                          <span>{connection.status}</span>
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2 mb-4">
+                        <div className="text-sm">
+                          <span className="text-gray-500">Telefone:</span>
+                          <span className="ml-2 font-medium">{connection.phoneNumber || 'Não configurado'}</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">Instância:</span>
+                          <span className="ml-2 font-medium">{connection.instanceName}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-2">
+                        {connection.status === 'disconnected' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleShowQR(connection)}
+                          >
+                            Conectar
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteConnectionMutation.mutate(connection.id)}
+                          disabled={deleteConnectionMutation.isPending}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
               )}
             </div>
           </div>
@@ -250,11 +258,13 @@ export default function Dashboard() {
 
       case "messages":
         return (
-          <MessageInterface 
-            connections={connections.filter(c => c.status === 'connected')}
-            selectedConnectionId={selectedConnection}
-            onSelectConnection={setSelectedConnection}
-          />
+          <div className="h-full w-full">
+            <MessageInterface
+              connections={connections}
+              selectedConnectionId={selectedConnectionId}
+              onSelectConnection={setSelectedConnectionId}
+            />
+          </div>
         );
 
       case "settings":
@@ -268,44 +278,16 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Sistema</label>
-                    <input 
-                      type="text" 
-                      defaultValue="WhatsApp Hub" 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
+                    <Input defaultValue="WhatsApp Hub" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Porta da API</label>
-                    <input 
-                      type="number" 
-                      defaultValue="5000" 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
+                    <Input type="number" defaultValue="5000" />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <h4 className="font-medium text-gray-900 mb-4">Configurações do QR Code</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tempo de Expiração (segundos)</label>
-                    <input 
-                      type="number" 
-                      defaultValue="60" 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tentativas de Reconexão</label>
-                    <input 
-                      type="number" 
-                      defaultValue="3" 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
-                  </div>
+                
+                <div className="mt-6 flex justify-end">
+                  <Button>Salvar Configurações</Button>
                 </div>
               </CardContent>
             </Card>
@@ -318,16 +300,16 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div className="h-screen w-screen flex overflow-hidden bg-gray-50">
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab}
         onNewConnection={() => setShowNewConnectionModal(true)}
       />
       
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="bg-surface border-b border-gray-200 px-6 py-4 flex-shrink-0">
+        <header className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
@@ -345,33 +327,29 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-secondary rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm text-gray-600">Sistema Online</span>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6 min-h-0">
-          {renderTabContent()}
+        {/* Main Content */}
+        <main className="flex-1 overflow-hidden p-6">
+          {renderContent()}
         </main>
       </div>
 
       {/* Modals */}
-      <NewConnectionModal 
-        open={showNewConnectionModal}
+      <NewConnectionModal
+        isOpen={showNewConnectionModal}
         onClose={() => setShowNewConnectionModal(false)}
-        onSuccess={() => {
-          setShowNewConnectionModal(false);
-          refetchConnections();
-        }}
       />
 
-      <QRCodeModal 
-        open={showQRModal}
+      <QRCodeModal
+        isOpen={showQRModal}
         onClose={() => setShowQRModal(false)}
-        qrData={qrData}
+        connection={selectedConnectionForQR}
       />
     </div>
   );
