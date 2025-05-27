@@ -736,21 +736,26 @@ export default function ContactsManagement() {
                 </DialogContent>
               </Dialog>
 
+              <input
+                type="file"
+                id="fileInput"
+                accept=".csv,.xlsx,.xls"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    alert(`✅ Arquivo selecionado: ${file.name}\n📋 Funcionalidade de importação será implementada quando as dependências estiverem configuradas.`);
+                  }
+                }}
+              />
               <Button
                 variant="outline"
                 className="btn-secondary border-blue-500 text-blue-700 hover:bg-blue-50"
                 onClick={() => {
-                  // Vamos criar um modal simples inline
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = '.csv,.xlsx,.xls';
-                  input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0];
-                    if (file) {
-                      alert(`Arquivo selecionado: ${file.name}\nFuncionalidade será implementada com as dependências corretas.`);
-                    }
-                  };
-                  input.click();
+                  const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+                  if (fileInput) {
+                    fileInput.click();
+                  }
                 }}
               >
                 <Upload className="mr-2 h-4 w-4" />
