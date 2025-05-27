@@ -1178,6 +1178,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return synced;
   }
 
+  // Importar contatos do WhatsApp para a tabela
+  app.post('/api/contacts/import-from-whatsapp', async (req, res) => {
+    const { limit = 12, connectionId = 36 } = req.body;
+    
+    console.log(`📱 Importando ${limit} contatos do WhatsApp para a tabela...`);
+    
+    try {
+      const connection = await storage.getConnection(connectionId);
+      if (!connection) {
+        return res.status(404).json({ error: "Conexão não encontrada" });
+      }
+
+      const activeInstanceName = `whatsapp_${connectionId}_lowfy`;
+      console.log(`🎯 Buscando contatos da instância: ${activeInstanceName}`);
+      
+      const allChats = await evolutionAPI.getAllChats(activeInstanceName);
+      const chatsToImport = allChats.slice(0, limit);
+      
+      let importedCount = 0;
+      
+      for (const chat of chatsToImport) {
+        const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        if (!phoneNumber) continue;
+        
+        // Verificar se já existe
+        const existingContact = await storage.getContactByPhone(connectionId, phoneNumber);
+        if (existingContact) {
+          console.log(`⏭️ Contato ${chat.pushName} já existe, pulando...`);
+          continue;
+        }
+        
+        // Buscar foto de perfil
+        let profilePictureUrl = null;
+        try {
+          profilePictureUrl = await evolutionAPI.getProfilePicture(activeInstanceName, phoneNumber);
+        } catch (error) {
+          console.log(`⚠️ Não foi possível obter foto para ${phoneNumber}`);
+        }
+        
+        // Criar contato
+        const newContact = await storage.createContact({
+          connectionId,
+          phoneNumber,
+          name: chat.pushName || phoneNumber,
+          email: null,
+          observation: `Importado do WhatsApp em ${new Date().toLocaleDateString('pt-BR')}`,
+          tag: 'lead',
+          profilePictureUrl: profilePictureUrl,
+          isActive: true
+        });
+        
+        console.log(`✅ Contato importado: ${newContact.name} (${newContact.phoneNumber})`);
+        importedCount++;
+      }
+      
+      res.json({ 
+        success: true, 
+        imported: importedCount,
+        message: `${importedCount} contatos importados com sucesso!`
+      });
+      
+    } catch (error) {
+      console.error(`❌ Erro ao importar contatos:`, error);
+      res.status(500).json({ error: "Erro ao importar contatos" });
+    }
+  });
+
   // Criar novo contato
   app.post('/api/contacts', async (req, res) => {
     const { name, phoneNumber, email, observation, tag, connectionId = 36 } = req.body;
