@@ -1,4 +1,6 @@
 import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation, archivedChats, archivedMessages, type ArchivedChat, type InsertArchivedChat, type ArchivedMessage, type InsertArchivedMessage, User, InsertUser, users, Contact, InsertContact, contacts } from "@shared/schema";
+import { eq, and, or, asc, desc } from "drizzle-orm";
+import { db } from "./db";
 
 export interface IStorage {
   // User methods
@@ -518,7 +520,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(archivedChats)
       .where(eq(archivedChats.connectionId, connectionId))
-      .orderBy(desc(archivedChats.archiveDate));
+      .orderBy(archivedChats.archiveDate);
   }
 
   async getArchivedChat(id: number): Promise<ArchivedChat | undefined> {
@@ -542,7 +544,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(archivedMessages)
       .where(eq(archivedMessages.archivedChatId, archivedChatId))
-      .orderBy(desc(archivedMessages.timestamp))
+      .orderBy(archivedMessages.timestamp)
       .limit(limit);
   }
 
