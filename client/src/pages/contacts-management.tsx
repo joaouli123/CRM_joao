@@ -118,12 +118,22 @@ export default function ContactsManagement() {
 
   const updateContactMutation = useMutation({
     mutationFn: async ({ id, ...data }: any) => {
+      // Mapear os campos para os nomes que o backend espera
+      const mappedData = {
+        ...data,
+        observacao: data.observation, // Backend espera 'observacao'
+        etiqueta: data.tag, // Backend espera 'etiqueta'
+        origem: data.origem // Backend já espera 'origem'
+      };
+      
+      console.log('🔧 DADOS MAPEADOS SENDO ENVIADOS:', mappedData);
+      
       const response = await fetch(`/api/contacts/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(mappedData),
       });
       
       if (!response.ok) {
