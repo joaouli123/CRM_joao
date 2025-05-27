@@ -1,4 +1,6 @@
 import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation, archivedChats, archivedMessages, type ArchivedChat, type InsertArchivedChat, type ArchivedMessage, type InsertArchivedMessage } from "@shared/schema";
+import { db } from "./db";
+import { eq, gte, sql, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Connection methods
@@ -238,9 +240,7 @@ export class MemStorage implements IStorage {
   }
 }
 
-import { db } from "./db";
-import { eq, gte, sql, count, and, or, asc } from "drizzle-orm";
-import { messages as messagesTable } from "@shared/schema";
+// Database storage implementation continues here...
 
 export class DatabaseStorage implements IStorage {
   async getConversationsByConnection(connectionId: number): Promise<Conversation[]> {
