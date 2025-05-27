@@ -139,45 +139,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`🎯 Carregando conversas do banco de dados local (connectionId: ${connectionId})`);
 
-        // 🔄 SINCRONIZAR MENSAGENS RECENTES DA EVOLUTION API
+        // 🔄 CONFIGURAR WEBHOOK PARA SINCRONIZAÇÃO EM TEMPO REAL
         try {
           const instanceName = `whatsapp_${connectionId}_${connection.name}`;
-          console.log(`🔄 Tentando sincronizar mensagens recentes da ${instanceName}`);
+          console.log(`🔄 Verificando webhook para ${instanceName}`);
           
-          // Buscar chats recentes da Evolution API
-          const recentChats = await evolutionAPI.getAllChats(instanceName);
-          if (recentChats && recentChats.length > 0) {
-            console.log(`📱 Encontrados ${recentChats.length} chats na Evolution API`);
-            
-            // Sincronizar mensagens recentes para cada chat
-            for (const chat of recentChats.slice(0, 5)) { // Limitar a 5 chats mais recentes
-              try {
-                const messages = await evolutionAPI.getChatMessages(instanceName, chat.id, 10);
-                if (messages && messages.length > 0) {
-                  // Salvar mensagens novas no banco
-                  for (const msg of messages) {
-                    const existingMsg = await storage.getMessagesByConnection(connectionId);
-                    const exists = existingMsg.some(m => m.body === msg.body && m.timestamp === msg.timestamp);
-                    
-                    if (!exists) {
-                      await storage.createMessage({
-                        connectionId,
-                        direction: msg.fromMe ? 'sent' : 'received',
-                        from: msg.fromMe ? 'me' : msg.from,
-                        to: msg.fromMe ? msg.to : 'me',
-                        body: msg.body
-                      });
-                      console.log(`💾 Nova mensagem sincronizada: ${msg.body.substring(0, 50)}...`);
-                    }
-                  }
-                }
-              } catch (chatError) {
-                console.log(`⚠️ Erro ao sincronizar chat ${chat.id}:`, chatError.message);
-              }
-            }
-          }
-        } catch (syncError) {
-          console.log(`⚠️ Erro na sincronização Evolution API:`, syncError.message);
+          // Configurar webhook se ainda não estiver configurado
+          await evolutionAPI.configureWebhook(instanceName);
+          console.log(`✅ Webhook configurado para sincronização em tempo real`);
+        } catch (syncError: any) {
+          console.log(`⚠️ Erro na configuração do webhook:`, syncError.message);
         }
 
         // Carregar conversas do banco de dados local (agora com mensagens atualizadas)
@@ -408,6 +379,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup message sending route
   setupSendMessageRoute(app);
+
+  // 🔔 WEBHOOK ENDPOINT PARA RECEBER MENSAGENS EM TEMPO REAL
+  app.post("/api/webhook/messages", async (req, res) => {
+    try {
+      console.log("🔔 WEBHOOK RECEBIDO:", JSON.stringify(req.body, null, 2));
+
+      const webhookData = req.body;
+
+      // Processar diferentes tipos de eventos da Evolution API
+      if (webhookData.event === "messages.upsert" && webhookData.data?.key) {
+        const messageData = webhookData.data;
+        const phoneNumber = messageData.key.remoteJid.replace("@s.whatsapp.net", "");
+        const messageContent = messageData.message.conversation || 
+                             messageData.message.extendedTextMessage?.text || 
+                             messageData.message.imageMessage?.caption ||
+                             "[Mídia]";
+
+        console.log(`📨 Nova mensagem recebida de ${phoneNumber}: ${messageContent}`);
+
+        // Salvar mensagem no banco de dados
+        const savedMessage = await storage.createMessage({
+          connectionId: 36, // Usar conexão padrão
+          direction: messageData.key.fromMe ? 'sent' : 'received',
+          from: messageData.key.fromMe ? 'me' : phoneNumber,
+          to: messageData.key.fromMe ? phoneNumber : 'me',
+          body: messageContent
+        });
+
+        // Broadcast para clientes WebSocket
+        broadcast({
+          type: "new_message",
+          data: {
+            ...savedMessage,
+            connectionId: 36,
+            phoneNumber
+          }
+        });
+
+        console.log(`✅ Mensagem sincronizada em tempo real: ${messageContent}`);
+      }
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("❌ Erro no webhook:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
 
   return httpServer;
 }
