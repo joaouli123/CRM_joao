@@ -187,6 +187,15 @@ export default function MessageInterface({
   const { data: conversations = [] } = useQuery({
     queryKey: [`/api/connections/${selectedConnectionId}/conversations`],
     enabled: !!selectedConnectionId,
+    onSuccess: (data) => {
+      console.log("📸 DADOS DAS CONVERSAS RECEBIDAS:", data);
+      data.forEach((conv: any, index: number) => {
+        console.log(`📱 Conversa ${index + 1}: ${conv.contactName || conv.phoneNumber} - Foto: ${conv.profilePicture ? '✅' : '❌'}`);
+        if (conv.profilePicture) {
+          console.log(`🖼️ URL da foto: ${conv.profilePicture}`);
+        }
+      });
+    }
   });
 
   // Buscar mensagens do chat selecionado COM ATUALIZAÇÃO EM TEMPO REAL
