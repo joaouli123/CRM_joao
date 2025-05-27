@@ -422,12 +422,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
                 }
 
-                // Contar mensagens não lidas (mensagens recebidas - fromMe: false)
+                // Sempre buscar a mensagem mais recente (primeira do array)
+                lastMessage = lastMessage.length > 50 ? lastMessage.substring(0, 50) + "..." : lastMessage;
+
+                // Contar mensagens não lidas (mensagens recebidas recentes)
                 const unreadMessages = messages.filter(msg => {
-                  // Verificar se é mensagem recebida (não enviada por mim)
                   const isReceived = !msg.key?.fromMe;
-                  
-                  // Verificar se não foi lida (status não é 'read' ou similar)
+                  const isRecent = msg.messageTimestamp && (Date.now() - (parseInt(msg.messageTimestamp) * 1000)) < (24 * 60 * 60 * 1000); // últimas 24h
                   const isUnread = !msg.status || msg.status !== 'read';
                   
                   return isReceived && isUnread;
