@@ -139,7 +139,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`🎯 Carregando conversas do banco de dados local (connectionId: ${connectionId})`);
 
-        // Carregar conversas do banco de dados local
+        // 🔄 SINCRONIZAR MENSAGENS RECENTES DA EVOLUTION API
+        try {
+          const instanceName = `whatsapp_${connectionId}_${connection.name}`;
+          console.log(`🔄 Tentando sincronizar mensagens recentes da ${instanceName}`);
+          
+          // Buscar chats recentes da Evolution API
+          const recentChats = await evolutionAPI.getAllChats(instanceName);
+          if (recentChats && recentChats.length > 0) {
+            console.log(`📱 Encontrados ${recentChats.length} chats na Evolution API`);
+            
+            // Sincronizar mensagens recentes para cada chat
+            for (const chat of recentChats.slice(0, 5)) { // Limitar a 5 chats mais recentes
+              try {
+                const messages = await evolutionAPI.getChatMessages(instanceName, chat.id, 10);
+                if (messages && messages.length > 0) {
+                  // Salvar mensagens novas no banco
+                  for (const msg of messages) {
+                    const existingMsg = await storage.getMessagesByConnection(connectionId);
+                    const exists = existingMsg.some(m => m.body === msg.body && m.timestamp === msg.timestamp);
+                    
+                    if (!exists) {
+                      await storage.createMessage({
+                        connectionId,
+                        direction: msg.fromMe ? 'sent' : 'received',
+                        from: msg.fromMe ? 'me' : msg.from,
+                        to: msg.fromMe ? msg.to : 'me',
+                        body: msg.body
+                      });
+                      console.log(`💾 Nova mensagem sincronizada: ${msg.body.substring(0, 50)}...`);
+                    }
+                  }
+                }
+              } catch (chatError) {
+                console.log(`⚠️ Erro ao sincronizar chat ${chat.id}:`, chatError.message);
+              }
+            }
+          }
+        } catch (syncError) {
+          console.log(`⚠️ Erro na sincronização Evolution API:`, syncError.message);
+        }
+
+        // Carregar conversas do banco de dados local (agora com mensagens atualizadas)
         const dbMessages = await storage.getMessagesByConnection(connectionId);
         const dbContacts = await storage.getContactsByConnection(connectionId);
         

@@ -214,6 +214,16 @@ export default function ContactsManagement() {
   };
 
   const handleDelete = (contact: Contact) => {
+    // 🔒 PROTEÇÃO: Verificar se é contato original do WhatsApp
+    if (contact.origem === 'whatsapp') {
+      toast({
+        title: "⚠️ Ação não permitida",
+        description: "Contatos originais do WhatsApp não podem ser deletados. Apenas dados adicionais podem ser removidos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setContactToDelete(contact);
     setIsDeleteDialogOpen(true);
   };

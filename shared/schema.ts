@@ -52,6 +52,7 @@ export const contacts = pgTable("contacts", {
   origem: text("origem").default("whatsapp"), // whatsapp, site, organico, indicacao, publicidade, outros
   profilePictureUrl: text("profile_picture_url"),
   isActive: boolean("is_active").notNull().default(true),
+  isWhatsAppOriginal: boolean("is_whatsapp_original").notNull().default(false), // true = dados protegidos do WhatsApp
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
