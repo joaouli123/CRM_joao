@@ -189,6 +189,28 @@ export default function ContactsManagement() {
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('🚀 FORMULÁRIO ENVIADO VIA SUBMIT!');
+    console.log('📋 DADOS COMPLETOS:', formData);
+    console.log('🏷️ TAG:', formData.tag);
+    console.log('🌐 ORIGEM:', formData.origem);
+    console.log('📝 OBSERVAÇÃO:', formData.observation);
+    
+    if (editingContact) {
+      const dataToSend = { 
+        id: editingContact.id, 
+        ...formData 
+      };
+      console.log('📤 ENVIANDO ATUALIZAÇÃO:', dataToSend);
+      updateContactMutation.mutate(dataToSend);
+    } else {
+      const dataToSend = { ...formData, connectionId: 36 };
+      console.log('📤 ENVIANDO CRIAÇÃO:', dataToSend);
+      createContactMutation.mutate(dataToSend);
+    }
+  };
+
   const handleEdit = (contact: Contact) => {
     setEditingContact(contact);
     setFormData({
@@ -361,7 +383,14 @@ export default function ContactsManagement() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="tag">Etiqueta</Label>
-                        <Select value={formData.tag} onValueChange={(value) => setFormData({ ...formData, tag: value })}>
+                        <Select 
+                          value={formData.tag} 
+                          onValueChange={(value) => {
+                            console.log('🏷️ TAG SELECIONADA:', value);
+                            setFormData({ ...formData, tag: value });
+                            console.log('📝 FORM DATA APÓS TAG:', { ...formData, tag: value });
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione uma etiqueta" />
                           </SelectTrigger>
@@ -378,7 +407,14 @@ export default function ContactsManagement() {
                     <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="origem">Origem</Label>
-                        <Select value={formData.origem} onValueChange={(value) => setFormData({ ...formData, origem: value })}>
+                        <Select 
+                          value={formData.origem} 
+                          onValueChange={(value) => {
+                            console.log('🌐 ORIGEM SELECIONADA:', value);
+                            setFormData({ ...formData, origem: value });
+                            console.log('📝 FORM DATA APÓS ORIGEM:', { ...formData, origem: value });
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a origem" />
                           </SelectTrigger>
