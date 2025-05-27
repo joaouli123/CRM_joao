@@ -445,6 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
             } catch (error) {
               console.log(`⚠️ Erro ao buscar última mensagem para ${phoneNumber}:`, error);
+              lastMessage = "Erro ao carregar mensagem";
             }
 
             const conversation = {
