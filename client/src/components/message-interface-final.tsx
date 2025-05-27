@@ -449,10 +449,10 @@ export default function MessageInterface({
   return (
     <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden">
       {/* Lista de Conversas */}
-      <div className="w-80 border-r border-gray-200 flex flex-col h-full bg-gray-50">
+      <div className="w-80 min-w-[280px] max-w-[400px] border-r border-gray-200 flex flex-col h-full bg-gray-50">
         {/* Header das Conversas */}
-        <div className="p-2 bg-white border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center justify-between mb-2">
+        <div className="p-3 bg-white border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-semibold text-gray-900">Conversas</h3>
             {isConnected && (
               <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
@@ -466,7 +466,7 @@ export default function MessageInterface({
               placeholder="Buscar conversas..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="pl-10 h-8 bg-gray-50 border-gray-200 focus:bg-white"
+              className="pl-10 h-9 bg-gray-50 border-gray-200 focus:bg-white"
             />
           </div>
         </div>
@@ -493,7 +493,7 @@ export default function MessageInterface({
                 {filteredConversations.map((conv: any) => (
                   <div
                     key={conv.phoneNumber}
-                    className={`p-3 cursor-pointer hover:bg-white transition-colors duration-150 ${
+                    className={`p-4 cursor-pointer hover:bg-white transition-colors duration-150 ${
                       selectedConversation === conv.phoneNumber 
                         ? 'bg-blue-50 border-r-3 border-r-blue-500' 
                         : ''
@@ -503,30 +503,41 @@ export default function MessageInterface({
                       setSelectedConversation(conv.phoneNumber);
                     }}
                   >
-                    <div className="flex items-center space-x-3">
-                      <ContactAvatar 
-                        profilePicture={conv.profilePicture}
-                        contactName={conv.contactName}
-                        phoneNumber={conv.phoneNumber}
-                        size="md"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <ContactAvatar 
+                          profilePicture={conv.profilePicture}
+                          contactName={conv.contactName}
+                          phoneNumber={conv.phoneNumber}
+                          size="md"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium text-gray-900 truncate pr-2">
                             {conv.contactName || conv.phoneNumber}
-                          </p>
-                          <span className="text-xs text-gray-500">
-                            {conv.lastMessageTime ? formatTime(new Date(conv.lastMessageTime)) : ''}
-                          </span>
+                          </h4>
+                          {conv.lastMessageTime && (
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              {formatTime(new Date(conv.lastMessageTime))}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-500 truncate">
-                          {conv.lastMessage || ''}
+                        
+                        <p className="text-sm text-gray-500 line-clamp-2 break-words">
+                          {conv.lastMessage || 'Nenhuma mensagem'}
                         </p>
-                        {conv.unreadCount > 0 && (
-                          <Badge variant="default" className="mt-1 bg-blue-500">
-                            {conv.unreadCount}
-                          </Badge>
-                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400 truncate">
+                            {conv.phoneNumber}
+                          </span>
+                          {conv.unreadCount > 0 && (
+                            <Badge variant="default" className="bg-blue-500 text-xs">
+                              {conv.unreadCount}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -542,7 +553,7 @@ export default function MessageInterface({
             <Button 
               variant="default" 
               size="sm"
-              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium py-2 shadow-md transform transition-all duration-200 hover:scale-105"
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium py-2.5 shadow-md transform transition-all duration-200 hover:scale-105"
               onClick={async () => {
                 setLoadingMoreConversations(true);
                 setConversationsLimit(prev => prev + 10);
@@ -551,12 +562,12 @@ export default function MessageInterface({
               disabled={loadingMoreConversations}
             >
               {loadingMoreConversations ? (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Carregando...</span>
                 </div>
               ) : (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                   <MessageCircle className="w-4 h-4" />
                   <span>Carregar Mais</span>
                 </div>

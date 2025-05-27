@@ -126,4 +126,20 @@
   .bg-error {
     background-color: hsl(var(--error));
   }
+
+  /* Utilitários para texto */
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.4;
+    max-height: calc(1.4em * 2);
+  }
+
+  .break-words {
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
 }
