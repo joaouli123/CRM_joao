@@ -13,7 +13,7 @@ import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } f
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
 import { QRCodeModal } from "@/components/modals/qr-code-modal";
 
-type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'settings';
+type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'contacts-dashboard' | 'settings';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('messages');

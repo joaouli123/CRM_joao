@@ -1,0 +1,89 @@
+Desenvolver a página de contatos com uma dashboard moderna, que inclua uma visualização geral das informações dos contatos, além de permitir adicionar, editar e excluir contatos, realizar pesquisas avançadas e exportar a lista de contatos. A página deve ser clara, organizada e visualmente atraente, com elementos bem distribuídos e fácil navegação.
+✅ Diretrizes de Layout e Funcionalidades:
+1. Dashboard no Topo da Página:
+
+    A parte superior da página deve conter um dashboard pequeno, com informações importantes sobre os contatos:
+
+        Quantidade total de contatos.
+
+        Contatos adicionados no dia (indicando novos contatos).
+
+        Um campo adicional para informações complementares, como última atualização ou status.
+
+2. Funções de Ação - Adicionar, Editar e Excluir Contato:
+
+    Abaixo da dashboard, adicione três botões ou ícones:
+
+        Adicionar Contato: Um botão claro para permitir que o usuário adicione novos contatos.
+
+        Editar Contato: Opção para editar as informações dos contatos já existentes.
+
+        Excluir Contato: Ação de exclusão do contato, com confirmação antes de remover o contato da lista.
+
+3. Filtros de Pesquisa:
+
+    Abaixo da área de ações, implemente filtros de pesquisa avançada, com opções como:
+
+        Filtro por data (período): Permite ao usuário selecionar um período de tempo para filtrar os contatos.
+
+        Filtro por recentes/antigos: Para exibir os contatos mais recentemente adicionados ou os mais antigos.
+
+        Pesquisa por nome: Pesquisa simples por nome de contato.
+
+        Pesquisa por etiqueta: Permite filtrar contatos com base em suas etiquetas (ex: 'lead', 'qualificado', 'desqualificado').
+
+4. Tabela de Contatos:
+
+    Abaixo dos filtros, exiba a tabela de contatos com as seguintes colunas:
+
+        Foto do Contato (se disponível) com bordas arredondadas.
+
+        Nome do Contato.
+
+        Data de Adição.
+
+        Etiqueta (ex: 'Lead', 'Qualificado', etc.).
+
+        Botão para abrir a conversa: Um ícone/link para iniciar a conversa com o contato diretamente na aba do WhatsApp.
+
+    A tabela deve ser paginada, com a capacidade de navegar entre diferentes páginas de contatos (ex: páginas 1, 2, 3…).
+
+5. Exportação de Dados:
+
+    Um botão de exportação para permitir que o usuário baixe a lista de contatos em formato CSV ou Excel. O botão deve ser visualmente destacado, mas não deve sobrecarregar a interface.
+
+6. Responsividade e Design Visual:
+
+    A interface deve ser responsiva, com um design que se adapta bem em telas pequenas (smartphones, tablets) e grandes (desktops).
+
+    Use cores suaves e um design limpo, com tons de cinza claro e laranja (como mostrado no exemplo de layout), sem exagerar nos gradientes ou efeitos de sombra.
+
+    A tipografia deve ser legível e consistente, com títulos e subtítulos claros.
+
+7. Usabilidade:
+
+    A navegação e a interação com os contatos devem ser simples e fluídas, com cliques rápidos para adicionar, editar e excluir contatos.
+
+    O botão para iniciar a conversa com o contato no WhatsApp deve ser claro e acessível.
+
+    A tabela deve permitir fácil navegação entre os dados, sem causar sobrecarga visual.
+
+🎯 Resultados Esperados:
+
+    Dashboard informativo no topo, com dados relevantes sobre os contatos.
+
+    Funcionalidades de gerenciamento de contatos (adicionar, editar, excluir) intuitivas.
+
+    Filtros de pesquisa avançados, com opções de filtro por data, nome, etiqueta, e status (recentes/antigos).
+
+    Tabela de contatos organizada, com informações essenciais visíveis e fácil acesso à conversa no WhatsApp.
+
+    Botão de exportação para exportar os contatos em formato CSV ou Excel.
+
+    Design responsivo e limpo, garantindo boa experiência de uso em diferentes dispositivos.
+
+    Facilidade de uso, permitindo que os usuários encontrem rapidamente o que precisam e realizem ações com poucos cliques.
+
+📝 Conclusão:
+
+Com esse design aprimorado, a aba de contatos se tornará mais funcional e bem organizada, permitindo que o usuário gerencie seus contatos de forma eficaz. A interface será moderna, intuitiva e permitirá navegação rápida, com destaque para a integração com o WhatsApp para facilitar a comunicação direta com os contatos.
