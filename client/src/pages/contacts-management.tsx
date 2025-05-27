@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { ImportModal } from '@/components/import-modal';
 import { format, subDays, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -735,92 +736,7 @@ export default function ContactsManagement() {
                 </DialogContent>
               </Dialog>
 
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="btn-secondary border-blue-500 text-blue-700 hover:bg-blue-50"
-                  >
-                    <Download className="mr-2 h-4 w-4 rotate-180" />
-                    Importar
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Upload className="h-5 w-5 text-blue-600" />
-                      Importar Contatos
-                    </DialogTitle>
-                    <DialogDescription>
-                      Faça upload de um arquivo CSV ou Excel com seus contatos.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-6">
-                    {/* Instruções */}
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h4 className="font-semibold text-blue-900 mb-2">📋 Formato do Arquivo</h4>
-                      <p className="text-sm text-blue-700 mb-2">Seu arquivo deve conter as seguintes colunas:</p>
-                      <div className="bg-white p-2 rounded border text-xs font-mono">
-                        NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA
-                      </div>
-                      <div className="mt-2 text-sm text-blue-600">
-                        <p>• <strong>NOME:</strong> Nome do contato (obrigatório)</p>
-                        <p>• <strong>TELEFONE:</strong> Número com DDD (obrigatório)</p>
-                        <p>• <strong>EMAIL:</strong> Email do contato (opcional)</p>
-                        <p>• <strong>TAG:</strong> lead, cliente, prospect, etc. (opcional)</p>
-                        <p>• <strong>ORIGEM:</strong> website, facebook, etc. (opcional)</p>
-                        <p>• <strong>DATA:</strong> Data no formato dd/MM/yyyy (opcional)</p>
-                      </div>
-                    </div>
-
-                    {/* Formatos aceitos */}
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <h4 className="font-semibold text-green-900 mb-2">✅ Formatos Aceitos</h4>
-                      <div className="flex gap-3">
-                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">.CSV</span>
-                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">.XLSX</span>
-                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">.XLS</span>
-                      </div>
-                    </div>
-
-                    {/* Área de Upload */}
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
-                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-lg font-medium text-gray-700 mb-2">
-                        Clique para selecionar ou arraste seu arquivo aqui
-                      </p>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Arquivos CSV, XLSX ou XLS até 10MB
-                      </p>
-                      
-                      <input
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={handleImport}
-                        className="hidden"
-                        id="import-file-modal"
-                      />
-                      
-                      <Button
-                        onClick={() => document.getElementById('import-file-modal')?.click()}
-                        className="btn-primary"
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Selecionar Arquivo
-                      </Button>
-                    </div>
-
-                    {/* Exemplo */}
-                    <div className="bg-gray-50 p-4 rounded-lg border">
-                      <h4 className="font-semibold text-gray-900 mb-2">💡 Exemplo de linha no CSV:</h4>
-                      <div className="bg-white p-2 rounded border text-xs font-mono text-gray-700">
-                        João Silva;11999887766;joao@email.com;cliente;website;27/05/2025
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <ImportModal />
             </div>
           </div>
 
