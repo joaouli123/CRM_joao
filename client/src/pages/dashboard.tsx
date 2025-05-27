@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/sidebar";
 import MessageInterface from "@/components/message-interface-final";
-import ContactsPage from "@/pages/contacts";
+import Contacts from "@/pages/contacts";
 import { Connection, ConnectionStats } from "@/lib/api";
 import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
@@ -285,15 +285,7 @@ export default function Dashboard() {
 
       case "contacts":
         return (
-          <div className="h-full">
-            <ContactsPage 
-              onOpenChat={(phoneNumber, contactName) => {
-                setActiveTab('messages');
-                setSelectedConnectionId(36);
-                console.log(`🚀 Abrindo conversa com ${contactName} (${phoneNumber})`);
-              }}
-            />
-          </div>
+          <Contacts activeConnectionId={selectedConnectionId} />
         );
 
       case "settings":
@@ -345,12 +337,14 @@ export default function Dashboard() {
                 {activeTab === 'dashboard' && 'Dashboard'}
                 {activeTab === 'connections' && 'Conexões'}
                 {activeTab === 'messages' && 'Mensagens'}
+                {activeTab === 'contacts' && 'Contatos'}
                 {activeTab === 'settings' && 'Configurações'}
               </h2>
               <p className="text-xs text-gray-500 leading-tight">
                 {activeTab === 'dashboard' && 'Visão geral do sistema'}
                 {activeTab === 'connections' && 'Gerenciar conexões WhatsApp'}
                 {activeTab === 'messages' && 'Enviar e receber mensagens'}
+                {activeTab === 'contacts' && 'Gerenciar seus contatos'}
                 {activeTab === 'settings' && 'Configurações do sistema'}
               </p>
             </div>
