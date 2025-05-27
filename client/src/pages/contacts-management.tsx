@@ -971,16 +971,17 @@ export default function ContactsManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-phoneNumber">Telefone (WhatsApp) *</Label>
-                  <Input
-                    id="edit-phoneNumber"
-                    value={formData.phoneNumber}
-                    readOnly
-                    disabled
-                    className="bg-gray-100 text-gray-600 cursor-not-allowed"
-                    title="Número do WhatsApp não pode ser alterado"
-                  />
-                  <p className="text-xs text-gray-500">📱 Número original do WhatsApp (não editável)</p>
+                  <Label htmlFor="edit-phoneNumber">📱 Telefone WhatsApp (Protegido)</Label>
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-mono text-green-800 font-medium">{formData.phoneNumber}</span>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full ml-auto">
+                      Original do WhatsApp
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    🔒 Este número é protegido e não pode ser alterado
+                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
