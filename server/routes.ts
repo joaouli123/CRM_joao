@@ -999,6 +999,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get messages for a specific conversation - ROTA CRIADA
+  app.get('/api/connections/:connectionId/messages/:phoneNumber', async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.connectionId);
+      const phoneNumber = req.params.phoneNumber;
+      const limit = parseInt(req.query.limit as string) || 50;
+
+      console.log(`📨 [SUCCESS] Buscando mensagens para ${phoneNumber} na conexão ${connectionId}`);
+
+      // Get stored messages from our database
+      const messages = await storage.getMessagesByConversation(connectionId, phoneNumber, limit);
+      
+      console.log(`📨 [SUCCESS] Encontradas ${messages.length} mensagens`);
+      res.status(200).json(messages);
+    } catch (error) {
+      console.error(`❌ [ERROR] Erro ao buscar mensagens:`, error);
+      res.status(200).json([]); // Retorna array vazio em caso de erro
+    }
+  });
+
   // Get archived chats by connection - CORRIGIDO DEFINITIVAMENTE
   app.get('/api/connections/:connectionId/archived-chats', (req, res) => {
     try {
