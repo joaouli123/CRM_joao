@@ -1,0 +1,127 @@
+Prompt para a IA: Implementar a Rota findStatusMessage da Evolution API
+🧠 Objetivo:
+
+Implemente a requisição POST para a rota findStatusMessage da Evolution API. Essa rota é responsável por buscar o status da mensagem associada a uma instância específica.
+🔧 Passos para Implementação:
+
+    Entenda a Estrutura da Rota:
+
+        Método: POST
+
+        URL: https://sub.domain.com/chat/findStatusMessage/{instance}
+
+            Substitua sub.domain.com pelo domínio real da sua API.
+
+            Substitua {instance} pelo nome da instância que você deseja consultar.
+
+        A URL completa deve ser: https://sub.domain.com/chat/findStatusMessage/myInstance.
+
+    Configuração da Requisição:
+
+        Headers:
+
+            Authorization: Se a API requer autenticação, forneça um token de autenticação (por exemplo, Bearer <your-token>).
+
+            Content-Type: application/json para garantir que o corpo da requisição seja processado corretamente.
+
+    Processamento da Resposta:
+
+        A resposta deve ser tratada para garantir que o status da mensagem seja corretamente extraído.
+
+        Exemplo de resposta esperada:
+
+    {
+      "status": "success",
+      "message": "Message status found",
+      "data": {
+        "status": "delivered",
+        "timestamp": "2025-05-27T12:00:00Z"
+      }
+    }
+
+Erro de Resposta:
+
+    Caso a resposta seja um erro (erro 500, 404, etc.), deve-se exibir uma mensagem amigável no frontend informando o erro, como "Erro ao carregar status da mensagem".
+
+Exemplo de Implementação com fetch ou axios:
+
+Usando fetch:
+
+const findStatusMessage = async (instanceName) => {
+  try {
+    const response = await fetch(`https://your-evolution-api.com/chat/findStatusMessage/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer <your-token>', // Se necessário
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Status da mensagem:', data);
+      // Processar o status da mensagem aqui (ex: "delivered", "pending", etc.)
+    } else {
+      throw new Error('Erro ao buscar o status da mensagem');
+    }
+  } catch (error) {
+    console.error('Erro ao carregar status da mensagem:', error);
+    // Exibir mensagem de erro amigável
+  }
+};
+
+// Exemplo de uso
+findStatusMessage('myInstance');
+
+Usando axios:
+
+    import axios from 'axios';
+
+    const findStatusMessage = async (instanceName) => {
+      try {
+        const response = await axios.post(`https://your-evolution-api.com/chat/findStatusMessage/${instanceName}`, {
+          headers: {
+            'Authorization': 'Bearer <your-token>', // Se necessário
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('Status da mensagem:', response.data);
+        // Processar o status da mensagem aqui (ex: "delivered", "pending", etc.)
+      } catch (error) {
+        console.error('Erro ao carregar status da mensagem:', error);
+        // Exibir mensagem de erro amigável
+      }
+    };
+
+    // Exemplo de uso
+    findStatusMessage('myInstance');
+
+🎯 Comportamento Esperado:
+
+    Realizar a requisição POST para a Evolution API para obter o status da mensagem da instância fornecida.
+
+    Tratar a resposta:
+
+        Se a resposta for bem-sucedida, exibir o status da mensagem (por exemplo, "delivered", "pending").
+
+        Se houver erro, exibir uma mensagem amigável ao usuário.
+
+    Exibir o status de forma visível no frontend, como uma notificação ou em uma seção de status da conversa.
+
+    Gerenciar erros de forma adequada no frontend, como erros de rede ou falhas de servidor.
+
+📝 Resumo da Tarefa:
+
+    Implementar a requisição POST para a rota /chat/findStatusMessage/{instance}.
+
+    Processar a resposta para extrair o status da mensagem.
+
+    Exibir o status da mensagem no frontend.
+
+    Adicionar tratamento de erros para falhas na requisição.
+
+📚 Documentação da API:
+
+Aqui está o link para a documentação oficial da Evolution API para mais detalhes:
+Evolution API - Find Status Message
