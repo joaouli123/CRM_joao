@@ -1179,11 +1179,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Criar novo contato
-  app.post('/api/connections/:id/contacts', async (req, res) => {
-    const connectionId = parseInt(req.params.id);
-    const { name, phoneNumber, email, observacao, etiqueta } = req.body;
+  app.post('/api/contacts', async (req, res) => {
+    const { name, phoneNumber, email, observation, tag, connectionId = 36 } = req.body;
     
-    console.log(`📱 Criando novo contato na conexão ${connectionId}:`, { name, phoneNumber, email });
+    console.log(`📱 Criando novo contato:`, { name, phoneNumber, email, observation, tag });
     
     try {
       // Verificar se já existe
@@ -1197,10 +1196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phoneNumber,
         name,
         email: email || null,
-        observacao: observacao || null,
-        etiqueta: etiqueta || null,
-        isActive: true,
-        lastActivity: new Date()
+        observation: observation || null,
+        tag: tag || 'lead',
+        isActive: true
       });
       
       console.log(`✅ Contato criado com ID: ${newContact.id}`);
