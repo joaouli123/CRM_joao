@@ -114,11 +114,10 @@ export default function ContactsManager({ activeConnectionId }: ContactsManagerP
   // Criar contato a partir do WhatsApp
   const createContactFromWhatsApp = async (whatsappContact: any) => {
     try {
-      const response = await fetch('/api/contacts', {
+      const response = await fetch(`/api/connections/${activeConnectionId}/contacts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          connectionId: activeConnectionId,
           name: whatsappContact.contactName || whatsappContact.phoneNumber,
           phoneNumber: whatsappContact.phoneNumber,
           profilePictureUrl: whatsappContact.profilePicture,
@@ -147,12 +146,11 @@ export default function ContactsManager({ activeConnectionId }: ContactsManagerP
     }
 
     try {
-      const response = await fetch('/api/contacts', {
+      const response = await fetch(`/api/connections/${activeConnectionId}/contacts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newContact,
-          connectionId: activeConnectionId,
           isActive: true
         })
       });

@@ -1,0 +1,51 @@
+Dashboard no Topo da Página:
+
+    A parte superior da página deve conter um dashboard pequeno, com informações importantes sobre os contatos:
+
+        Quantidade total de contatos.
+
+        Contatos adicionados no dia (indicando novos contatos).
+
+        Um campo adicional para informações complementares, como última atualização ou status.
+
+2. Funções de Ação - Adicionar, Editar e Excluir Contato:
+
+    Abaixo da dashboard, adicione três botões ou ícones:
+
+        Adicionar Contato: Um botão claro para permitir que o usuário adicione novos contatos.
+
+        Editar Contato: Opção para editar as informações dos contatos já existentes.
+
+        Excluir Contato: Ação de exclusão do contato, com confirmação antes de remover o contato da lista.
+
+3. Filtros de Pesquisa:
+
+    Abaixo da área de ações, implemente filtros de pesquisa avançada, com opções como:
+
+        Filtro por data (período): Permite ao usuário selecionar um período de tempo para filtrar os contatos.
+
+        Filtro por recentes/antigos: Para exibir os contatos mais recentemente adicionados ou os mais antigos.
+
+        Pesquisa por nome: Pesquisa simples por nome de contato.
+
+        Pesquisa por etiqueta: Permite filtrar contatos com base em suas etiquetas (ex: 'lead', 'qualificado', 'desqualificado').
+
+4. Tabela de Contatos:
+
+    Abaixo dos filtros, exiba a tabela de contatos com as seguintes colunas:
+
+        Foto do Contato (se disponível) com bordas arredondadas.
+
+        Nome do Contato.
+
+        Data de Adição.
+
+        Etiqueta (ex: 'Lead', 'Qualificado', etc.).
+
+        Botão para abrir a conversa: Um ícone/link para iniciar a conversa com o contato diretamente na aba do WhatsApp.
+
+    A tabela deve ser paginada, com a capacidade de navegar entre diferentes páginas de contatos (ex: páginas 1, 2, 3…).
+
+5. Exportação de Dados:
+
+    Um botão de exportação para permitir que o usuário baixe a lista de contatos em formato CSV ou Excel. O botão deve ser visualmente destacado, mas não deve sobrecarregar a interface.
