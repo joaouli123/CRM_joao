@@ -1,4 +1,4 @@
-import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation, archivedChats, archivedMessages, type ArchivedChat, type InsertArchivedChat, type ArchivedMessage, type InsertArchivedMessage, User, InsertUser, users } from "@shared/schema";
+import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation, archivedChats, archivedMessages, type ArchivedChat, type InsertArchivedChat, type ArchivedMessage, type InsertArchivedMessage, User, InsertUser, users, Contact, InsertContact, contacts } from "@shared/schema";
 
 export interface IStorage {
   // User methods
@@ -34,6 +34,15 @@ export interface IStorage {
   createArchivedMessage(archivedMessage: InsertArchivedMessage): Promise<ArchivedMessage>;
   unarchiveChat(id: number): Promise<boolean>;
   deleteArchivedChat(id: number): Promise<boolean>;
+  
+  // Contact methods
+  getContact(id: number): Promise<Contact | undefined>;
+  getContactByPhone(connectionId: number, phoneNumber: string): Promise<Contact | undefined>;
+  getContactsByConnection(connectionId: number): Promise<Contact[]>;
+  createContact(contact: InsertContact): Promise<Contact>;
+  updateContact(id: number, updates: Partial<Contact>): Promise<Contact | undefined>;
+  deleteContact(id: number): Promise<boolean>;
+  syncContactFromWhatsApp(connectionId: number, phoneNumber: string, name: string, profilePicture?: string): Promise<Contact>;
 }
 
 export class MemStorage implements IStorage {
@@ -279,6 +288,88 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  // 📱 Métodos de Contatos - SINCRONIZAÇÃO INTELIGENTE
+  async getContact(id: number): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+    return contact || undefined;
+  }
+
+  async getContactByPhone(connectionId: number, phoneNumber: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts)
+      .where(and(eq(contacts.connectionId, connectionId), eq(contacts.phoneNumber, phoneNumber)));
+    return contact || undefined;
+  }
+
+  async getContactsByConnection(connectionId: number): Promise<Contact[]> {
+    return await db.select().from(contacts)
+      .where(eq(contacts.connectionId, connectionId))
+      .orderBy(asc(contacts.name));
+  }
+
+  async createContact(insertContact: InsertContact): Promise<Contact> {
+    const [contact] = await db.insert(contacts).values(insertContact).returning();
+    return contact;
+  }
+
+  async updateContact(id: number, updates: Partial<Contact>): Promise<Contact | undefined> {
+    const [contact] = await db.update(contacts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(contacts.id, id))
+      .returning();
+    return contact || undefined;
+  }
+
+  async deleteContact(id: number): Promise<boolean> {
+    const result = await db.delete(contacts).where(eq(contacts.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // 🔄 SINCRONIZAÇÃO INTELIGENTE - Salva apenas NOVOS contatos
+  async syncContactFromWhatsApp(
+    connectionId: number, 
+    phoneNumber: string, 
+    name: string, 
+    profilePicture?: string
+  ): Promise<Contact> {
+    console.log(`🔄 Sincronizando contato: ${name} (${phoneNumber}) na conexão ${connectionId}`);
+    
+    // Verificar se o contato já existe
+    const existingContact = await this.getContactByPhone(connectionId, phoneNumber);
+    
+    if (existingContact) {
+      console.log(`✅ Contato já existe no banco: ${name} - Atualizando dados`);
+      
+      // Atualizar apenas se houver mudanças
+      const updates: Partial<Contact> = {};
+      if (existingContact.name !== name) updates.name = name;
+      if (existingContact.profilePicture !== profilePicture) updates.profilePicture = profilePicture;
+      updates.lastActivity = new Date();
+      
+      if (Object.keys(updates).length > 1) { // Mais que só lastActivity
+        return await this.updateContact(existingContact.id, updates) || existingContact;
+      }
+      
+      return existingContact;
+    }
+    
+    // 🆕 NOVO CONTATO - Salvar no banco
+    console.log(`🆕 Novo contato detectado: ${name} (${phoneNumber}) - Salvando no banco`);
+    
+    const newContact: InsertContact = {
+      connectionId,
+      phoneNumber,
+      name,
+      profilePicture,
+      isActive: true,
+      lastActivity: new Date()
+    };
+    
+    const savedContact = await this.createContact(newContact);
+    console.log(`✅ Contato salvo no banco com ID: ${savedContact.id}`);
+    
+    return savedContact;
   }
 
   async getConversationsByConnection(connectionId: number): Promise<Conversation[]> {
