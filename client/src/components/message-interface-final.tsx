@@ -448,7 +448,7 @@ export default function MessageInterface({
   }
 
   return (
-    <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden max-h-[calc(100vh-8rem)]">
       {/* Lista de Conversas */}
       <div className="w-80 border-r border-gray-200 flex flex-col h-full bg-gray-50">
         {/* Header das Conversas */}

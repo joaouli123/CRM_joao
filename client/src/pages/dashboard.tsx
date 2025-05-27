@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -217,7 +216,7 @@ export default function Dashboard() {
                           <span>{connection.status}</span>
                         </Badge>
                       </div>
-                      
+
                       <div className="space-y-2 mb-4">
                         <div className="text-sm">
                           <span className="text-gray-500">Telefone:</span>
@@ -271,7 +270,7 @@ export default function Dashboard() {
         return (
           <div className="max-w-4xl space-y-6">
             <h3 className="text-lg font-semibold text-gray-900">Configurações do Sistema</h3>
-            
+
             <Card>
               <CardContent className="p-6">
                 <h4 className="font-medium text-gray-900 mb-4">Configurações Gerais</h4>
@@ -285,7 +284,7 @@ export default function Dashboard() {
                     <Input type="number" defaultValue="5000" />
                   </div>
                 </div>
-                
+
                 <div className="mt-6 flex justify-end">
                   <Button>Salvar Configurações</Button>
                 </div>
@@ -306,7 +305,7 @@ export default function Dashboard() {
         onTabChange={setActiveTab}
         onNewConnection={() => setShowNewConnectionModal(true)}
       />
-      
+
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">

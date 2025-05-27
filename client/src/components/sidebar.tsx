@@ -36,7 +36,7 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
-            
+
             return (
               <button
                 key={item.id}
