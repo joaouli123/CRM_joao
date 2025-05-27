@@ -111,6 +111,91 @@ export default function ContactsWorking() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  // Funções para edição
+  const handleEditContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setEditForm({
+      name: contact.name,
+      phoneNumber: contact.phoneNumber,
+      email: contact.email || '',
+      tag: contact.tag || '',
+      origem: contact.origem || 'whatsapp',
+      observation: contact.observation || ''
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateContact = async () => {
+    if (!selectedContact) return;
+
+    try {
+      const response = await fetch(`/api/contacts/${selectedContact.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...editForm,
+          email: editForm.email || null,
+          tag: editForm.tag || null,
+          observation: editForm.observation || null
+        }),
+      });
+
+      if (response.ok) {
+        await loadContacts();
+        setEditDialogOpen(false);
+        setSelectedContact(null);
+        toast({
+          title: "Contato atualizado!",
+          description: "As informações foram salvas com sucesso.",
+        });
+      } else {
+        throw new Error('Erro ao atualizar contato');
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o contato.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Funções para exclusão
+  const handleDeleteContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteContact = async () => {
+    if (!selectedContact) return;
+
+    try {
+      const response = await fetch(`/api/contacts/${selectedContact.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await loadContacts();
+        setDeleteDialogOpen(false);
+        setSelectedContact(null);
+        toast({
+          title: "Contato excluído!",
+          description: "O contato foi removido com sucesso.",
+        });
+      } else {
+        throw new Error('Erro ao excluir contato');
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o contato.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50">
@@ -271,14 +356,32 @@ export default function ContactsWorking() {
                   <p className="text-xs text-gray-500">{formatDate(contact.createdAt)}</p>
                 </div>
 
-                <div className="col-span-1 flex items-center space-x-2">
+                <div className="col-span-1 flex items-center space-x-1">
                   <Button
                     size="sm"
                     variant="outline"
                     className="text-green-600 border-green-600 hover:bg-green-50"
                     title="Enviar mensagem"
                   >
-                    <MessageSquare className="w-4 h-4" />
+                    <MessageSquare className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                    title="Editar contato"
+                    onClick={() => handleEditContact(contact)}
+                  >
+                    <Edit className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-600 hover:bg-red-50"
+                    title="Excluir contato"
+                    onClick={() => handleDeleteContact(contact)}
+                  >
+                    <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
               </div>
