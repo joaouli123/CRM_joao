@@ -836,6 +836,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
 
+      // 1. Buscar dados da conexão antes de deletar
+      const connection = await storage.getConnection(id);
+      if (!connection) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+
+      // 2. Limpar sessão local
       const session = sessions.get(id);
       if (session) {
         if (session.qrTimer) {
@@ -844,17 +851,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessions.delete(id);
       }
 
-      const deleted = await storage.deleteConnection(id);
-      if (!deleted) {
-        return res.status(404).json({ error: "Connection not found" });
+      // 3. 🔥 LIMPAR INSTÂNCIA NO EVOLUTION API 
+      if (connection.sessionData) {
+        try {
+          console.log(`🧹 Limpando instância Evolution API: ${connection.sessionData}`);
+          await evolutionAPI.deleteInstance(connection.sessionData);
+          console.log(`✅ Instância ${connection.sessionData} removida do Evolution API`);
+        } catch (evolutionError) {
+          console.log(`⚠️ Instância ${connection.sessionData} já foi removida do Evolution API ou erro: ${evolutionError}`);
+          // Continua mesmo se der erro - pode já estar deletada
+        }
       }
 
-      console.log(`🗑️ Conexão deletada: ID ${id}`);
+      // 4. Deletar do banco de dados
+      const deleted = await storage.deleteConnection(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Failed to delete from database" });
+      }
+
+      console.log(`🗑️ Conexão ${connection.name} (${connection.sessionData}) completamente removida!`);
 
       broadcast({ type: "connectionDeleted", data: { id } });
-      res.json({ success: true });
+      res.json({ 
+        success: true, 
+        message: "Conexão e instância Evolution API removidas com sucesso" 
+      });
     } catch (error) {
-      console.error("Error deleting connection:", error);
+      console.error("❌ Error deleting connection:", error);
       res.status(500).json({ error: "Failed to delete connection" });
     }
   });
