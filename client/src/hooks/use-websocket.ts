@@ -13,7 +13,7 @@ export function useWebSocket(onMessage?: (message: WebSocketMessage) => void) {
   const connect = () => {
     try {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -32,11 +32,11 @@ export function useWebSocket(onMessage?: (message: WebSocketMessage) => void) {
         setIsConnected(false);
         wsRef.current = null;
         
-        // Attempt to reconnect after 3 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log("Attempting to reconnect WebSocket...");
-          connect();
-        }, 3000);
+        // Skip reconnection for now
+        // reconnectTimeoutRef.current = setTimeout(() => {
+        //   console.log("Attempting to reconnect WebSocket...");
+        //   connect();
+        // }, 3000);
       };
 
       ws.onerror = (error) => {

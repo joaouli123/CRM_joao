@@ -45,14 +45,14 @@ export default function ModernMessageInterface({ activeConnectionId }: ModernMes
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { isConnected } = useWebSocket(activeConnectionId);
+  const { isConnected } = useWebSocket();
 
   // Carregar conversas
   useEffect(() => {
     const fetchConversations = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/conversations/${activeConnectionId}`);
+        const response = await fetch(`/api/connections/${activeConnectionId}/conversations`);
         if (response.ok) {
           const data = await response.json();
           setConversations(data);
@@ -72,7 +72,7 @@ export default function ModernMessageInterface({ activeConnectionId }: ModernMes
     if (selectedConversation) {
       const fetchMessages = async () => {
         try {
-          const response = await fetch(`/api/messages/${activeConnectionId}/${selectedConversation}`);
+          const response = await fetch(`/api/connections/${activeConnectionId}/conversations/${selectedConversation}/messages`);
           if (response.ok) {
             const data = await response.json();
             setMessages(data);
