@@ -19,34 +19,37 @@
 }
 
 :root {
-  --background: 250 50% 98%; /* #FAFAFA */
-  --foreground: 220 14% 4%; /* #0F172A */
-  --card: 0 0% 100%; /* #FFFFFF */
-  --card-foreground: 220 14% 4%; /* #0F172A */
+  --background: 210 11% 96%; /* #F1F3F5 - Cinza muito claro */
+  --foreground: 210 11% 15%; /* #1F2937 - Cinza escuro para texto */
+  --card: 0 0% 100%; /* #FFFFFF - Branco puro */
+  --card-foreground: 210 11% 15%; /* #1F2937 */
   --popover: 0 0% 100%; /* #FFFFFF */
-  --popover-foreground: 220 14% 4%; /* #0F172A */
-  --primary: 207 90% 54%; /* #1976D2 */
-  --primary-foreground: 211 100% 99%; /* #FFFFFF */
-  --secondary: 122 37% 45%; /* #388E3C */
+  --popover-foreground: 210 11% 15%; /* #1F2937 */
+  --primary: 20 100% 55%; /* #FF6600 - Laranja vibrante */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
+  --secondary: 210 11% 71%; /* #9CA3AF - Cinza médio */
   --secondary-foreground: 0 0% 100%; /* #FFFFFF */
-  --muted: 220 14% 96%; /* #F1F5F9 */
-  --muted-foreground: 220 9% 46%; /* #64748B */
-  --accent: 220 14% 96%; /* #F1F5F9 */
-  --accent-foreground: 220 9% 15%; /* #1E293B */
+  --muted: 210 11% 93%; /* #E5E7EB - Cinza claro */
+  --muted-foreground: 210 11% 46%; /* #6B7280 - Cinza médio */
+  --accent: 20 100% 97%; /* #FFF5F0 - Laranja muito claro */
+  --accent-foreground: 20 100% 45%; /* #E6400A - Laranja escuro */
   --destructive: 0 84% 60%; /* #EF4444 */
   --destructive-foreground: 0 0% 98%; /* #FEFEFE */
-  --border: 220 13% 91%; /* #E2E8F0 */
-  --input: 220 13% 91%; /* #E2E8F0 */
-  --ring: 207 90% 54%; /* #1976D2 */
-  --radius: 0.5rem;
-  --warning: 30 100% 50%; /* #F57C00 */
+  --border: 210 11% 82%; /* #D1D5DB - Cinza claro */
+  --input: 210 11% 93%; /* #E5E7EB - Cinza claro */
+  --ring: 20 100% 55%; /* #FF6600 - Laranja */
+  --radius: 0.75rem;
+  --warning: 38 100% 50%; /* #FF8C00 - Laranja dourado */
   --error: 0 73% 41%; /* #D32F2F */
   --surface: 0 0% 100%; /* #FFFFFF */
-  --chart-1: 12 76% 61%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
+  --sidebar-background: 210 11% 20%; /* #374151 - Cinza escuro */
+  --sidebar-foreground: 0 0% 100%; /* #FFFFFF */
+  --sidebar-accent: 20 100% 55%; /* #FF6600 - Laranja */
+  --chart-1: 20 100% 55%; /* Laranja */
+  --chart-2: 210 11% 60%; /* Cinza médio */
+  --chart-3: 20 100% 65%; /* Laranja claro */
+  --chart-4: 210 11% 40%; /* Cinza escuro */
+  --chart-5: 20 100% 75%; /* Laranja mais claro */
 }
 
 .dark {

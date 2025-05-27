@@ -1,71 +1,72 @@
-import { MessageSquare, Plug, Settings, BarChart3, Plus, Contact } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-interface SidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-  onNewConnection: () => void;
-}
-
-export default function Sidebar({ activeTab, onTabChange, onNewConnection }: SidebarProps) {
-  const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "connections", label: "Conexões", icon: Plug },
-    { id: "messages", label: "Mensagens", icon: MessageSquare },
-    { id: "contacts", label: "Contatos", icon: Contact },
-    { id: "settings", label: "Configurações", icon: Settings },
-  ];
-
-  return (
-    <div className="w-60 h-full bg-surface border-r border-gray-200 flex flex-col flex-shrink-0">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex-shrink-0">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <MessageSquare className="text-white text-lg" />
-          </div>
-          <div>
-            <h1 className="text-base font-semibold text-gray-900">WhatsApp Hub</h1>
-            <p className="text-xs text-gray-500">Sistema de Automação</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="p-4 flex-1 overflow-y-auto">
-        <nav className="space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  isActive
-                    ? "bg-blue-50 text-primary"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="p-4 border-t border-gray-200 flex-shrink-0">
-        <Button 
-          onClick={onNewConnection}
-          className="w-full bg-primary text-white hover:bg-blue-700 flex items-center justify-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nova Conexão</span>
-        </Button>
-      </div>
-    </div>
-  );
-}
+")
+print('import { MessageSquare, Plug, Settings, BarChart3, Plus } from "lucide-react";')
+print('import { Button } from "@/components/ui/button";')
+print('')
+print("interface SidebarProps {")
+print("  activeTab: string;")
+print("  onTabChange: (tab: string) => void;")
+print("  onNewConnection: () => void;")
+print("}")
+print('')
+print("export default function Sidebar({ activeTab, onTabChange, onNewConnection }: SidebarProps) {")
+print("  const menuItems = [")
+print('    { id: "dashboard", label: "Dashboard", icon: BarChart3 },')
+print('    { id: "connections", label: "Conexões", icon: Plug },')
+print('    { id: "messages", label: "Mensagens", icon: MessageSquare },')
+print('    { id: "settings", label: "Configurações", icon: Settings },')
+print("  ];")
+print('')
+print("  return (")
+print('    <div className="w-60 h-full bg-gray-800 text-white border-r border-gray-700 flex flex-col flex-shrink-0 shadow-lg">')
+print("      {/* Header */}")
+print('      <div className="p-4 border-b border-gray-700 flex-shrink-0">')
+print('        <div className="flex items-center space-x-3">')
+print('          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">')
+print('            <MessageSquare className="text-white text-lg" />')
+print("          </div>")
+print("          <div>")
+print('            <h1 className="text-base font-semibold text-white">WhatsApp Hub</h1>')
+print('            <p className="text-xs text-gray-400">Sistema de Automação</p>')
+print("          </div>")
+print("        </div>")
+print("      </div>")
+print('')
+print("      {/* Navigation */}")
+print('      <div className="p-4 flex-1 overflow-y-auto">')
+print('        <nav className="space-y-2">')
+print("          {menuItems.map((item) => {")
+print("            const Icon = item.icon;")
+print("            const isActive = activeTab === item.id;")
+print('')
+print("            return (")
+print('              <button')
+print('                key={item.id}')
+print('                onClick={() => onTabChange(item.id)}')
+print('                className={`w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg font-medium transition-colors ${')
+print('                  isActive')
+print('                    ? "bg-orange-500 text-white shadow-md"')
+print('                    : "text-gray-300 hover:text-orange-400 hover:bg-gray-700"')
+print('                }`}')
+print("              >")
+print('                <Icon className="w-5 h-5" />')
+print("                <span>{item.label}</span>")
+print("              </button>")
+print("            );")
+print("          })}")
+print("        </nav>")
+print("      </div>")
+print('')
+print("      {/* Quick Actions */}")
+print('      <div className="p-4 border-t border-gray-700 flex-shrink-0">')
+print('        <Button ')
+print('          onClick={onNewConnection}')
+print('          className="w-full bg-orange-500 text-white hover:bg-orange-700 flex items-center justify-center space-x-2"')
+print("        >")
+print('          <Plus className="w-4 h-4" />')
+print('          <span>Nova Conexão</span>')
+print("        </Button>")
+print("      </div>")
+print("    </div>")
+print("  );")
+print("}")
+print("

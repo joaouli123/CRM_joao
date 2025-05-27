@@ -27,63 +27,31 @@ export function UserHeader() {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border-b bg-white">
+    <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center space-x-3">
-        <div className="text-2xl font-bold text-green-600">WhatsApp Manager</div>
+        <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+          <User className="h-5 w-5 text-orange-600" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800">{user.name}</h2>
+          <p className="text-sm text-gray-600">{user.email}</p>
+        </div>
         {user.role === 'superadmin' && (
-          <span className="px-2 py-1 text-xs font-semibold text-red-700 bg-red-100 rounded-full">
-            SUPERADMIN
+          <span className="bg-orange-100 text-orange-800 border-orange-300 px-3 py-1 font-medium">
+            Super Admin
           </span>
         )}
       </div>
-      
-      <div className="flex items-center space-x-4">
-        <div className="text-sm text-gray-600">
-          Olá, <span className="font-medium">{displayName}</span>
-          {user.role === 'superadmin' && (
-            <span className="ml-2 text-xs text-red-600 font-semibold">
-              (Administrador)
-            </span>
-          )}
-        </div>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user.imageUrl} alt={displayName} />
-                <AvatarFallback className="bg-green-500 text-white">
-                  {initials.toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{displayName}</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user.emailAddress}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Perfil</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Configurações</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sair</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+
+      <Button
+        onClick={handleLogout}
+        variant="outline"
+        size="sm"
+        className="text-gray-600 hover:text-gray-800 border-gray-300 hover:bg-gray-50"
+      >
+        <LogOut className="h-4 w-4 mr-2" />
+        Sair
+      </Button>
     </div>
   );
 }
