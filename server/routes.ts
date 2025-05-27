@@ -26,20 +26,19 @@ setInterval(() => {
 
 function broadcast(data: any) {
   const message = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
-  console.log(`📡 BROADCASTING para ${clients.size} clientes:`, data);
-
+  
   let sentCount = 0;
-  clients.forEach((client, index) => {
+  clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
       sentCount++;
-      console.log(`✅ Mensagem enviada para cliente ${index + 1}`);
-    } else {
-      console.log(`❌ Cliente ${index + 1} não conectado (estado: ${client.readyState})`);
     }
   });
 
-  console.log(`📊 BROADCAST finalizado: ${sentCount}/${clients.size} clientes alcançados`);
+  // Log apenas se houver problemas ou em modo debug
+  if (sentCount === 0 && clients.size > 0) {
+    console.log(`⚠️ Nenhum cliente alcançado (${clients.size} conectados)`);
+  }
 }
 
 // GLOBAL SEND MESSAGE FUNCTION - FOR IMMEDIATE REGISTRATION
