@@ -10,11 +10,657 @@ import Contacts from "@/pages/contacts";
 import ContactsManager from "@/pages/contacts-manager";
 import ContactsWorking from "@/pages/contacts-working";
 import { Connection, ConnectionStats } from "@/lib/api";
-import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
+import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact, Search, Filter, Download, Upload, UserPlus, Edit3, Trash2, Calendar as CalendarIcon, Tag, Phone, Mail, ChevronLeft, ChevronRight, Smartphone, QrCode, RotateCcw, Power, Settings } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { format, subDays, isWithinInterval } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 
 type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'contacts-dashboard' | 'contacts-management' | 'settings';
+
+// Interface para contatos
+interface ContactData {
+  id: number;
+  name: string;
+  phoneNumber: string;
+  email?: string;
+  profilePictureUrl?: string;
+  tag?: string;
+  origem?: string;
+  observation?: string;
+  createdAt: string;
+  connectionId: number;
+}
+
+interface ContactStats {
+  total: number;
+  today: number;
+  lastUpdate: string;
+}
+
+// Componente de Gerenciamento de Contatos Integrado
+function ContactsManagementIntegrated() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Estados para filtros e paginação
+  const [searchTerm, setSearchTerm] = useState('');
+  const [tagFilter, setTagFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('recent');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<ContactData | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<ContactData | null>(null);
+  
+  const itemsPerPage = 10;
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    phoneNumber: '',
+    email: '',
+    tag: '',
+    origem: '',
+    observation: ''
+  });
+
+  // Buscar estatísticas dos contatos
+  const { data: stats } = useQuery<ContactStats>({
+    queryKey: ['contacts-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/contacts/stats');
+      return response.json();
+    }
+  });
+
+  // Buscar contatos com filtros
+  const { data: contactsResponse, isLoading } = useQuery({
+    queryKey: ['contacts', searchTerm, tagFilter, sortBy, currentPage],
+    queryFn: async () => {
+      const response = await fetch('/api/contacts');
+      return response.json();
+    }
+  });
+
+  const contacts = contactsResponse?.contacts || [];
+  const totalContacts = contactsResponse?.total || 0;
+  const totalPages = Math.ceil(totalContacts / itemsPerPage);
+
+  // Filtrar contatos
+  const filteredContacts = contacts.filter((contact: ContactData) => {
+    const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contact.phoneNumber.includes(searchTerm);
+    const matchesTag = tagFilter === 'all' || contact.tag === tagFilter;
+    const matchesDate = !dateRange.from || !dateRange.to || 
+                       isWithinInterval(new Date(contact.createdAt), { start: dateRange.from, end: dateRange.to });
+    
+    return matchesSearch && matchesTag && matchesDate;
+  });
+
+  // Ordenar contatos
+  const sortedContacts = [...filteredContacts].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'recent':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case 'oldest':
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      default:
+        return 0;
+    }
+  });
+
+  // Paginação
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedContacts = sortedContacts.slice(startIndex, startIndex + itemsPerPage);
+
+  // Tags únicas para o filtro
+  const uniqueTags = [...new Set(contacts.map((c: ContactData) => c.tag).filter(Boolean))];
+
+  // Funções de CRUD
+  const handleAddContact = async () => {
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, connectionId: 36 })
+      });
+      
+      if (response.ok) {
+        toast({ title: 'Contato adicionado com sucesso!' });
+        setIsAddDialogOpen(false);
+        setFormData({ name: '', phoneNumber: '', email: '', tag: '', origem: '', observation: '' });
+        queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      }
+    } catch (error) {
+      toast({ title: 'Erro ao adicionar contato', variant: 'destructive' });
+    }
+  };
+
+  const handleEditContact = async () => {
+    if (!editingContact) return;
+    
+    try {
+      const response = await fetch(`/api/contacts/${editingContact.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      
+      if (response.ok) {
+        toast({ title: 'Contato atualizado com sucesso!' });
+        setEditingContact(null);
+        setFormData({ name: '', phoneNumber: '', email: '', tag: '', origem: '', observation: '' });
+        queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      }
+    } catch (error) {
+      toast({ title: 'Erro ao atualizar contato', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteContact = async () => {
+    if (!contactToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/contacts/${contactToDelete.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        toast({ title: 'Contato excluído com sucesso!' });
+        setContactToDelete(null);
+        setIsDeleteDialogOpen(false);
+        queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      }
+    } catch (error) {
+      toast({ title: 'Erro ao excluir contato', variant: 'destructive' });
+    }
+  };
+
+  // Exportar CSV
+  const handleExportCSV = () => {
+    const csvContent = "NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA\n" +
+      sortedContacts.map((contact: ContactData) => 
+        `${contact.name};${contact.phoneNumber};${contact.email || ''};${contact.tag || ''};${contact.origem || ''};${format(new Date(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}`
+      ).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `contatos_${format(new Date(), 'dd-MM-yyyy')}.csv`;
+    link.click();
+  };
+
+  // Limpar filtros
+  const clearFilters = () => {
+    setSearchTerm('');
+    setTagFilter('all');
+    setSortBy('recent');
+    setDateRange({});
+    setCurrentPage(1);
+  };
+
+  return (
+    <div className="max-w-7xl space-y-6">
+      {/* Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="glass-panel border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Users className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total de Contatos</p>
+                <p className="text-2xl font-bold text-green-600">{stats?.total || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="glass-panel border-blue-200">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Clock className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Hoje</p>
+                <p className="text-2xl font-bold text-blue-600">{stats?.today || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="glass-panel border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Activity className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Última Atualização</p>
+                <p className="text-sm font-bold text-orange-600">
+                  {stats?.lastUpdate ? format(new Date(stats.lastUpdate), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filtros e Ações */}
+      <Card className="glass-panel border-green-200">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-green-800 flex items-center">
+            <Filter className="mr-2" />
+            Ações e Filtros
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Linha 1: Filtros principais */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-green-50 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Buscar Contato</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Nome ou telefone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por Tag</label>
+              <Select value={tagFilter} onValueChange={setTagFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas as tags" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as tags</SelectItem>
+                  {uniqueTags.map((tag) => (
+                    <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ordenar por</label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Mais recentes</SelectItem>
+                  <SelectItem value="oldest">Mais antigos</SelectItem>
+                  <SelectItem value="name">Nome A-Z</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from ? format(dateRange.from, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecionar período'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange as any}
+                    onSelect={setDateRange as any}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Linha 2: Botões de filtro rápido */}
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setDateRange({ from: subDays(new Date(), 7), to: new Date() })}
+              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              Últimos 7 dias
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}
+              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              Último mês
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={clearFilters}
+              className="bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+            >
+              Limpar filtros
+            </Button>
+          </div>
+
+          {/* Linha 3: Ações principais */}
+          <div className="flex flex-wrap gap-3 pt-4 border-t border-green-200">
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Adicionar Contato
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={handleExportCSV}
+              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Exportar CSV
+            </Button>
+            
+            <Button 
+              variant="outline"
+              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Importar CSV/Excel
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabela de Contatos */}
+      <Card className="glass-panel">
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-green-50">
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Tag</TableHead>
+                    <TableHead>Origem</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedContacts.map((contact: ContactData) => (
+                    <TableRow key={contact.id} className="hover:bg-green-50/50">
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={contact.profilePictureUrl} />
+                            <AvatarFallback className="bg-green-100 text-green-700">
+                              {contact.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-gray-900">{contact.name}</p>
+                            {contact.email && (
+                              <p className="text-sm text-gray-500 flex items-center">
+                                <Mail className="h-3 w-3 mr-1" />
+                                {contact.email}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-gray-700">
+                          <Phone className="h-4 w-4 mr-2 text-green-600" />
+                          {contact.phoneNumber}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {contact.tag && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <Tag className="h-3 w-3 mr-1" />
+                            {contact.tag}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-gray-600">{contact.origem || '-'}</TableCell>
+                      <TableCell className="text-gray-600">
+                        {format(new Date(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`https://wa.me/${contact.phoneNumber.replace(/\D/g, '')}`, '_blank')}
+                            className="h-8 w-8 p-0 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingContact(contact);
+                              setFormData({
+                                name: contact.name,
+                                phoneNumber: contact.phoneNumber,
+                                email: contact.email || '',
+                                tag: contact.tag || '',
+                                origem: contact.origem || '',
+                                observation: contact.observation || ''
+                              });
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setContactToDelete(contact);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+                  <div className="text-sm text-gray-600">
+                    Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, totalContacts)} de {totalContacts} contatos
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-gray-600">
+                      Página {currentPage} de {totalPages}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Adicionar/Editar Contato */}
+      <Dialog open={isAddDialogOpen || !!editingContact} onOpenChange={(open) => {
+        if (!open) {
+          setIsAddDialogOpen(false);
+          setEditingContact(null);
+          setFormData({ name: '', phoneNumber: '', email: '', tag: '', origem: '', observation: '' });
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingContact ? 'Editar Contato' : 'Adicionar Novo Contato'}</DialogTitle>
+            <DialogDescription>
+              {editingContact ? 'Atualize as informações do contato.' : 'Preencha os dados do novo contato.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phoneNumber">Telefone *</Label>
+                <Input
+                  id="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="tag">Tag</Label>
+                  <Input
+                    id="tag"
+                    value={formData.tag}
+                    onChange={(e) => setFormData({...formData, tag: e.target.value})}
+                    placeholder="cliente, lead, etc."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="origem">Origem</Label>
+                  <Input
+                    id="origem"
+                    value={formData.origem}
+                    onChange={(e) => setFormData({...formData, origem: e.target.value})}
+                    placeholder="site, indicação, etc."
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="observation">Observação</Label>
+                <Textarea
+                  id="observation"
+                  value={formData.observation}
+                  onChange={(e) => setFormData({...formData, observation: e.target.value})}
+                  placeholder="Observações adicionais..."
+                  rows={3}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              onClick={editingContact ? handleEditContact : handleAddContact}
+              disabled={!formData.name || !formData.phoneNumber}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+            >
+              {editingContact ? 'Atualizar' : 'Adicionar'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsAddDialogOpen(false);
+                setEditingContact(null);
+                setFormData({ name: '', phoneNumber: '', email: '', tag: '', origem: '', observation: '' });
+              }}
+            >
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o contato "{contactToDelete?.name}"? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setContactToDelete(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteContact}
+            >
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('messages');
@@ -338,7 +984,7 @@ export default function Dashboard() {
         );
 
       case "contacts-management":
-        return <ContactsWorking />;
+        return <ContactsManagementIntegrated />;
 
       case "settings":
         return (

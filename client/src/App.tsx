@@ -30,12 +30,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
-      <Route path="/contacts-table">
-        <ProtectedRoute>
-          <UserHeader />
-          <ContactsTable activeConnectionId={36} />
-        </ProtectedRoute>
-      </Route>
+
       
 
 
