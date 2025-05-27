@@ -18,16 +18,16 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
   ];
 
   return (
-    <div className="w-60 h-full bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex-shrink-0">
+    <div className="w-60 h-full glass-panel border-r border-white/20 flex flex-col flex-shrink-0 animate-slide-right">
+      {/* Header Sofisticado */}
+      <div className="p-6 border-b border-white/20 flex-shrink-0">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-            <MessageSquare className="text-white text-lg" />
+          <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg animate-scale-in">
+            <MessageSquare className="text-white text-xl" />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-gray-900">WhatsApp Hub</h1>
-            <p className="text-xs text-gray-500">Sistema de Automação</p>
+            <h1 className="text-lg font-bold text-gradient-green">WhatsApp Hub</h1>
+            <p className="text-xs text-slate-600">Sistema Inteligente</p>
           </div>
         </div>
       </div>
@@ -43,10 +43,10 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 interactive-element ${
                   isActive
-                    ? "bg-orange-100 text-orange-600"
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
+                    : "text-slate-700 hover:bg-white/50 hover:text-green-600"
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -58,12 +58,12 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
       </div>
 
       {/* Quick Actions */}
-      <div className="p-4 border-t border-gray-200 flex-shrink-0">
+      <div className="p-6 border-t border-white/20 flex-shrink-0">
         <Button 
           onClick={onNewConnection}
-          className="w-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center space-x-2"
+          className="w-full button-primary flex items-center justify-center space-x-3 py-3 text-sm font-semibold"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           <span>Nova Conexão</span>
         </Button>
       </div>

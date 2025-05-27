@@ -270,26 +270,35 @@ export default function ContactsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-emerald-50/40 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Contatos</h1>
-            <p className="text-gray-600">Gerencie seus contatos de forma eficiente</p>
+        {/* Header Sofisticado */}
+        <div className="glass-panel p-8 rounded-2xl animate-slide-up">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-xl">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-gradient-green">Gerenciamento de Contatos</h1>
+                <p className="text-slate-600 text-lg">Sistema avançado de gestão inteligente</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Dashboard Cards */}
+        {/* Dashboard Cards Sofisticados */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-          <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-orange-800">Total de Contatos</CardTitle>
-              <Users className="h-4 w-4 text-orange-600" />
+          <Card className="glass-card animate-scale-in">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-slate-700">Total de Contatos</CardTitle>
+              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                <Users className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-900">{stats?.total || 0}</div>
-              <p className="text-xs text-orange-700">Contatos cadastrados</p>
+              <div className="text-3xl font-bold text-gradient-green">{stats?.total || 0}</div>
+              <p className="text-sm text-slate-600">Contatos cadastrados</p>
             </CardContent>
           </Card>
 
