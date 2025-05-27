@@ -26,7 +26,8 @@ setInterval(() => {
 
 function broadcast(data: any) {
   const message = JSON.stringify({ ...data, timestamp: new Date().toISOString() });
-  
+  console.log(`📡 BROADCASTING para ${clients.size} clientes:`, data.type);
+
   let sentCount = 0;
   clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
@@ -35,10 +36,7 @@ function broadcast(data: any) {
     }
   });
 
-  // Log apenas se houver problemas ou em modo debug
-  if (sentCount === 0 && clients.size > 0) {
-    console.log(`⚠️ Nenhum cliente alcançado (${clients.size} conectados)`);
-  }
+  console.log(`📊 BROADCAST finalizado: ${sentCount}/${clients.size} clientes alcançados`);
 }
 
 // GLOBAL SEND MESSAGE FUNCTION - FOR IMMEDIATE REGISTRATION
@@ -788,9 +786,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Verificar se mensagem similar já existe no banco (proteção extra)
           const existingMessages = await storage.getMessagesByConversation(connection.id, phoneNumber, 10);
           const isDuplicate = existingMessages.some(msg => 
-            msg.content === messageContent && 
+            msg.body === messageContent && 
             msg.direction === direction &&
-            Math.abs(new Date(msg.timestamp).getTime() - Date.now()) < 5000
+            Math.abs(new Date(msg.timestamp || new Date()).getTime() - Date.now()) < 5000
           );
 
           if (isDuplicate) {

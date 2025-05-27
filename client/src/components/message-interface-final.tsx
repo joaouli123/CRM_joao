@@ -189,15 +189,12 @@ export default function MessageInterface({
     enabled: !!selectedConnectionId,
   });
 
-  // Buscar mensagens do chat selecionado COM CACHE OTIMIZADO
+  // Buscar mensagens do chat selecionado COM ATUALIZAÇÃO EM TEMPO REAL
   const { data: chatMessages = [] } = useQuery({
     queryKey: [`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages`],
     enabled: !!selectedConnectionId && !!selectedConversation,
-    staleTime: 30000, // Cache por 30 segundos
-    gcTime: 300000, // Manter em cache por 5 minutos
-    refetchOnWindowFocus: false, // Não refetch ao focar janela
-    refetchOnMount: false, // Não refetch ao montar se dados já existem
-    retry: 1, // Apenas 1 tentativa em caso de erro
+    refetchInterval: 2000, // Verificar novas mensagens a cada 2 segundos
+    refetchIntervalInBackground: true
   });
 
   // DEDUPLICAÇÃO ROBUSTA - Combinar mensagens sem duplicatas
