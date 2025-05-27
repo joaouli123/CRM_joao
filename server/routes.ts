@@ -350,6 +350,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
                 
                 realUnreadCount = unreadMessages.length;
+                
+                if (lastMsg.message?.conversation) {
+                  lastMessage = lastMsg.message.conversation;
                 } else if (lastMsg.message?.imageMessage) {
                   lastMessage = "📷 Imagem";
                 } else if (lastMsg.message?.audioMessage) {

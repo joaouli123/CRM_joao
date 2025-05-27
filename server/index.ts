@@ -26,75 +26,27 @@ async function main() {
   const { setupSendMessageRoute } = await import("./routes");
   setupSendMessageRoute(app);
   
-  // Register simple contacts API for immediate fix - HIGH PRIORITY
-  app.get('/api/contacts', async (req, res) => {
-    try {
-      console.log('📋 API de contatos chamada diretamente');
-      const { storage } = await import("./storage");
-      const allContacts = await storage.getAllContacts();
-      
-      const response = {
-        contacts: allContacts.map(contact => ({
-          id: contact.id,
-          name: contact.name,
-          phoneNumber: contact.phoneNumber,
-          email: contact.email,
-          isActive: contact.isActive,
-          createdAt: contact.createdAt,
-          observation: contact.observation,
-          tag: contact.tag,
-          profilePictureUrl: contact.profilePictureUrl
-        })),
-        total: allContacts.length,
-        page: 1,
-        totalPages: 1
-      };
-      
-      console.log(`✅ Retornando ${allContacts.length} contatos via API direta`);
-      res.json(response);
-    } catch (error) {
-      console.error('❌ Erro na API de contatos:', error);
-      res.status(500).json({ error: 'Erro interno' });
-    }
-  });
-
-  app.get('/api/contacts/stats', async (req, res) => {
-    try {
-      const { storage } = await import("./storage");
-      const allContacts = await storage.getAllContacts();
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const todayContacts = allContacts.filter(contact => 
-        contact.createdAt && contact.createdAt >= today
-      );
-      
-      res.json({
-        total: allContacts.length,
-        today: todayContacts.length,
-        lastUpdate: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('❌ Erro nas estatísticas:', error);
-      res.status(500).json({ error: 'Erro interno' });
-    }
-  });
+  // Setup simple contacts API with database access
+  const { setupSimpleContactsAPI } = await import("./simple-contacts");
+  setupSimpleContactsAPI(app);
   
-  // Register ALL API routes FIRST before any other middleware
-  const server = await registerRoutes(app);
+  // Set up Vite or serve static files BEFORE API routes registration
+  let server;
+  if (app.get("env") === "development") {
+    server = await setupVite(app, undefined as any);
+  } else {
+    serveStatic(app);
+    server = require('http').createServer(app);
+  }
+  
+  // Register ALL API routes AFTER Vite setup
+  await registerRoutes(app);
   
   // Add logging middleware AFTER routes are registered
   app.use('/api/*', (req, res, next) => {
     console.log(`🔧 API Request processed: ${req.method} ${req.originalUrl}`);
     next();
   });
-
-  // Set up Vite or serve static files AFTER API routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
 
   // Error handling
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
