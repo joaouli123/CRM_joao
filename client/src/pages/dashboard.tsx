@@ -12,7 +12,7 @@ import ContactsWorking from "@/pages/contacts-working";
 import { Connection, ConnectionStats } from "@/lib/api";
 import { Plus, Wifi, WifiOff, Users, MessageSquare, Activity, Clock, Contact } from "lucide-react";
 import { NewConnectionModal } from "@/components/modals/new-connection-modal";
-import { QRCodeModal } from "@/components/modals/qr-code-modal";
+
 
 type TabType = 'dashboard' | 'connections' | 'messages' | 'contacts' | 'contacts-manager' | 'contacts-dashboard' | 'contacts-management' | 'settings';
 
@@ -67,9 +67,21 @@ export default function Dashboard() {
     },
   });
 
-  const handleShowQR = (connection: Connection) => {
-    setSelectedConnectionForQR(connection);
-    setShowQRModal(true);
+  const handleShowQR = async (connection: Connection) => {
+    try {
+      const response = await fetch(`/api/connections/${connection.id}/qr`);
+      if (response.ok) {
+        const qrResponse = await response.json();
+        setSelectedConnectionForQR(connection);
+        setQrData({
+          qrCode: qrResponse.qrCode,
+          expiration: qrResponse.expiration
+        });
+        setShowQRSection(true);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar QR Code:', error);
+    }
   };
 
   const getStatusColor = (status: ConnectionStatus) => {
