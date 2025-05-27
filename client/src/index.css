@@ -2,6 +2,188 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === DESIGN SYSTEM SOFISTICADO - PALETA VERDE HARMÔNICA === */
+
+:root {
+  /* === CORES PRINCIPAIS === */
+  --primary-50: #f0fdf4;
+  --primary-100: #dcfce7;
+  --primary-200: #bbf7d0;
+  --primary-300: #86efac;
+  --primary-400: #4ade80;
+  --primary-500: #22c55e;
+  --primary-600: #16a34a;
+  --primary-700: #15803d;
+  --primary-800: #166534;
+  --primary-900: #14532d;
+
+  /* === CORES SECUNDÁRIAS === */
+  --secondary-50: #f8fafc;
+  --secondary-100: #f1f5f9;
+  --secondary-200: #e2e8f0;
+  --secondary-300: #cbd5e1;
+  --secondary-400: #94a3b8;
+  --secondary-500: #64748b;
+  --secondary-600: #475569;
+  --secondary-700: #334155;
+  --secondary-800: #1e293b;
+  --secondary-900: #0f172a;
+
+  /* === CORES DE APOIO === */
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+  --accent-orange: #f97316;
+  --accent-red: #ef4444;
+  --accent-yellow: #eab308;
+
+  /* === GRADIENTES SOFISTICADOS === */
+  --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+  --gradient-hero: linear-gradient(135deg, var(--primary-600) 0%, var(--secondary-800) 100%);
+  --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  --gradient-subtle: linear-gradient(180deg, var(--primary-50) 0%, var(--secondary-50) 100%);
+
+  /* === SOMBRAS ELEGANTES === */
+  --shadow-elegant: 0 4px 20px rgba(34, 197, 94, 0.1);
+  --shadow-green: 0 4px 14px 0 rgb(34 197 94 / 0.25);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* === TRANSIÇÕES SUAVES === */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 250ms ease-in-out;
+  --transition-slow: 350ms ease-in-out;
+  --transition-bounce: 250ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* === COMPONENTES ELEGANTES === */
+
+.btn-elegant {
+  @apply px-6 py-3 rounded-xl font-medium transition-all duration-200;
+  @apply shadow-md hover:shadow-lg active:scale-95;
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.btn-elegant:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-green);
+}
+
+.card-sophisticated {
+  @apply bg-white rounded-2xl border border-gray-100 transition-all duration-300 shadow-lg;
+}
+
+.card-sophisticated:hover {
+  transform: translateY(-4px);
+  @apply shadow-xl;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.text-gradient-green {
+  background: linear-gradient(135deg, var(--primary-600), var(--primary-800));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* === ANIMAÇÕES SUAVES === */
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* === SCROLLBAR ELEGANTE === */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--secondary-100);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-400);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-500);
+}
+
+/* === ESTADOS INTERATIVOS === */
+
+.interactive-element {
+  @apply transition-all duration-200 cursor-pointer;
+}
+
+.interactive-element:hover {
+  transform: translateY(-2px);
+}
+
+/* === BADGES SOFISTICADOS === */
+
+.badge-success {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  background: var(--primary-100);
+  color: var(--primary-800);
+}
+
+.badge-warning {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-info {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 @layer base {
   html, body {
     height: 100%;

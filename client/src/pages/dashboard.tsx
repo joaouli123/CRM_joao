@@ -114,43 +114,61 @@ export default function Dashboard() {
     switch (activeTab) {
       case "dashboard":
         return (
-          <div className="max-w-6xl space-y-6">
+          <div className="max-w-7xl space-y-8 animate-slide-up">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {/* Card de Conexões */}
-            <Card className="border-l-4 border-l-orange-500 shadow-lg hover:shadow-xl transition-all duration-200 bg-white">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Conexões Ativas
-                </CardTitle>
-                <Wifi className="h-5 w-5 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-orange-600">
-                  {stats?.activeConnections}
+            {/* Card de Conexões - Design Sofisticado Verde */}
+            <div className="card-sophisticated hover:scale-105 transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <div>
+                  <CardTitle className="text-sm font-medium text-slate-600">
+                    Conexões Ativas
+                  </CardTitle>
+                  <div className="text-3xl font-bold text-gradient-green mt-2">
+                    {stats?.activeConnections || 0}
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Total: {stats?.totalConnections}
-                </p>
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                  <Wifi className="h-6 w-6 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    Total: {stats?.totalConnections || 0}
+                  </p>
+                  <div className="badge-success text-xs">
+                    Online
+                  </div>
+                </div>
               </CardContent>
-            </Card>
+            </div>
 
-            {/* Card de Mensagens Hoje */}
-            <Card className="border-l-4 border-l-gray-400 shadow-lg hover:shadow-xl transition-all duration-200 bg-white">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Mensagens Hoje
-                </CardTitle>
-                <MessageSquare className="h-5 w-5 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-700">
-                  {stats?.messagesToday}
+            {/* Card de Mensagens Hoje - Design Sofisticado */}
+            <div className="card-sophisticated hover:scale-105 transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <div>
+                  <CardTitle className="text-sm font-medium text-slate-600">
+                    Mensagens Hoje
+                  </CardTitle>
+                  <div className="text-3xl font-bold text-gradient-green mt-2">
+                    {stats?.messagesToday || 0}
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  +{Math.round((stats?.messagesToday * 0.1))} desde ontem
-                </p>
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
+                  <MessageSquare className="h-6 w-6 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    +{Math.round((stats?.messagesToday || 0) * 0.1)} desde ontem
+                  </p>
+                  <div className="badge-info text-xs">
+                    Ativo
+                  </div>
+                </div>
               </CardContent>
-            </Card>
+            </div>
 
             {/* Card de Usuários Online */}
             <Card className="border-l-4 border-l-orange-400 shadow-lg hover:shadow-xl transition-all duration-200 bg-white">
