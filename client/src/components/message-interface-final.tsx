@@ -447,15 +447,15 @@ export default function MessageInterface({
   }
 
   return (
-    <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div className="h-full w-full flex bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg shadow-lg border overflow-hidden">
       {/* Lista de Conversas */}
-      <div className="w-80 min-w-[280px] max-w-[400px] border-r border-gray-200 flex flex-col h-full bg-gray-50">
+      <div className="w-80 min-w-[280px] max-w-[400px] border-r border-gray-300 flex flex-col h-full bg-gradient-to-b from-gray-800 to-gray-900">
         {/* Header das Conversas */}
-        <div className="p-3 bg-white border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-gray-900">Conversas</h3>
+        <div className="p-4 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white">Conversas</h3>
             {isConnected && (
-              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+              <Badge variant="outline" className="text-xs bg-green-500 text-white border-green-400 px-2 py-1">
                 Online
               </Badge>
             )}
@@ -466,7 +466,7 @@ export default function MessageInterface({
               placeholder="Buscar conversas..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="pl-10 h-9 bg-gray-50 border-gray-200 focus:bg-white"
+              className="pl-10 h-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:bg-gray-600 focus:border-gray-500"
             />
           </div>
         </div>
@@ -489,14 +489,14 @@ export default function MessageInterface({
                 )}
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-700">
                 {filteredConversations.map((conv: any) => (
                   <div
                     key={conv.phoneNumber}
-                    className={`p-4 cursor-pointer hover:bg-white transition-colors duration-150 ${
+                    className={`p-4 cursor-pointer hover:bg-gray-700 transition-all duration-200 ${
                       selectedConversation === conv.phoneNumber 
-                        ? 'bg-blue-50 border-r-3 border-r-blue-500' 
-                        : ''
+                        ? 'bg-orange-500 border-l-4 border-l-orange-300 shadow-lg' 
+                        : 'hover:border-l-4 hover:border-l-gray-600'
                     }`}
                     onClick={() => {
                       console.log(`📱 SELECIONANDO CONVERSA: ${conv.phoneNumber}`);
@@ -514,26 +514,42 @@ export default function MessageInterface({
                       </div>
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-gray-900 truncate pr-2">
+                          <h4 className={`text-sm font-medium truncate pr-2 ${
+                            selectedConversation === conv.phoneNumber 
+                              ? 'text-white' 
+                              : 'text-gray-100'
+                          }`}>
                             {conv.contactName || conv.phoneNumber}
                           </h4>
                           {conv.lastMessageTime && (
-                            <span className="text-xs text-gray-500 flex-shrink-0">
+                            <span className={`text-xs flex-shrink-0 ${
+                              selectedConversation === conv.phoneNumber 
+                                ? 'text-orange-100' 
+                                : 'text-gray-400'
+                            }`}>
                               {formatTime(new Date(conv.lastMessageTime))}
                             </span>
                           )}
                         </div>
                         
-                        <p className="text-sm text-gray-500 line-clamp-2 break-words">
+                        <p className={`text-sm line-clamp-2 break-words ${
+                          selectedConversation === conv.phoneNumber 
+                            ? 'text-orange-100' 
+                            : 'text-gray-300'
+                        }`}>
                           {conv.lastMessage || 'Nenhuma mensagem'}
                         </p>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-400 truncate">
+                          <span className={`text-xs truncate ${
+                            selectedConversation === conv.phoneNumber 
+                              ? 'text-orange-200' 
+                              : 'text-gray-500'
+                          }`}>
                             {conv.phoneNumber}
                           </span>
                           {conv.unreadCount > 0 && (
-                            <Badge variant="default" className="bg-blue-500 text-xs">
+                            <Badge variant="default" className="bg-orange-500 text-white text-xs border-orange-400">
                               {conv.unreadCount}
                             </Badge>
                           )}
@@ -549,11 +565,11 @@ export default function MessageInterface({
 
         {/* Botão Carregar Mais */}
         {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
-          <div className="p-3 bg-white border-t border-gray-200 flex-shrink-0">
+          <div className="p-3 bg-gray-800 border-t border-gray-700 flex-shrink-0">
             <Button 
               variant="default" 
               size="sm"
-              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium py-2.5 shadow-md transform transition-all duration-200 hover:scale-105"
+              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-2.5 shadow-lg transform transition-all duration-200 hover:scale-105 border border-orange-400"
               onClick={async () => {
                 setLoadingMoreConversations(true);
                 setConversationsLimit(prev => prev + 10);
@@ -578,12 +594,12 @@ export default function MessageInterface({
       </div>
 
       {/* Chat */}
-      <div className="flex-1 flex flex-col h-full bg-white">
+      <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-gray-50 to-white">
         {selectedConversation ? (
           <>
             {/* Header do Chat */}
-            <div className="p-2 bg-white border-b border-gray-200 flex-shrink-0">
-              <div className="flex items-center space-x-3">
+            <div className="p-4 bg-white border-b border-gray-200 flex-shrink-0 shadow-sm">
+              <div className="flex items-center space-x-4">
                 <ContactAvatar 
                   profilePicture={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.profilePicture}
                   contactName={filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName}
@@ -591,14 +607,14 @@ export default function MessageInterface({
                   size="md"
                 />
                 <div>
-                  <h4 className="text-base font-semibold text-gray-900">
+                  <h4 className="text-lg font-bold text-gray-800">
                     {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
                   </h4>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <Phone className="h-3 w-3" />
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Phone className="h-4 w-4" />
                     <span>{selectedConversation}</span>
                     {isConnected && (
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300 ml-2">
                         Online
                       </Badge>
                     )}
@@ -608,29 +624,29 @@ export default function MessageInterface({
             </div>
 
             {/* Mensagens */}
-            <div className="flex-1 overflow-hidden">
-              <ScrollArea className="h-full p-4">
-                <div className="space-y-4">
+            <div className="flex-1 overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100">
+              <ScrollArea className="h-full p-6">
+                <div className="space-y-6">
                   {allMessages.map((message, index) => (
                     <div
                       key={`${message.id || message.tempId || index}-${message.timestamp}`}
                       className={`flex ${message.direction === 'sent' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+                        className={`max-w-[75%] rounded-2xl px-5 py-3 shadow-lg ${
                           message.direction === 'sent'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-900'
+                            ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white border border-orange-400'
+                            : 'bg-white text-gray-800 border border-gray-200 shadow-md'
                         }`}
                       >
-                        <p className="text-sm leading-relaxed">{message.content}</p>
-                        <div className="flex items-center justify-end space-x-1 mt-2">
-                          <Clock className="h-3 w-3 opacity-70" />
-                          <span className="text-xs opacity-70">
+                        <p className="text-sm leading-relaxed font-medium">{message.content}</p>
+                        <div className="flex items-center justify-end space-x-2 mt-2">
+                          <Clock className="h-3 w-3 opacity-60" />
+                          <span className="text-xs opacity-80">
                             {formatTime(new Date(message.timestamp))}
                           </span>
                           {message.direction === 'sent' && (
-                            <span className="text-xs ml-1">
+                            <span className="text-xs ml-1 opacity-80">
                               {message.status === 'pending' && '⏳'}
                               {message.status === 'sent' && '✔'}
                               {message.status === 'delivered' && '✔✔'}
@@ -656,7 +672,7 @@ export default function MessageInterface({
             </div>
 
             {/* Input de Mensagem */}
-            <div className="p-2 bg-white border-t border-gray-200 flex-shrink-0">
+            <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0 shadow-lg">
               <div className="flex space-x-3">
                 <Input
                   placeholder="Digite sua mensagem..."
@@ -668,25 +684,25 @@ export default function MessageInterface({
                       sendMessage(newMessage);
                     }
                   }}
-                  className="flex-1 h-10 px-4 bg-gray-50 border-gray-200 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 h-12 px-5 bg-gray-50 border-gray-300 rounded-2xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800 font-medium"
                 />
                 <Button 
                   onClick={() => sendMessage(newMessage)}
                   disabled={!newMessage.trim()}
-                  className="h-10 w-10 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300"
+                  className="h-12 w-12 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 border border-orange-400 shadow-lg transform transition-all duration-200 hover:scale-105"
                   size="sm"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" />
                 </Button>
               </div>
             </div>
           </>
         ) : (
-          <div className="h-full flex items-center justify-center">
+          <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
             <div className="text-center">
-              <MessageCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-lg text-gray-500 font-medium">Selecione uma conversa</p>
-              <p className="text-sm text-gray-400">Escolha um contato para começar a conversar</p>
+              <MessageCircle className="h-20 w-20 text-gray-400 mx-auto mb-6" />
+              <p className="text-xl text-gray-600 font-bold mb-2">Selecione uma conversa</p>
+              <p className="text-sm text-gray-500">Escolha um contato para começar a conversar</p>
             </div>
           </div>
         )}
