@@ -1,4 +1,4 @@
-import { MessageSquare, Plug, Settings, BarChart3, Plus } from "lucide-react";
+import { MessageSquare, Plug, Settings, BarChart3, Plus, Contact } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
@@ -12,6 +12,7 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "connections", label: "Conexões", icon: Plug },
     { id: "messages", label: "Mensagens", icon: MessageSquare },
+    { id: "contacts", label: "Contatos", icon: Contact },
     { id: "settings", label: "Configurações", icon: Settings },
   ];
 
