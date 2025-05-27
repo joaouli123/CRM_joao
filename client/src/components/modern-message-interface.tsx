@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Send, Phone, Video, MoreVertical, Paperclip, Smile, Mic, Image as ImageIcon, FileText, Search, Archive, Star, Info } from "lucide-react";
+import { Send, Phone, Video, MoreVertical, Paperclip, Smile, Mic, Image as ImageIcon, FileText, Search, Archive, Star, Info, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useWebSocket } from "@/hooks/use-websocket";
