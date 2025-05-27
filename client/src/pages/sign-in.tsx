@@ -1,32 +1,39 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock, MessageSquare } from 'lucide-react';
-import { clerk } from '@/lib/clerk';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
 
     try {
-      const session = await clerk.signIn(email, password);
-      if (session.isSignedIn) {
-        setLocation('/');
-      }
-    } catch (err) {
-      setError('Erro ao fazer login. Verifique suas credenciais.');
+      // Simular login (implementar com Clerk depois)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo ao WhatsApp Hub",
+      });
+      
+      setLocation('/dashboard');
+    } catch (error) {
+      toast({
+        title: "Erro no login",
+        description: "Verifique suas credenciais e tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -48,69 +55,53 @@ export default function SignIn() {
           <p className="text-slate-600 text-lg">Sistema Inteligente</p>
         </div>
 
-        <div className="glass-panel shadow-2xl border border-white/30 rounded-2xl backdrop-blur-xl bg-white/80">
-          <div className="p-8 space-y-2">
-            <h2 className="text-3xl font-bold text-gradient-green text-center">Entrar na sua conta</h2>
-            <p className="text-slate-600 text-center text-lg">
-              Digite seu email e senha para acessar o sistema
-            </p>
-          </div>
+        <Card className="backdrop-blur-sm bg-white/90 border-green-100/50 shadow-2xl shadow-green-500/10">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-2xl font-bold text-slate-800">Entrar no Sistema</CardTitle>
+            <CardDescription className="text-slate-600">
+              Digite suas credenciais para acessar
+            </CardDescription>
+          </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+                <Label htmlFor="email" className="text-slate-700 font-medium">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu.email@exemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="border-green-200 focus:border-green-400 focus:ring-green-400/20"
+                  required
+                />
               </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+                <Label htmlFor="password" className="text-slate-700 font-medium">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="border-green-200 focus:border-green-400 focus:ring-green-400/20"
+                  required
+                />
               </div>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  'Entrar'
-                )}
+              <Button
+                type="submit"
+                className="w-full btn-primary"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
-
+            
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600">
                 Não tem uma conta?{' '}
                 <button
+                  type="button"
                   onClick={() => setLocation('/sign-up')}
                   className="font-medium text-blue-600 hover:text-blue-500"
                 >
