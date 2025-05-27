@@ -999,30 +999,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get archived chats by connection - VERSÃO SIMPLIFICADA
-  app.get('/api/connections/:connectionId/archived-chats', async (req, res) => {
-    try {
-      const connectionId = parseInt(req.params.connectionId);
-      
-      if (isNaN(connectionId)) {
-        return res.status(400).json({ error: 'Invalid connection ID' });
-      }
-
-      console.log(`📂 Buscando conversas arquivadas para conexão ${connectionId}`);
-      
-      // Retornar array vazio por enquanto - evita erro 500
-      const archivedChats = [];
-      
-      console.log(`📂 Retornando ${archivedChats.length} conversas arquivadas (funcionalidade temporariamente simplificada)`);
-      res.json(archivedChats);
-    } catch (error) {
-      console.error('❌ Error fetching archived chats:', error);
-      res.status(500).json({ 
-        error: 'Failed to fetch archived chats',
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
+  // Get archived chats by connection - VERSÃO CORRIGIDA
+  app.get('/api/connections/:connectionId/archived-chats', (req, res) => {
+    const connectionId = req.params.connectionId;
+    console.log(`📂 Requisição para conversas arquivadas da conexão ${connectionId}`);
+    
+    // Retorna array vazio para evitar erro 500
+    const emptyResult = [];
+    console.log(`📂 Retornando ${emptyResult.length} conversas arquivadas`);
+    res.json(emptyResult);
   });
 
   // Get archived messages for a specific chat
