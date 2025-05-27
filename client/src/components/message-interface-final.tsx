@@ -238,9 +238,9 @@ export default function MessageInterface({
     };
   }, [selectedConnectionId]);
 
-  // Buscar conversas com paginação
+  // Buscar conversas com paginação e filtro
   const { data: conversations = [], error: conversationsError } = useQuery({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=${conversationsLimit}`],
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=${conversationsLimit}&search=${encodeURIComponent(searchQuery)}`],
     enabled: !!selectedConnectionId,
     retry: 3,
     retryDelay: 1000,
