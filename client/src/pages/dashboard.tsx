@@ -127,7 +127,7 @@ function ContactsManagementIntegrated() {
   const paginatedContacts = sortedContacts.slice(startIndex, startIndex + itemsPerPage);
 
   // Tags únicas para o filtro
-  const uniqueTags = [...new Set(contacts.map((c: ContactData) => c.tag).filter(Boolean))];
+  const uniqueTags = Array.from(new Set(contacts.map((c: ContactData) => c.tag).filter(Boolean)));
 
   // Funções de CRUD
   const handleAddContact = async () => {
@@ -287,8 +287,8 @@ function ContactsManagementIntegrated() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as tags</SelectItem>
-                  {uniqueTags.map((tag) => (
-                    <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                  {uniqueTags.map((tag, index) => (
+                    <SelectItem key={`tag-${index}`} value={tag as string}>{tag as string}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -455,7 +455,7 @@ function ContactsManagementIntegrated() {
                             onClick={() => window.open(`https://wa.me/${contact.phoneNumber.replace(/\D/g, '')}`, '_blank')}
                             className="h-8 w-8 p-0 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
                           >
-                            <MessageCircle className="h-4 w-4" />
+                            <MessageSquare className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
