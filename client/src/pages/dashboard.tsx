@@ -348,6 +348,7 @@ export default function Dashboard() {
                 {activeTab === 'connections' && 'Conexões'}
                 {activeTab === 'messages' && 'Mensagens'}
                 {activeTab === 'contacts' && 'Contatos'}
+                {activeTab === 'contacts-manager' && 'Gerenciar Contatos'}
                 {activeTab === 'settings' && 'Configurações'}
               </h2>
               <p className="text-xs text-gray-500 leading-tight">
@@ -355,6 +356,7 @@ export default function Dashboard() {
                 {activeTab === 'connections' && 'Gerenciar conexões WhatsApp'}
                 {activeTab === 'messages' && 'Enviar e receber mensagens'}
                 {activeTab === 'contacts' && 'Gerenciar seus contatos'}
+                {activeTab === 'contacts-manager' && 'Sistema completo de gestão de contatos'}
                 {activeTab === 'settings' && 'Configurações do sistema'}
               </p>
             </div>
