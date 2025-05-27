@@ -27,6 +27,8 @@ export default function MessageInterface({
   const [realtimeMessages, setRealtimeMessages] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [conversationsLimit, setConversationsLimit] = useState(10);
+  const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // SET para controlar IDs únicos e evitar duplicação
@@ -183,9 +185,9 @@ export default function MessageInterface({
     };
   }, [selectedConnectionId]);
 
-  // Buscar conversas
+  // Buscar conversas com paginação
   const { data: conversations = [] } = useQuery({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations`],
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations`, { limit: conversationsLimit }],
     enabled: !!selectedConnectionId,
   });
 
@@ -430,6 +432,24 @@ export default function MessageInterface({
                   </div>
                 </div>
               ))}
+              
+              {/* Botão Carregar Mais */}
+              {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
+                <div className="p-4 border-b">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={async () => {
+                      setLoadingMoreConversations(true);
+                      setConversationsLimit(prev => prev + 10);
+                      setTimeout(() => setLoadingMoreConversations(false), 1000);
+                    }}
+                    disabled={loadingMoreConversations}
+                  >
+                    {loadingMoreConversations ? "Carregando..." : "Carregar Mais Conversas"}
+                  </Button>
+                </div>
+              )}
             </ScrollArea>
           </CardContent>
         </Card>
