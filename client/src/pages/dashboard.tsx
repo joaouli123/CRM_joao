@@ -20,8 +20,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('messages');
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null);
   const [showNewConnectionModal, setShowNewConnectionModal] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
+  const [showQRSection, setShowQRSection] = useState(false);
   const [selectedConnectionForQR, setSelectedConnectionForQR] = useState<Connection | null>(null);
+  const [qrData, setQrData] = useState<{qrCode: string, expiration: string} | null>(null);
   const queryClient = useQueryClient();
 
   // Buscar conexões - CORRIGINDO PARA MOSTRAR SUA CONEXÃO LOWFY
@@ -384,6 +385,114 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden p-2">
+          {/* QR Code Section - Inline */}
+          {showQRSection && selectedConnectionForQR && qrData && (
+            <div className="mb-4 bg-gradient-to-br from-orange-50 to-white border border-orange-200 rounded-xl shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">🔗 Conectar WhatsApp</h2>
+                    <p className="text-orange-100">Escaneie o QR Code para conectar {selectedConnectionForQR.name}</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowQRSection(false)}
+                    className="text-white hover:bg-orange-400 rounded-lg p-2 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* QR Code */}
+                  <div className="flex flex-col items-center">
+                    <div className="bg-white p-6 rounded-xl border-2 border-orange-300 shadow-lg">
+                      <img 
+                        src={qrData.qrCode} 
+                        alt="QR Code WhatsApp" 
+                        className="w-64 h-64"
+                      />
+                    </div>
+                    <div className="mt-4 text-center">
+                      <div className="text-sm text-gray-600 mb-2">
+                        ⏰ QR Code expira em: <span className="font-mono font-semibold">3:00</span>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          if (selectedConnectionForQR) {
+                            try {
+                              const response = await fetch(`/api/connections/${selectedConnectionForQR.id}/qr`);
+                              if (response.ok) {
+                                const newQrData = await response.json();
+                                setQrData(newQrData);
+                              }
+                            } catch (error) {
+                              console.error('Erro ao atualizar QR:', error);
+                            }
+                          }
+                        }}
+                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium"
+                      >
+                        🔄 Atualizar QR Code
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Instructions */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">📱 Como conectar:</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
+                        <div>
+                          <p className="font-medium text-gray-800">Abra o WhatsApp no celular</p>
+                          <p className="text-sm text-gray-600">Certifique-se que está conectado à internet</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
+                        <div>
+                          <p className="font-medium text-gray-800">Vá em Configurações</p>
+                          <p className="text-sm text-gray-600">Toque nos três pontos (⋮) → "Aparelhos conectados"</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+                        <div>
+                          <p className="font-medium text-gray-800">Conectar dispositivo</p>
+                          <p className="text-sm text-gray-600">Toque em "Conectar um dispositivo"</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">4</div>
+                        <div>
+                          <p className="font-medium text-gray-800">Escaneie o QR Code</p>
+                          <p className="text-sm text-gray-600">Aponte a câmera para o código ao lado</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-blue-500">💡</span>
+                        <span className="font-semibold text-blue-800">Dica importante</span>
+                      </div>
+                      <p className="text-blue-700 text-sm">
+                        O QR Code expira automaticamente em 3 minutos por segurança. 
+                        Se expirar, clique em "Atualizar QR Code" para gerar um novo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {renderContent()}
         </main>
       </div>
@@ -393,27 +502,29 @@ export default function Dashboard() {
         isOpen={showNewConnectionModal}
         onClose={() => setShowNewConnectionModal(false)}
         onConnectionCreated={async (connectionId) => {
-          console.log('🔄 Abrindo modal QR Code para conexão:', connectionId);
+          console.log('🔄 Exibindo QR Code inline para conexão:', connectionId);
           
           // Aguardar um pouco e atualizar as conexões
           await new Promise(resolve => setTimeout(resolve, 500));
           await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
           
-          // Buscar QR Code e abrir modal
+          // Buscar QR Code e exibir na página
           try {
             const response = await fetch(`/api/connections/${connectionId}/qr`);
             if (response.ok) {
-              const qrData = await response.json();
-              console.log('✅ QR Code obtido:', qrData);
+              const qrResponse = await response.json();
+              console.log('✅ QR Code obtido:', qrResponse);
               
               setSelectedConnectionForQR({
                 id: connectionId,
                 name: `Conexão ${connectionId}`,
-                status: 'waiting_qr',
-                qrCode: qrData.qrCode,
-                qrExpiry: new Date(qrData.expiration)
+                status: 'waiting_qr'
               } as any);
-              setShowQRModal(true);
+              setQrData({
+                qrCode: qrResponse.qrCode,
+                expiration: qrResponse.expiration
+              });
+              setShowQRSection(true);
             }
           } catch (error) {
             console.error('❌ Erro ao buscar QR Code:', error);
@@ -421,15 +532,7 @@ export default function Dashboard() {
         }}
       />
 
-      <QRCodeModal
-        open={showQRModal}
-        onClose={() => setShowQRModal(false)}
-        qrData={selectedConnectionForQR ? {
-          connectionId: selectedConnectionForQR.id,
-          qrCode: selectedConnectionForQR.qrCode || '',
-          expiration: selectedConnectionForQR.qrExpiry || new Date()
-        } : null}
-      />
+
     </div>
   );
 }
