@@ -24,9 +24,16 @@ export default function Dashboard() {
   const [selectedConnectionForQR, setSelectedConnectionForQR] = useState<Connection | null>(null);
   const queryClient = useQueryClient();
 
-  // Buscar conexões
+  // Buscar conexões - CORRIGINDO PARA MOSTRAR SUA CONEXÃO LOWFY
   const { data: connections = [], isLoading: connectionsLoading } = useQuery({
     queryKey: ['/api/connections'],
+    queryFn: async () => {
+      console.log('🔍 BUSCANDO SUAS CONEXÕES...');
+      const response = await fetch('/api/connections');
+      const data = await response.json();
+      console.log('✅ CONEXÕES ENCONTRADAS:', data);
+      return data;
+    },
   });
 
   // Buscar estatísticas do dashboard
