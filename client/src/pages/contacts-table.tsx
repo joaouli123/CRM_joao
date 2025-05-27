@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, MessageCircle, Download, Calendar, Filter, Search, User } from 'lucide-react';
-import { format, parseISO, isToday, subDays } from 'date-fns';
+import { Plus, Edit, Trash2, MessageCircle, Download, Search, MoreHorizontal, Filter } from 'lucide-react';
+import { format, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface Contact {
@@ -250,303 +249,260 @@ export default function ContactsTable({ activeConnectionId }: ContactsTableProps
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* 1. Dashboard no Topo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Contatos</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalContacts}</div>
-            <p className="text-xs text-muted-foreground">Contatos cadastrados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Adicionados Hoje</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.todayContacts}</div>
-            <p className="text-xs text-muted-foreground">Novos contatos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Última Atualização</CardTitle>
-            <Filter className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-medium">{stats.lastUpdate}</div>
-            <p className="text-xs text-muted-foreground">Sincronização automática</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 2. Botões de Ação */}
-      <div className="flex flex-wrap gap-2">
-        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Contato
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Novo Contato</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nome *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Nome do contato"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Telefone *</Label>
-                <Input
-                  id="phone"
-                  value={formData.phoneNumber}
-                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                  placeholder="5511999999999"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="email@exemplo.com"
-                />
-              </div>
-              <div>
-                <Label htmlFor="tag">Etiqueta</Label>
-                <Select value={formData.tag} onValueChange={(value) => setFormData({ ...formData, tag: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lead">Lead</SelectItem>
-                    <SelectItem value="qualificado">Qualificado</SelectItem>
-                    <SelectItem value="cliente">Cliente</SelectItem>
-                    <SelectItem value="desqualificado">Desqualificado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="observation">Observação</Label>
-                <Input
-                  id="observation"
-                  value={formData.observation}
-                  onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
-                  placeholder="Observações sobre o contato"
-                />
-              </div>
-              <Button onClick={handleAddContact} className="w-full">
-                Adicionar Contato
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Contatos</h1>
+              <p className="text-sm text-gray-500">Gerencie seus contatos do WhatsApp</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={handleExportContacts}>
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Button variant="outline" onClick={() => loadContacts()}>
-          <Edit className="h-4 w-4 mr-2" />
-          Atualizar Lista
-        </Button>
-
-        <Button variant="outline" onClick={handleExportContacts}>
-          <Download className="h-4 w-4 mr-2" />
-          Exportar CSV
-        </Button>
-      </div>
-
-      {/* 3. Filtros de Pesquisa */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filtros de Pesquisa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="search-name">Pesquisar por Nome</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search-name"
-                  className="pl-10"
-                  value={searchName}
-                  onChange={(e) => setSearchName(e.target.value)}
-                  placeholder="Digite o nome..."
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="search-tag">Filtrar por Etiqueta</Label>
-              <Select value={searchTag} onValueChange={setSearchTag}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas as etiquetas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
-                  <SelectItem value="lead">Lead</SelectItem>
-                  <SelectItem value="qualificado">Qualificado</SelectItem>
-                  <SelectItem value="cliente">Cliente</SelectItem>
-                  <SelectItem value="desqualificado">Desqualificado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="date-filter">Filtro por Período</Label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os períodos</SelectItem>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="week">Última semana</SelectItem>
-                  <SelectItem value="month">Último mês</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="sort-order">Ordenar por</Label>
-              <Select value={sortOrder} onValueChange={setSortOrder}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recent">Mais recentes</SelectItem>
-                  <SelectItem value="oldest">Mais antigos</SelectItem>
-                  <SelectItem value="name">Nome (A-Z)</SelectItem>
-                </SelectContent>
-              </Select>
+              <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Contato
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Novo Contato</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="name">Nome *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="Nome do contato"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Telefone *</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phoneNumber}
+                        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                        placeholder="5511999999999"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="tag">Etiqueta</Label>
+                      <Select value={formData.tag} onValueChange={(value) => setFormData({ ...formData, tag: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lead">Lead</SelectItem>
+                          <SelectItem value="qualificado">Qualificado</SelectItem>
+                          <SelectItem value="cliente">Cliente</SelectItem>
+                          <SelectItem value="desqualificado">Desqualificado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleAddContact} className="w-full">
+                      Adicionar Contato
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* 4. Tabela de Contatos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Lista de Contatos ({stats.totalContacts})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Foto</TableHead>
-                    <TableHead>Nome do Contato</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Data de Adição</TableHead>
-                    <TableHead>Etiqueta</TableHead>
-                    <TableHead className="text-center">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contacts.map((contact) => (
-                    <TableRow key={contact.id}>
-                      <TableCell>
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={contact.profilePictureUrl} />
-                          <AvatarFallback>
-                            {contact.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </TableCell>
-                      <TableCell className="font-medium">{contact.name}</TableCell>
-                      <TableCell>{contact.phoneNumber}</TableCell>
-                      <TableCell>
-                        {format(parseISO(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          contact.tag === 'cliente' ? 'default' :
-                          contact.tag === 'qualificado' ? 'secondary' :
-                          contact.tag === 'lead' ? 'outline' : 'destructive'
-                        }>
-                          {contact.tag || 'sem etiqueta'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenChat(contact.phoneNumber)}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEditModal(contact)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteContact(contact.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Paginação */}
-              <div className="flex justify-between items-center mt-4">
-                <div className="text-sm text-muted-foreground">
-                  Página {currentPage} de {totalPages}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  >
-                    Anterior
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  >
-                    Próxima
-                  </Button>
-                </div>
+        {/* Search and Filters Bar */}
+        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  className="pl-10 bg-white"
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                  placeholder="Buscar contatos..."
+                />
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </div>
+            <Button variant="outline" size="sm">
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros
+            </Button>
+            <Select value={searchTag} onValueChange={setSearchTag}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas</SelectItem>
+                <SelectItem value="lead">Lead</SelectItem>
+                <SelectItem value="qualificado">Qualificado</SelectItem>
+                <SelectItem value="cliente">Cliente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="bg-white">
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-gray-200">
+                <TableHead className="w-12"></TableHead>
+                <TableHead className="font-semibold text-gray-900">NOME</TableHead>
+                <TableHead className="font-semibold text-gray-900">TELEFONE</TableHead>
+                <TableHead className="font-semibold text-gray-900">EMAIL</TableHead>
+                <TableHead className="font-semibold text-gray-900">STATUS</TableHead>
+                <TableHead className="font-semibold text-gray-900 text-right">AÇÕES</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contacts.map((contact) => (
+                <TableRow key={contact.id} className="border-gray-100 hover:bg-gray-50">
+                  <TableCell>
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={contact.profilePictureUrl} />
+                      <AvatarFallback className="bg-blue-100 text-blue-600 text-xs font-medium">
+                        {contact.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium text-gray-900">{contact.name}</div>
+                    <div className="text-sm text-gray-500">
+                      {format(parseISO(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-gray-600">{contact.phoneNumber}</TableCell>
+                  <TableCell className="text-gray-600">{contact.email || '-'}</TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant="outline"
+                      className={`${
+                        contact.tag === 'cliente' ? 'bg-green-50 text-green-700 border-green-200' :
+                        contact.tag === 'qualificado' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        contact.tag === 'lead' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                        'bg-gray-50 text-gray-700 border-gray-200'
+                      }`}
+                    >
+                      ● {contact.tag === 'cliente' ? 'Ativo' : contact.tag || 'Novo'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleOpenChat(contact.phoneNumber)}
+                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEditModal(contact)}
+                        className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteContact(contact.id)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        {/* Pagination */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              Exibindo {Math.min((currentPage - 1) * contactsPerPage + 1, stats.totalContacts)} a {Math.min(currentPage * contactsPerPage, stats.totalContacts)} de {stats.totalContacts} contatos
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="text-gray-600"
+              >
+                Anterior
+              </Button>
+              
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 p-0 ${
+                        currentPage === pageNum 
+                          ? "bg-blue-600 text-white" 
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="text-gray-600"
+              >
+                Próxima
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Modal de Edição */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
