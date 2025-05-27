@@ -26,10 +26,59 @@ async function main() {
   const { setupSendMessageRoute } = await import("./routes");
   setupSendMessageRoute(app);
   
-  // Register simple contacts API for immediate fix
-  const { getContactsAPI, getContactStatsAPI } = await import("./contacts-api");
-  app.get('/api/contacts', getContactsAPI);
-  app.get('/api/contacts/stats', getContactStatsAPI);
+  // Register simple contacts API for immediate fix - HIGH PRIORITY
+  app.get('/api/contacts', async (req, res) => {
+    try {
+      console.log('📋 API de contatos chamada diretamente');
+      const { storage } = await import("./storage");
+      const allContacts = await storage.getAllContacts();
+      
+      const response = {
+        contacts: allContacts.map(contact => ({
+          id: contact.id,
+          name: contact.name,
+          phoneNumber: contact.phoneNumber,
+          email: contact.email,
+          isActive: contact.isActive,
+          createdAt: contact.createdAt,
+          observation: contact.observation,
+          tag: contact.tag,
+          profilePictureUrl: contact.profilePictureUrl
+        })),
+        total: allContacts.length,
+        page: 1,
+        totalPages: 1
+      };
+      
+      console.log(`✅ Retornando ${allContacts.length} contatos via API direta`);
+      res.json(response);
+    } catch (error) {
+      console.error('❌ Erro na API de contatos:', error);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  app.get('/api/contacts/stats', async (req, res) => {
+    try {
+      const { storage } = await import("./storage");
+      const allContacts = await storage.getAllContacts();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const todayContacts = allContacts.filter(contact => 
+        contact.createdAt && contact.createdAt >= today
+      );
+      
+      res.json({
+        total: allContacts.length,
+        today: todayContacts.length,
+        lastUpdate: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Erro nas estatísticas:', error);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
   
   // Register ALL API routes FIRST before any other middleware
   const server = await registerRoutes(app);
