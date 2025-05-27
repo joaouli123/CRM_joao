@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Phone, MessageSquare, Calendar, Users, Activity } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Phone, MessageSquare, Calendar, Users, Activity, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 
 interface Contact {
   id: number;
@@ -12,6 +17,7 @@ interface Contact {
   email?: string;
   observation?: string;
   tag?: string;
+  origem?: string;
   createdAt: string;
 }
 
@@ -27,6 +33,21 @@ export default function ContactsWorking() {
   const [stats, setStats] = useState<ContactStats>({ total: 0, today: 0, lastUpdate: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Estados para modais
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phoneNumber: '',
+    email: '',
+    tag: '',
+    origem: '',
+    observation: ''
+  });
+  
+  const { toast } = useToast();
 
   useEffect(() => {
     loadContacts();
@@ -171,10 +192,11 @@ export default function ContactsWorking() {
           <div className="bg-white">
             {/* Header da Tabela */}
             <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-700">
-              <div className="col-span-3">Nome</div>
-              <div className="col-span-3">Telefone</div>
+              <div className="col-span-2">Nome</div>
+              <div className="col-span-2">Telefone</div>
               <div className="col-span-2">Email</div>
               <div className="col-span-2">Tag</div>
+              <div className="col-span-2">Origem</div>
               <div className="col-span-1">Data</div>
               <div className="col-span-1">Ações</div>
             </div>
@@ -185,7 +207,7 @@ export default function ContactsWorking() {
                 key={contact.id}
                 className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors"
               >
-                <div className="col-span-3 flex items-center space-x-3">
+                <div className="col-span-2 flex items-center space-x-3">
                   <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
                     {contact.name.charAt(0).toUpperCase()}
                   </div>
@@ -197,7 +219,7 @@ export default function ContactsWorking() {
                   </div>
                 </div>
 
-                <div className="col-span-3 flex items-center">
+                <div className="col-span-2 flex items-center">
                   <div>
                     <p className="text-sm text-gray-900">{formatPhoneNumber(contact.phoneNumber)}</p>
                     <p className="text-xs text-gray-500">WhatsApp</p>
@@ -215,6 +237,33 @@ export default function ContactsWorking() {
                     </Badge>
                   ) : (
                     <span className="text-gray-400">-</span>
+                  )}
+                </div>
+
+                <div className="col-span-2 flex items-center">
+                  {contact.origem ? (
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${
+                        contact.origem === 'whatsapp' ? 'bg-green-100 text-green-800 border-green-300' :
+                        contact.origem === 'site' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                        contact.origem === 'organico' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                        contact.origem === 'indicacao' ? 'bg-orange-100 text-orange-800 border-orange-300' :
+                        contact.origem === 'publicidade' ? 'bg-red-100 text-red-800 border-red-300' :
+                        'bg-gray-100 text-gray-800 border-gray-300'
+                      }`}
+                    >
+                      {contact.origem === 'whatsapp' ? 'WhatsApp' :
+                       contact.origem === 'site' ? 'Site' :
+                       contact.origem === 'organico' ? 'Orgânico' :
+                       contact.origem === 'indicacao' ? 'Indicação' :
+                       contact.origem === 'publicidade' ? 'Publicidade' :
+                       contact.origem}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                      WhatsApp
+                    </Badge>
                   )}
                 </div>
 

@@ -49,6 +49,7 @@ export const contacts = pgTable("contacts", {
   email: text("email"),
   observation: text("observation"),
   tag: text("tag"),
+  origem: text("origem").default("whatsapp"), // whatsapp, site, organico, indicacao, publicidade, outros
   profilePictureUrl: text("profile_picture_url"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
