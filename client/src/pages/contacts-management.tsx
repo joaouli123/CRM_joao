@@ -239,23 +239,64 @@ export default function ContactsManagement() {
     });
   };
 
-  const handleExport = () => {
-    // Exportação CSV no padrão solicitado: NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA\n"
-      + contacts.map(contact => 
-          `${contact.name};${contact.phoneNumber};${contact.email || ''};${contact.tag || ''};${contact.origem || ''};${format(new Date(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}`
-        ).join("\n");
+  const handleExport = (format: string) => {
+    const currentDate = format === 'csv' ? format(new Date(), 'dd-MM-yyyy') : format(new Date(), 'dd-MM-yyyy');
     
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `contatos_${format(new Date(), 'dd-MM-yyyy')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({ title: 'Lista de contatos exportada com sucesso!' });
+    if (format === 'csv') {
+      // Exportação CSV no padrão solicitado: NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA
+      const csvContent = "data:text/csv;charset=utf-8," 
+        + "NOME;TELEFONE;EMAIL;TAG;ORIGEM;DATA\n"
+        + contacts.map(contact => 
+            `${contact.name};${contact.phoneNumber};${contact.email || ''};${contact.tag || ''};${contact.origem || ''};${format(new Date(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}`
+          ).join("\n");
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `contatos_${currentDate}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({ title: 'Lista de contatos exportada como CSV!' });
+      
+    } else if (format === 'excel') {
+      // Exportação Excel (HTML table que o Excel pode abrir)
+      const excelContent = `
+        <table>
+          <tr>
+            <th>NOME</th>
+            <th>TELEFONE</th>
+            <th>EMAIL</th>
+            <th>TAG</th>
+            <th>ORIGEM</th>
+            <th>DATA</th>
+          </tr>
+          ${contacts.map(contact => `
+            <tr>
+              <td>${contact.name}</td>
+              <td>${contact.phoneNumber}</td>
+              <td>${contact.email || ''}</td>
+              <td>${contact.tag || ''}</td>
+              <td>${contact.origem || ''}</td>
+              <td>${format(new Date(contact.createdAt), 'dd/MM/yyyy', { locale: ptBR })}</td>
+            </tr>
+          `).join('')}
+        </table>
+      `;
+      
+      const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `contatos_${currentDate}.xls`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({ title: 'Lista de contatos exportada como Excel!' });
+    }
   };
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -554,14 +595,42 @@ export default function ContactsManagement() {
                   </Button>
                 </DialogTrigger>
                 
-              <Button
-                onClick={handleExport}
-                variant="outline"
-                className="btn-secondary border-green-500 text-green-700 hover:bg-green-50"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exportar CSV
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="btn-secondary border-green-500 text-green-700 hover:bg-green-50"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[300px]">
+                  <DialogHeader>
+                    <DialogTitle>Exportar Contatos</DialogTitle>
+                    <DialogDescription>
+                      Escolha o formato para exportar seus contatos.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <Button
+                      onClick={() => handleExport('csv')}
+                      className="w-full btn-primary"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar como CSV
+                    </Button>
+                    <Button
+                      onClick={() => handleExport('excel')}
+                      variant="outline"
+                      className="w-full border-green-500 text-green-700 hover:bg-green-50"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar como Excel
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               <input
                 type="file"
