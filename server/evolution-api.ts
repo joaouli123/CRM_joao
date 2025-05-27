@@ -260,6 +260,26 @@ class EvolutionAPI {
       return [];
     }
   }
+  async getProfilePicture(instanceName: string, phoneNumber: string): Promise<string | null> {
+    try {
+      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      console.log(`📸 Buscando foto de perfil para ${cleanNumber}`);
+      
+      const response = await this.makeRequest(`/chat/fetchProfilePictureUrl/${instanceName}`, 'POST', {
+        number: cleanNumber
+      });
+      
+      if (response?.profilePictureUrl) {
+        console.log(`✅ Foto encontrada para ${cleanNumber}`);
+        return response.profilePictureUrl;
+      }
+      
+      return null;
+    } catch (error) {
+      console.log(`📸 Sem foto disponível para ${phoneNumber}`);
+      return null;
+    }
+  }
 }
 
 export const evolutionAPI = new EvolutionAPI();
