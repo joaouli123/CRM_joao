@@ -373,7 +373,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-gray-50 fixed inset-0">
+    <div className="h-screen w-screen flex overflow-hidden bg-gradient-to-br from-slate-50 via-green-50/30 to-emerald-50/40 fixed inset-0">
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab}
@@ -381,33 +381,38 @@ export default function Dashboard() {
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0 min-h-[60px]">
+        {/* Header Sofisticado */}
+        <header className="glass-panel border-b border-white/20 px-8 py-6 flex-shrink-0 animate-slide-up">
           <div className="flex items-center justify-between h-full">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900 leading-tight">
-                {activeTab === 'dashboard' && 'Dashboard'}
-                {activeTab === 'connections' && 'Conexões'}
-                {activeTab === 'messages' && 'Mensagens'}
-                {activeTab === 'contacts' && 'Contatos'}
-                {activeTab === 'contacts-manager' && 'Gerenciar Contatos'}
-                {activeTab === 'contacts-management' && 'Gerenciamento de Contatos'}
-                {activeTab === 'contacts-dashboard' && 'Dashboard de Contatos'}
-                {activeTab === 'settings' && 'Configurações'}
-              </h2>
-              <p className="text-xs text-gray-500 leading-tight">
-                {activeTab === 'dashboard' && 'Visão geral do sistema'}
-                {activeTab === 'connections' && 'Gerenciar conexões WhatsApp'}
-                {activeTab === 'messages' && 'Enviar e receber mensagens'}
-                {activeTab === 'contacts' && 'Gerenciar seus contatos'}
-                {activeTab === 'contacts-manager' && 'Sistema completo de gestão de contatos'}
-                {activeTab === 'settings' && 'Configurações do sistema'}
-              </p>
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                <MessageSquare className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gradient-green">
+                  {activeTab === 'dashboard' && 'Dashboard'}
+                  {activeTab === 'connections' && 'Conexões'}
+                  {activeTab === 'messages' && 'Mensagens'}
+                  {activeTab === 'contacts' && 'Contatos'}
+                  {activeTab === 'contacts-manager' && 'Gerenciar Contatos'}
+                  {activeTab === 'contacts-management' && 'Gerenciamento de Contatos'}
+                  {activeTab === 'contacts-dashboard' && 'Dashboard de Contatos'}
+                  {activeTab === 'settings' && 'Configurações'}
+                </h2>
+                <p className="text-slate-600 text-sm">
+                  {activeTab === 'dashboard' && 'Sistema de comunicação integrado'}
+                  {activeTab === 'connections' && 'Gerencie suas conexões WhatsApp'}
+                  {activeTab === 'messages' && 'Interface de mensagens em tempo real'}
+                  {activeTab === 'contacts' && 'Central de gerenciamento de contatos'}
+                  {activeTab === 'contacts-manager' && 'Ferramentas avançadas de gestão'}
+                  {activeTab === 'settings' && 'Personalize sua experiência'}
+                </p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-gray-600">Sistema Online</span>
+              <div className="badge-success animate-scale-in">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                Sistema Online
               </div>
             </div>
           </div>
