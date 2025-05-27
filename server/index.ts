@@ -1,8 +1,9 @@
 import express from "express";
 import { registerRoutes } from "./routes";
+import { setupVite } from "./vite";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || "5000", 10);
 
 // Middleware básico
 app.use((req, res, next) => {
@@ -35,6 +36,9 @@ async function startServer() {
 
     // Registrar rotas
     const server = await registerRoutes(app);
+
+    // Configurar Vite para servir o frontend
+    await setupVite(app, server);
 
     // Iniciar servidor
     server.listen(PORT, '0.0.0.0', () => {
