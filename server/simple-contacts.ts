@@ -86,6 +86,14 @@ export function setupSimpleContactsAPI(app: Express) {
       const { id } = req.params;
       const { name, phoneNumber, email, observation, tag, origem } = req.body;
       
+      console.log(`📝 DADOS RECEBIDOS para contato ${id}:`);
+      console.log(`   Nome: ${name}`);
+      console.log(`   Telefone: ${phoneNumber}`);
+      console.log(`   Email: ${email}`);
+      console.log(`   Tag: ${tag}`);
+      console.log(`   Origem: ${origem}`);
+      console.log(`   Observação: ${observation}`);
+      
       const updatedContact = await db.update(contacts)
         .set({
           name,
