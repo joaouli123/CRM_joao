@@ -1,7 +1,7 @@
 // Evolution API WhatsApp Integration
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "https://evolution.lowfy.com.br";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY;
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "011dA95bf60bb215afd8cce1e01f99598A";
 
 if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
   throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be set');

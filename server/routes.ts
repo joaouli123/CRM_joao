@@ -364,8 +364,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        // Use the connection's session data or your configured instance
-        const instanceName = connection.sessionData || process.env.EVOLUTION_INSTANCE_ID || "whatsapp_36_lowfy";
+        // Use your real working instance
+        const instanceName = "whatsapp_36_lowfy";
 
         console.log(`🎯 Carregando conversas reais da instância: ${instanceName}`);
         const allChats = await evolutionAPI.getAllChats(instanceName);
