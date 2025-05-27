@@ -403,7 +403,7 @@ export default function ContactsManagement() {
       'lead': 'bg-blue-100 text-blue-800',
       'qualificado': 'bg-green-100 text-green-800',
       'desqualificado': 'bg-red-100 text-red-800',
-      'cliente': 'bg-purple-100 text-purple-800',
+      'customer': 'bg-purple-100 text-purple-800',
       'prospect': 'bg-yellow-100 text-yellow-800'
     };
     return colors[tag?.toLowerCase()] || 'bg-gray-100 text-gray-800';
@@ -736,26 +736,21 @@ export default function ContactsManagement() {
                 </DialogContent>
               </Dialog>
 
-              <input
-                type="file"
-                id="fileInput"
-                accept=".csv,.xlsx,.xls"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    alert(`✅ Arquivo selecionado: ${file.name}\n📋 Funcionalidade de importação será implementada quando as dependências estiverem configuradas.`);
-                  }
-                }}
-              />
               <Button
                 variant="outline"
                 className="btn-secondary border-blue-500 text-blue-700 hover:bg-blue-50"
                 onClick={() => {
-                  const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-                  if (fileInput) {
-                    fileInput.click();
-                  }
+                  // Vamos criar um modal simples inline
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.csv,.xlsx,.xls';
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) {
+                      alert(`Arquivo selecionado: ${file.name}\nFuncionalidade será implementada com as dependências corretas.`);
+                    }
+                  };
+                  input.click();
                 }}
               >
                 <Upload className="mr-2 h-4 w-4" />

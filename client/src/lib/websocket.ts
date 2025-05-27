@@ -24,7 +24,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
   const connect = () => {
     try {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      // Usar WSS em produção e WS apenas em desenvolvimento local
+      const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+      const protocol = (window.location.protocol === "https:" || isProduction) ? "wss:" : "ws:";
       const host = window.location.host || "localhost:5000";
       const wsUrl = `${protocol}//${host}/api/ws`;
       

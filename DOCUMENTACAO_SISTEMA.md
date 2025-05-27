@@ -232,7 +232,7 @@ CREATE TABLE archivedMessages (
 #### Configuração
 ```typescript
 const baseUrl = "https://evolution.lowfy.com.br"
-const apiKey = "011dA95bf60bb215afd8cce1e01f99598A"
+const apiKey = process.env.EVOLUTION_API_KEY
 const instanceId = "663d47ec-d490-4822-9c8d-c258cc46e0c1"
 ```
 
@@ -477,7 +477,7 @@ const wss = new WebSocketServer({ server: httpServer, path: '/api/ws' });
 ```env
 DATABASE_URL=postgresql://...
 EVOLUTION_API_URL=https://evolution.lowfy.com.br
-EVOLUTION_API_KEY=011dA95bf60bb215afd8cce1e01f99598A
+EVOLUTION_API_KEY=sua_chave_evolution_api_aqui
 EVOLUTION_INSTANCE_ID=663d47ec-d490-4822-9c8d-c258cc46e0c1
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
