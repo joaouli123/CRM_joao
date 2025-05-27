@@ -19,14 +19,43 @@ export function NewConnectionModal({ isOpen, onClose }: NewConnectionModalProps)
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Função para gerar QR Code
+  const generateQRCode = async (connectionId: number) => {
+    try {
+      console.log(`🔄 Gerando QR Code para conexão ${connectionId}`);
+      const response = await fetch(`/api/connections/${connectionId}/qr`);
+      if (response.ok) {
+        const qrData = await response.json();
+        console.log('✅ QR Code gerado:', qrData);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao gerar QR Code:', error);
+    }
+  };
+
   const createConnectionMutation = useMutation({
-    mutationFn: api.createConnection,
-    onSuccess: () => {
+    mutationFn: async (data: { name: string; description?: string }) => {
+      console.log('🔄 Criando nova conexão:', data);
+      const response = await fetch('/api/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Falha ao criar conexão');
+      const result = await response.json();
+      console.log('✅ Conexão criada:', result);
+      return result;
+    },
+    onSuccess: (newConnection) => {
       queryClient.invalidateQueries({ queryKey: ["/api/connections"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      
+      // Gerar QR Code automaticamente após criar conexão
+      generateQRCode(newConnection.id);
+      
       toast({
-        title: "Conexão criada",
-        description: "Nova conexão criada com sucesso",
+        title: "Conexão criada!",
+        description: "QR Code está sendo gerado...",
       });
       handleClose();
     },
