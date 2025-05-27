@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/protected-route";
 import { UserHeader } from "@/components/user-header";
 import Dashboard from "@/pages/dashboard";
-import ContactsPage from "@/pages/contacts";
+import ContactsPage from "@/pages/contacts-simple";
 import ContactsTable from "@/pages/contacts-table";
 import SignIn from "@/pages/sign-in";
 import SignUp from "@/pages/sign-up";
