@@ -1,0 +1,38 @@
+A tela do sistema está maior do que o necessário, fazendo com que a barra de rolagem vertical apareça. Precisamos ajustar o layout para que o conteúdo ocupe 100% da altura e largura da janela do navegador e a barra de rolagem seja removida.
+✅ Tarefas a Serem Realizadas:
+
+    Ajustar a altura do sistema:
+
+        Garanta que o elemento body ou html tenha 100% da altura do navegador.
+
+        Use a propriedade min-height: 100vh para garantir que a altura do conteúdo ocupe toda a tela disponível.
+
+    Ajustar a largura do sistema:
+
+        O sistema deve ocupar 100% da largura da tela.
+
+        Use width: 100% ou max-width: 100% no layout principal para garantir que ele se ajuste ao tamanho da janela do navegador sem exceder.
+
+    Remover qualquer overflow indesejado:
+
+        Verifique se algum elemento dentro da página está causando overflow (transbordamento) e, caso necessário, use overflow: hidden ou ajuste a largura/altura dos contêineres para que o conteúdo se ajuste sem transbordar.
+
+    Responsividade do layout:
+
+        Utilize consultas de mídia (media queries) para garantir que o sistema seja responsivo e se ajuste automaticamente a diferentes tamanhos de tela (especialmente para dispositivos móveis e diferentes resoluções).
+
+    Garantir visibilidade de elementos essenciais:
+
+        Ajuste os elementos do sistema (como o status "Sistema Online" no topo) para garantir que não precisem de rolagem para serem vistos. Eles devem ser visíveis sem a necessidade de deslocamento.
+
+    Verificar o comportamento do layout em diferentes resoluções:
+
+        Teste a aplicação em diferentes tamanhos de tela para garantir que o layout seja flexível e se ajuste corretamente a qualquer resolução, sem causar o aparecimento de barras de rolagem.
+
+🎯 Resultados Esperados:
+
+    O conteúdo deve ser ajustado automaticamente para 100% da altura e largura da janela do navegador.
+
+    A barra de rolagem deve ser removida, ou seja, o conteúdo deve se ajustar sem transbordar.
+
+    A aplicação deve ser responsiva e se adaptar bem a diferentes tamanhos de tela, especialmente em dispositivos móveis.
