@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/sidebar";
 import ConnectionCard from "@/components/connection-card";
-import CompleteMessageInterface from "@/components/message-interface-complete";
+import RestoredMessageInterface from "@/components/message-interface-restored";
 import ArchivedChats from "@/components/archived-chats";
 import NewConnectionModal from "@/components/new-connection-modal";
 import { QRCodeModal } from "@/components/modals/qr-code-modal";
@@ -236,7 +236,7 @@ export default function Dashboard() {
 
       case "messages":
         return (
-          <CompleteMessageInterface 
+          <RestoredMessageInterface 
             connections={connections.filter(c => c.status === 'connected')}
             selectedConnectionId={selectedConnection}
             onSelectConnection={setSelectedConnection}

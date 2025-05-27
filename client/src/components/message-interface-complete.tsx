@@ -42,18 +42,7 @@ interface RealtimeMessage {
   tempId?: string;
 }
 
-interface ArchivedChat {
-  id: number;
-  connectionId: number;
-  chatId: string;
-  phoneNumber: string;
-  contactName: string;
-  archiveReason: string;
-  archivedBy: string;
-  totalMessages: number;
-  lastMessageDate: Date;
-  archivedAt: Date;
-}
+
 
 export default function CompleteMessageInterface({ 
   connections, 
@@ -71,7 +60,7 @@ export default function CompleteMessageInterface({
   const [showTagModal, setShowTagModal] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [showArchivedSection, setShowArchivedSection] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const processedMessageIds = useRef(new Set<string>());
@@ -88,30 +77,7 @@ export default function CompleteMessageInterface({
     enabled: !!selectedConnectionId
   });
 
-  // Fetch archived chats for selected connection - COM FALLBACK PARA ERROS
-  const { data: archivedChats = [], isLoading: archivedLoading, error: archivedError } = useQuery({
-    queryKey: ['archived-chats', selectedConnectionId],
-    queryFn: async () => {
-      if (!selectedConnectionId) return [];
-      try {
-        console.log(`📂 Buscando conversas arquivadas para conexão ${selectedConnectionId}`);
-        const response = await fetch(`/api/connections/${selectedConnectionId}/archived-chats`);
-        if (!response.ok) {
-          console.warn(`⚠️ API archived-chats retornou ${response.status}, usando fallback`);
-          return []; // Retorna array vazio em caso de erro
-        }
-        const result = await response.json();
-        console.log(`✅ Conversas arquivadas carregadas: ${result.length}`);
-        return result as ArchivedChat[];
-      } catch (error) {
-        console.warn(`⚠️ Erro ao buscar arquivados, usando fallback:`, error);
-        return []; // Fallback para array vazio
-      }
-    },
-    enabled: !!selectedConnectionId && showArchivedSection,
-    retry: 1, // Tenta apenas 1 vez
-    staleTime: 30000 // Cache por 30 segundos
-  });
+
 
   // Fetch messages for selected conversation - COM LOGS DETALHADOS
   const { data: chatMessages = [], isLoading: messagesLoading } = useQuery({
