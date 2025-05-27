@@ -205,7 +205,7 @@ export default function ContactsManagement() {
     setEditingContact(contact);
     setFormData({
       name: contact.name,
-      phoneNumber: contact.phoneNumber,
+      phoneNumber: contact.phoneNumber, // Preservado mas não editável
       email: contact.email || '',
       tag: contact.tag || '',
       origem: contact.origem || '',
@@ -971,13 +971,16 @@ export default function ContactsManagement() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-phoneNumber">Telefone *</Label>
+                  <Label htmlFor="edit-phoneNumber">Telefone (WhatsApp) *</Label>
                   <Input
                     id="edit-phoneNumber"
                     value={formData.phoneNumber}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    required
+                    readOnly
+                    disabled
+                    className="bg-gray-100 text-gray-600 cursor-not-allowed"
+                    title="Número do WhatsApp não pode ser alterado"
                   />
+                  <p className="text-xs text-gray-500">📱 Número original do WhatsApp (não editável)</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
