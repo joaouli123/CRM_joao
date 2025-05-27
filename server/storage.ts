@@ -400,12 +400,65 @@ export class DatabaseStorage implements IStorage {
     return archivedChat || undefined;
   }
 
+  async createArchivedMessage(insertArchivedMessage: InsertArchivedMessage): Promise<ArchivedMessage> {
+    const [archivedMessage] = await db
+      .insert(archivedMessages)
+      .values(insertArchivedMessage)
+      .returning();
+    return archivedMessage;
+  }
+
+  async getArchivedMessagesByChat(archivedChatId: number, limit: number = 50): Promise<ArchivedMessage[]> {
+    return await db
+      .select()
+      .from(archivedMessages)
+      .where(eq(archivedMessages.archivedChatId, archivedChatId))
+      .orderBy(desc(archivedMessages.timestamp))
+      .limit(limit);
+  }
+
+  async unarchiveChat(chatId: number): Promise<boolean> {
+    try {
+      const [updated] = await db
+        .update(archivedChats)
+        .set({ isArchived: false })
+        .where(eq(archivedChats.id, chatId))
+        .returning();
+      return !!updated;
+    } catch (error) {
+      console.error('❌ Error unarchiving chat:', error);
+      return false;
+    }
+  }
+
+  async deleteArchivedChat(chatId: number): Promise<boolean> {
+    try {
+      // First delete all archived messages
+      await db
+        .delete(archivedMessages)
+        .where(eq(archivedMessages.archivedChatId, chatId));
+      
+      // Then delete the archived chat
+      const [deleted] = await db
+        .delete(archivedChats)
+        .where(eq(archivedChats.id, chatId))
+        .returning();
+      
+      return !!deleted;
+    } catch (error) {
+      console.error('❌ Error deleting archived chat:', error);
+      return false;
+    }
+  }
+
   async createArchivedChat(insertArchivedChat: InsertArchivedChat): Promise<ArchivedChat> {
+    console.log(`💾 Inserindo chat arquivado:`, insertArchivedChat);
     const [archivedChat] = await db
       .insert(archivedChats)
       .values(insertArchivedChat)
       .returning();
-    return archivedChat;
+    console.log(`✅ Chat arquivado criado com ID: ${archivedChat.id}`);
+    return archivedChat;vedChat;
   }
 
   async getArchivedMessagesByChat(archivedChatId: number, limit: number = 50): Promise<ArchivedMessage[]> {

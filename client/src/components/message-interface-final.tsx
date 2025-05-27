@@ -30,13 +30,16 @@ export default function MessageInterface({
   const [typing, setTyping] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [chatMuted, setChatMuted] = useState(false);
-  const [chatTags, setChatTags] = useState<string[]>([]);
+  const [chatTags, setChatTags] = useState<string[]>(([]);
   const [showTagModal, setShowTagModal] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  
+  const connectionId = selectedConnectionId;
+  const currentConversation = (conversations as any[]).find((c: any) => c.phoneNumber === selectedConversation);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+
   // SET para controlar IDs únicos e evitar duplicação
   const processedMessageIds = useRef(new Set<string>());
 
@@ -45,7 +48,7 @@ export default function MessageInterface({
     if (!selectedConnectionId) return;
 
     console.log(`🔌 INICIANDO WEBSOCKET para conexão ${selectedConnectionId}`);
-    
+
     let socket: WebSocket | null = null;
     let reconnectTimer: NodeJS.Timeout | null = null;
 
@@ -53,7 +56,7 @@ export default function MessageInterface({
       try {
         const wsUrl = `wss://${window.location.host}/api/ws`;
         console.log(`📡 Conectando WebSocket: ${wsUrl}`);
-        
+
         socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
@@ -69,14 +72,14 @@ export default function MessageInterface({
             // Processar APENAS UM evento por mensagem para evitar duplicação
             if ((data.type === "newMessage") && data.data) {
               const msgData = data.data;
-              
+
               // Só processar se for para a conexão ativa
               if (msgData.connectionId === selectedConnectionId) {
                 console.log(`📨 NOVA MENSAGEM: ${msgData.content} | Direção: ${msgData.direction}`);
-                
+
                 setRealtimeMessages((prev) => {
                   const messageKey = `${msgData.id || msgData.tempId}`;
-                  
+
                   // 1. VERIFICAÇÃO RIGOROSA - Se já foi processada, ignorar completamente
                   if (processedMessageIds.current.has(messageKey)) {
                     console.log(`🚫 DUPLICAÇÃO DETECTADA - Ignorando mensagem já processada: ${messageKey}`);
@@ -89,7 +92,7 @@ export default function MessageInterface({
                   // 3. Substituição de mensagem temporária com tempId
                   if (msgData.direction === 'sent' && msgData.tempId) {
                     console.log(`🔍 BUSCANDO mensagem temporária para ${msgData.content}`);
-                    
+
                     let tempIndex = prev.findIndex((m: any) => m.tempId === msgData.tempId);
 
                     if (tempIndex !== -1) {
@@ -97,7 +100,7 @@ export default function MessageInterface({
                       // Remover tempId do conjunto e adicionar ID oficial
                       processedMessageIds.current.delete(msgData.tempId);
                       processedMessageIds.current.add(msgData.id);
-                      
+
                       const newMessages = [...prev];
                       newMessages[tempIndex] = {
                         id: msgData.id,
@@ -126,12 +129,12 @@ export default function MessageInterface({
                 });
               }
             }
-            
+
             // 4. ATUALIZAÇÃO DE STATUS DE ENTREGA (messageReceived)
             if (data.type === 'messageReceived' && data.data) {
               const msgData = data.data;
               console.log(`📬 CONFIRMAÇÃO DE ENTREGA recebida para mensagem ${msgData.id}`);
-              
+
               setRealtimeMessages((prev) => 
                 prev.map((msg) => 
                   msg.id === msgData.id 
@@ -146,7 +149,7 @@ export default function MessageInterface({
             if (data.type === 'messageFailed' && data.data) {
               const msgData = data.data;
               console.log(`❌ FALHA NA ENTREGA para mensagem ${msgData.id}`);
-              
+
               setRealtimeMessages((prev) => 
                 prev.map((msg) => 
                   msg.id === msgData.id 
@@ -229,13 +232,13 @@ export default function MessageInterface({
     .filter((m) => m.phoneNumber === selectedConversation)
     .forEach((msg) => {
       const contentHash = createContentHash(msg);
-      
+
       // Evitar duplicatas por conteúdo
       if (contentHashes.has(contentHash)) {
         console.log(`🚫 DUPLICATA DETECTADA POR CONTEÚDO: ${msg.content}`);
         return;
       }
-      
+
       if (msg.id && !allMessagesMap.has(msg.id)) {
         // Mensagem oficial nova
         allMessagesMap.set(msg.id, msg);
@@ -267,36 +270,59 @@ export default function MessageInterface({
   }, [chatMessages.length, realtimeMessages.length, allMessages.length]);
 
   // Funções de ação do chat
-  const handleArchiveChat = async (phoneNumber: string) => {
-    if (!selectedConnectionId) return;
-    
+  const handleArchiveChat = async () => {
+    if (!currentConversation?.phoneNumber || !connectionId) {
+      console.error('❌ Dados insuficientes para arquivar:', { currentConversation, connectionId });
+      alert('❌ Erro: dados da conversa não disponíveis');
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/connections/${selectedConnectionId}/archive-chat`, {
+      console.log(`📁 Iniciando arquivamento da conversa:`, currentConversation);
+
+      const archiveData = {
+        phoneNumber: currentConversation.phoneNumber,
+        contactName: currentConversation.contactName || currentConversation.phoneNumber,
+        archiveReason: 'User requested archival',
+        archivedBy: 'user'
+      };
+
+      console.log(`📤 Enviando dados para arquivamento:`, archiveData);
+
+      const response = await fetch(`/api/connections/${connectionId}/archive-chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber,
-          archiveReason: 'Arquivado pelo usuário',
-          archivedBy: 'Sistema'
-        })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(archiveData),
       });
 
+      console.log(`📊 Resposta do servidor:`, response.status, response.statusText);
+
       if (response.ok) {
+        const result = await response.json();
+        console.log(`✅ Arquivamento bem-sucedido:`, result);
+
+        setShowArchiveModal(false);
+        // Refresh conversations list
+        queryClient.invalidateQueries({ queryKey: ['conversations', connectionId] });
+        // Clear current conversation
+        setCurrentConversation(null);
         alert('✅ Conversa arquivada com sucesso!');
-        queryClient.invalidateQueries({ queryKey: ['conversations', selectedConnectionId] });
-        setSelectedConversation("");
       } else {
-        alert('❌ Erro ao arquivar conversa. Tente novamente.');
+        const errorData = await response.text();
+        console.error(`❌ Erro no servidor:`, errorData);
+        throw new Error(`Server error: ${response.status} - ${errorData}`);
       }
     } catch (error) {
-      console.error('Erro ao arquivar:', error);
-      alert('❌ Erro ao arquivar conversa. Tente novamente.');
+      console.error('❌ Error archiving conversation:', error);
+      alert(`❌ Erro ao arquivar conversa: ${error.message}`);
     }
   };
 
   const handleDeleteChat = async (phoneNumber: string) => {
     if (!selectedConnectionId) return;
-    
+
     try {
       const response = await fetch(`/api/connections/${selectedConnectionId}/messages/${phoneNumber}`, {
         method: 'DELETE'
@@ -496,7 +522,8 @@ export default function MessageInterface({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleArchiveChat(conv.phoneNumber);
+                        setShowArchiveModal(true)
+                        //handleArchiveChat(conv.phoneNumber);
                       }}
                       className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50 opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Arquivar conversa"
@@ -546,7 +573,7 @@ export default function MessageInterface({
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Botões de Ação */}
                   <div className="flex items-center space-x-2">
                     {/* Etiquetas */}
@@ -577,7 +604,7 @@ export default function MessageInterface({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleArchiveChat(selectedConversation)}
+                      onClick={() => setShowArchiveModal(true)}
                       className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
                     >
                       <Archive className="h-4 w-4" />
@@ -608,7 +635,7 @@ export default function MessageInterface({
                               {chatMuted ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
                               <span>{chatMuted ? 'Reativar' : 'Silenciar'}</span>
                             </button>
-                            
+
                             <button
                               onClick={() => {
                                 setShowTagModal(true);
@@ -619,7 +646,7 @@ export default function MessageInterface({
                               <Tag className="h-4 w-4" />
                               <span>Adicionar Etiqueta</span>
                             </button>
-                            
+
                             <button
                               onClick={() => {
                                 setShowDeleteConfirm(true);
@@ -672,7 +699,7 @@ export default function MessageInterface({
                     </div>
                   </div>
                 ))}
-                
+
                 {/* Indicador "Digitando..." */}
                 {typing && (
                   <div className="flex justify-start">
@@ -681,7 +708,7 @@ export default function MessageInterface({
                     </div>
                   </div>
                 )}
-                
+
                 {/* Referência para scroll automático */}
                 <div ref={messagesEndRef} />
               </div>
@@ -745,7 +772,7 @@ export default function MessageInterface({
                 }}
                 className="w-full"
               />
-              
+
               {/* Etiquetas existentes */}
               {chatTags.length > 0 && (
                 <div>
@@ -765,7 +792,7 @@ export default function MessageInterface({
                 </div>
               )}
             </div>
-            
+
             <div className="flex space-x-3 mt-6">
               <Button
                 onClick={() => {
@@ -806,14 +833,14 @@ export default function MessageInterface({
                 </p>
               </div>
             </div>
-            
+
             <p className="text-gray-600 mb-6">
               Tem certeza que deseja excluir permanentemente todas as mensagens desta conversa com{' '}
               <span className="font-medium">
                 {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
               </span>?
             </p>
-            
+
             <div className="flex space-x-3">
               <Button
                 onClick={() => setShowDeleteConfirm(false)}
@@ -827,6 +854,49 @@ export default function MessageInterface({
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 Excluir Permanentemente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+              {showArchiveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <Archive className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Arquivar Conversa
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Tem certeza que deseja arquivar esta conversa?
+                </p>
+              </div>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              A conversa com{' '}
+              <span className="font-medium">
+                {filteredConversations.find((c: any) => c.phoneNumber === selectedConversation)?.contactName || selectedConversation}
+              </span>{' '}
+              será movida para a seção de arquivados.
+            </p>
+
+            <div className="flex space-x-3">
+              <Button
+                onClick={() => setShowArchiveModal(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleArchiveChat}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                Arquivar
               </Button>
             </div>
           </div>

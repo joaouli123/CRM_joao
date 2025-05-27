@@ -925,9 +925,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phoneNumber, contactName, archiveReason, archivedBy } = req.body;
 
       console.log(`📁 Arquivando conversa ${phoneNumber} da conexão ${connectionId}`);
+      console.log(`📁 Dados recebidos:`, req.body);
+
+      if (!phoneNumber) {
+        console.error(`❌ Número de telefone não fornecido`);
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
 
       // 1. Get all messages for this conversation
       const messages = await storage.getMessagesByConversation(connectionId, phoneNumber);
+      console.log(`📝 Encontradas ${messages.length} mensagens para arquivar`);
       
       // 2. Create unique chat ID
       const chatId = `chat_${connectionId}_${phoneNumber}_${Date.now()}`;
@@ -938,42 +945,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         new Date();
 
       // 4. Create archived chat record
-      const archivedChat = await storage.createArchivedChat({
+      const archiveData = {
         connectionId,
         chatId,
         phoneNumber,
         contactName: contactName || phoneNumber,
         archiveReason: archiveReason || 'User requested',
-        archivedBy,
+        archivedBy: archivedBy || 'system',
         totalMessages: messages.length,
         lastMessageDate
-      });
+      };
+
+      console.log(`📦 Criando registro arquivado:`, archiveData);
+      const archivedChat = await storage.createArchivedChat(archiveData);
 
       // 5. Archive all messages
+      let archivedCount = 0;
       for (const message of messages) {
-        await storage.createArchivedMessage({
-          archivedChatId: archivedChat.id,
-          messageId: message.id.toString(),
-          content: message.body,
-          senderId: message.direction === 'sent' ? 'user' : phoneNumber,
-          recipientId: message.direction === 'sent' ? phoneNumber : 'user',
-          timestamp: new Date(message.timestamp || new Date()),
-          direction: message.direction,
-          status: message.status,
-          messageType: 'text'
-        });
+        try {
+          await storage.createArchivedMessage({
+            archivedChatId: archivedChat.id,
+            messageId: message.id.toString(),
+            content: message.body || message.content || 'Mensagem sem conteúdo',
+            senderId: message.direction === 'sent' ? 'user' : phoneNumber,
+            recipientId: message.direction === 'sent' ? phoneNumber : 'user',
+            timestamp: new Date(message.timestamp || new Date()),
+            direction: message.direction,
+            status: message.status || 'delivered',
+            messageType: 'text'
+          });
+          archivedCount++;
+        } catch (msgError) {
+          console.error(`❌ Erro ao arquivar mensagem ${message.id}:`, msgError);
+        }
       }
 
-      console.log(`✅ Conversa arquivada: ${messages.length} mensagens`);
+      console.log(`✅ Conversa arquivada: ${archivedCount}/${messages.length} mensagens`);
       res.json({
         success: true,
         archivedChat,
-        totalMessages: messages.length
+        totalMessages: archivedCount,
+        originalMessages: messages.length
       });
 
     } catch (error) {
       console.error('❌ Error archiving chat:', error);
-      res.status(500).json({ error: 'Failed to archive chat' });
+      console.error('❌ Stack trace:', error.stack);
+      res.status(500).json({ 
+        error: 'Failed to archive chat',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   });
 
