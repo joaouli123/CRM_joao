@@ -37,6 +37,7 @@ export default function ContactsWorking() {
   // Estados para modais
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactOptionsOpen, setContactOptionsOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -193,6 +194,40 @@ export default function ContactsWorking() {
         description: "Não foi possível excluir o contato.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Função para verificar WhatsApp e abrir conversa
+  const handleOpenConversation = async (contact: Contact) => {
+    setSelectedContact(contact);
+    
+    // Verifica se a origem é WhatsApp - se for, abre direto a conversa
+    if (contact.origem === 'whatsapp') {
+      // Aqui você pode navegar para a página de conversa
+      toast({
+        title: "Abrindo conversa",
+        description: `Iniciando conversa com ${contact.name}`,
+      });
+      // Implementar navegação para conversa
+    } else {
+      // Se não for WhatsApp, mostra opções de contato
+      setContactOptionsOpen(true);
+    }
+  };
+
+  // Função para ligar para o contato
+  const handleCallContact = () => {
+    if (selectedContact) {
+      window.open(`tel:${selectedContact.phoneNumber}`, '_self');
+      setContactOptionsOpen(false);
+    }
+  };
+
+  // Função para enviar email
+  const handleEmailContact = () => {
+    if (selectedContact && selectedContact.email) {
+      window.open(`mailto:${selectedContact.email}`, '_self');
+      setContactOptionsOpen(false);
     }
   };
 
@@ -361,7 +396,8 @@ export default function ContactsWorking() {
                     size="sm"
                     variant="outline"
                     className="text-green-600 border-green-600 hover:bg-green-50"
-                    title="Enviar mensagem"
+                    title={contact.origem === 'whatsapp' ? "Abrir conversa no WhatsApp" : "Opções de contato"}
+                    onClick={() => handleOpenConversation(contact)}
                   >
                     <MessageSquare className="w-3 h-3" />
                   </Button>
@@ -401,6 +437,176 @@ export default function ContactsWorking() {
           </div>
         )}
       </div>
+
+      {/* Modal de Edição */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Contato</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Telefone
+              </Label>
+              <Input
+                id="phone"
+                value={editForm.phoneNumber}
+                onChange={(e) => setEditForm({...editForm, phoneNumber: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tag" className="text-right">
+                Etiqueta
+              </Label>
+              <Input
+                id="tag"
+                value={editForm.tag}
+                onChange={(e) => setEditForm({...editForm, tag: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="origem" className="text-right">
+                Origem
+              </Label>
+              <Select value={editForm.origem} onValueChange={(value) => setEditForm({...editForm, origem: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="site">Site</SelectItem>
+                  <SelectItem value="organico">Orgânico</SelectItem>
+                  <SelectItem value="indicacao">Indicação</SelectItem>
+                  <SelectItem value="publicidade">Publicidade</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="observation" className="text-right">
+                Observação
+              </Label>
+              <Textarea
+                id="observation"
+                value={editForm.observation}
+                onChange={(e) => setEditForm({...editForm, observation: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateContact}>
+              <Save className="w-4 h-4 mr-2" />
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600">
+              Tem certeza que deseja excluir o contato <strong>{selectedContact?.name}</strong>?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              Esta ação não poderá ser desfeita.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteContact}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Opções de Contato */}
+      <Dialog open={contactOptionsOpen} onOpenChange={setContactOptionsOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Como deseja entrar em contato?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600 mb-4">
+              <strong>{selectedContact?.name}</strong> não possui WhatsApp cadastrado.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Escolha uma das opções abaixo para entrar em contato:
+            </p>
+            
+            <div className="space-y-3">
+              <Button
+                className="w-full justify-start"
+                variant="outline"
+                onClick={handleCallContact}
+              >
+                <Phone className="w-4 h-4 mr-3" />
+                Ligar para {formatPhoneNumber(selectedContact?.phoneNumber || '')}
+              </Button>
+              
+              {selectedContact?.email && (
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={handleEmailContact}
+                >
+                  <MessageSquare className="w-4 h-4 mr-3" />
+                  Enviar email para {selectedContact.email}
+                </Button>
+              )}
+              
+              {!selectedContact?.email && (
+                <p className="text-sm text-gray-400 text-center py-2">
+                  Nenhum email cadastrado para este contato
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setContactOptionsOpen(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
