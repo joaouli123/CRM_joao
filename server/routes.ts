@@ -254,7 +254,7 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // ⚡ ATIVAR ROTAS DE MÍDIA PRIMEIRO
-  setupMediaRoutes(app);
+  // setupMediaRoutes(app); // Comentado temporariamente
 
   // API Routes with explicit /api prefix
   // API WHATSAPP - BUSCAR CONEXÕES (SIMPLES)
@@ -384,8 +384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!phoneNumber) return null;
 
             // Get REAL last messages for each chat
-            let lastMessage = "Nenhuma mensagem";
-            let realUnreadCount = 0;
+            let lastMessage = "Sem mensagens ainda";
+            let realUnreadCount = chat.unreadMessages || 0;
             let lastMessageTime = new Date(chat.updatedAt || Date.now());
 
             try {

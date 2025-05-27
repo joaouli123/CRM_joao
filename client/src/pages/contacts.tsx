@@ -206,7 +206,7 @@ export default function Contacts({ activeConnectionId }: ContactsProps) {
                       </p>
 
                       <p className="text-xs text-gray-500 truncate">
-                        {contact.lastMessage}
+                        {contact.lastMessage === "Nenhuma mensagem" ? "Sem mensagens ainda" : contact.lastMessage}
                       </p>
                     </div>
 

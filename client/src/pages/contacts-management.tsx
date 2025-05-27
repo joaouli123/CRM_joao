@@ -189,27 +189,7 @@ export default function ContactsManagement() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('🚀 FORMULÁRIO ENVIADO VIA SUBMIT!');
-    console.log('📋 DADOS COMPLETOS:', formData);
-    console.log('🏷️ TAG:', formData.tag);
-    console.log('🌐 ORIGEM:', formData.origem);
-    console.log('📝 OBSERVAÇÃO:', formData.observation);
-    
-    if (editingContact) {
-      const dataToSend = { 
-        id: editingContact.id, 
-        ...formData 
-      };
-      console.log('📤 ENVIANDO ATUALIZAÇÃO:', dataToSend);
-      updateContactMutation.mutate(dataToSend);
-    } else {
-      const dataToSend = { ...formData, connectionId: 36 };
-      console.log('📤 ENVIANDO CRIAÇÃO:', dataToSend);
-      createContactMutation.mutate(dataToSend);
-    }
-  };
+
 
   const handleEdit = (contact: Contact) => {
     setEditingContact(contact);
