@@ -8,6 +8,7 @@ import { UserHeader } from "@/components/user-header";
 import Dashboard from "@/pages/dashboard";
 import ContactsPage from "@/pages/contacts-simple";
 import ContactsTable from "@/pages/contacts-table";
+import ContactsManagement from "@/pages/contacts-management";
 import SignIn from "@/pages/sign-in";
 import SignUp from "@/pages/sign-up";
 
@@ -33,6 +34,13 @@ function Router() {
         <ProtectedRoute>
           <UserHeader />
           <ContactsTable activeConnectionId={36} />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/contacts-management">
+        <ProtectedRoute>
+          <UserHeader />
+          <ContactsManagement />
         </ProtectedRoute>
       </Route>
     </Switch>
