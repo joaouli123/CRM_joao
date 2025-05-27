@@ -507,6 +507,77 @@ export default function MessageInterface({
             {/* Mensagens */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
+                {/* Botão Carregar Histórico Antigo */}
+                {selectedConversation && hasMoreHistory && (
+                  <div className="flex justify-center mb-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white border-none shadow-lg transform transition-all duration-200 hover:scale-105"
+                      onClick={async () => {
+                        setLoadingHistory(true);
+                        try {
+                          const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages/history?page=${historyPage + 1}&limit=20`);
+                          const data = await response.json();
+                          
+                          if (data.messages && data.messages.length > 0) {
+                            setHistoryMessages(prev => [...data.messages, ...prev]);
+                            setHistoryPage(data.page);
+                            setHasMoreHistory(data.hasMore);
+                          } else {
+                            setHasMoreHistory(false);
+                          }
+                        } catch (error) {
+                          console.error('Erro ao carregar histórico:', error);
+                        } finally {
+                          setLoadingHistory(false);
+                        }
+                      }}
+                      disabled={loadingHistory}
+                    >
+                      {loadingHistory ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Carregando histórico...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Clock className="w-4 h-4" />
+                          <span>Carregar Mensagens Antigas</span>
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Mensagens do histórico carregado */}
+                {historyMessages.map((message) => (
+                  <div
+                    key={`history_${message.id}`}
+                    className={`flex ${
+                      message.direction === "sent" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                        message.direction === "sent"
+                          ? "bg-green-500 text-white ml-auto"
+                          : "bg-gray-100 text-gray-900"
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs opacity-70">
+                          {formatTime(new Date(message.timestamp))}
+                        </span>
+                        <span className="text-xs opacity-50 ml-2">
+                          📚 Histórico
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
                 {allMessages.map((message, index) => (
                   <div
                     key={`${message.id || index}-${message.timestamp}`}
