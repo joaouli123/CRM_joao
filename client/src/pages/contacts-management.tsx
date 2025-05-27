@@ -157,10 +157,21 @@ export default function ContactsManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('📤 DADOS DO FORMULÁRIO SENDO ENVIADOS:');
+    console.log('   Dados completos:', formData);
+    console.log('   Tag:', formData.tag);
+    console.log('   Origem:', formData.origem);
+    console.log('   Observação:', formData.observation);
+    
     if (editingContact) {
-      updateContactMutation.mutate({ id: editingContact.id, ...formData });
+      const dataToSend = { id: editingContact.id, ...formData };
+      console.log('📤 DADOS FINAIS PARA UPDATE:', dataToSend);
+      updateContactMutation.mutate(dataToSend);
     } else {
-      createContactMutation.mutate({ ...formData, connectionId: 36 });
+      const dataToSend = { ...formData, connectionId: 36 };
+      console.log('📤 DADOS FINAIS PARA CREATE:', dataToSend);
+      createContactMutation.mutate(dataToSend);
     }
   };
 
