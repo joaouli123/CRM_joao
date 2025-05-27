@@ -48,7 +48,10 @@ class EvolutionAPI {
   }
 
   private async makeRequest(endpoint: string, method: string = 'GET', data?: any) {
-    const url = `${this.baseUrl}${endpoint}`;
+    // Remove barras duplas da URL
+    const cleanBaseUrl = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${cleanBaseUrl}${cleanEndpoint}`;
     
     const options: any = {
       method,
