@@ -392,27 +392,32 @@ export default function Dashboard() {
       <NewConnectionModal
         isOpen={showNewConnectionModal}
         onClose={() => setShowNewConnectionModal(false)}
-        onConnectionCreated={(connectionId) => {
-          // Buscar a conexão criada e abrir o modal QR Code
-          setTimeout(async () => {
-            try {
-              const response = await fetch(`/api/connections/${connectionId}/qr`);
-              if (response.ok) {
-                const qrData = await response.json();
-                const connection = connections.find(c => c.id === connectionId);
-                if (connection) {
-                  setSelectedConnectionForQR({
-                    ...connection,
-                    qrCode: qrData.qrCode,
-                    qrExpiry: new Date(qrData.expiration)
-                  });
-                  setShowQRModal(true);
-                }
-              }
-            } catch (error) {
-              console.error('Erro ao buscar QR Code:', error);
+        onConnectionCreated={async (connectionId) => {
+          console.log('🔄 Abrindo modal QR Code para conexão:', connectionId);
+          
+          // Aguardar um pouco e atualizar as conexões
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+          
+          // Buscar QR Code e abrir modal
+          try {
+            const response = await fetch(`/api/connections/${connectionId}/qr`);
+            if (response.ok) {
+              const qrData = await response.json();
+              console.log('✅ QR Code obtido:', qrData);
+              
+              setSelectedConnectionForQR({
+                id: connectionId,
+                name: `Conexão ${connectionId}`,
+                status: 'waiting_qr',
+                qrCode: qrData.qrCode,
+                qrExpiry: new Date(qrData.expiration)
+              } as any);
+              setShowQRModal(true);
             }
-          }, 1000); // Aguardar 1 segundo para a conexão ser criada
+          } catch (error) {
+            console.error('❌ Erro ao buscar QR Code:', error);
+          }
         }}
       />
 
