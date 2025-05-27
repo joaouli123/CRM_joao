@@ -321,41 +321,19 @@ class EvolutionAPI {
       
       console.log(`📱 Buscando mensagens do chat ${phoneNumber} (limit: ${limit})`);
       
-      // Use the correct Evolution API v2 endpoint for messages
-      const response = await fetch(`${this.baseUrl}/v2/messages?instance_id=${instanceName}&token=${this.apiKey}&phone=${phoneNumber}&limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log(`✅ Mensagens encontradas para ${phoneNumber}: ${data.messages?.length || 0}`);
+      // Use the correct Lowfy Evolution API endpoint for messages
+      const correctInstanceName = "whatsapp_36_lowfy";
+      const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}/${chatId}?limit=${limit}`, 'GET');
       
-      return data;
-            remoteJid: chatId
-          }
-        },
-        limit,
-        sort: { messageTimestamp: -1 }
-      });
+      console.log(`✅ Mensagens encontradas para ${phoneNumber}:`, response?.length || 0);
       
-      // Extract messages from the correct format: response.messages.records
-      if (response && response.messages && response.messages.records) {
-        console.log(`✅ Extraindo ${response.messages.records.length} mensagens reais`);
-        return response.messages.records;
-      }
-      
-      return [];
+      return response || [];
     } catch (error) {
       console.log(`⚠️ Erro ao buscar mensagens do chat ${chatId}:`, error);
       return [];
     }
   }
+
   async getProfilePicture(instanceName: string, phoneNumber: string): Promise<string | null> {
     try {
       const cleanNumber = phoneNumber.replace(/\D/g, '');
