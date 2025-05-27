@@ -40,6 +40,22 @@ export const messages = pgTable("messages", {
   timestamp: timestamp("timestamp").defaultNow(),
 });
 
+// Tabela de contatos com todas as funcionalidades solicitadas
+export const contacts = pgTable("contacts", {
+  id: serial("id").primaryKey(),
+  connectionId: integer("connection_id").notNull(),
+  name: text("name").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  email: text("email"),
+  observation: text("observation"),
+  tag: text("tag"),
+  profilePictureUrl: text("profile_picture_url"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Schemas para validação
 export const insertConnectionSchema = createInsertSchema(connections).pick({
   name: true,
   description: true,
@@ -52,6 +68,20 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   body: true,
   direction: true,
 });
+
+// Schemas para contatos
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  connectionId: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
 
 export const sendMessageSchema = z.object({
   connectionId: z.number(),
@@ -92,6 +122,11 @@ export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type SendMessage = z.infer<typeof sendMessageSchema>;
+
+// Tipos para contatos
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
+export type UpdateContact = z.infer<typeof updateContactSchema>;
 
 // Conversation type for organizing messages by contact/group
 export interface Conversation {
@@ -165,34 +200,7 @@ export type InsertArchivedChat = z.infer<typeof insertArchivedChatSchema>;
 export type ArchivedMessage = typeof archivedMessages.$inferSelect;
 export type InsertArchivedMessage = z.infer<typeof insertArchivedMessageSchema>;
 
-// 📱 Tabela de Contatos
-export const contacts = pgTable("contacts", {
-  id: serial("id").primaryKey(),
-  connectionId: integer("connection_id").references(() => connections.id).notNull(),
-  phoneNumber: text("phone_number").notNull(),
-  name: text("name").notNull(),
-  email: text("email"),
-  profilePicture: text("profile_picture"),
-  etiqueta: text("etiqueta"), // Tag/categoria
-  observacao: text("observacao"), // Observações
-  isActive: boolean("is_active").default(true),
-  lastActivity: timestamp("last_activity"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
 
-export type Contact = typeof contacts.$inferSelect;
-export type InsertContact = typeof contacts.$inferInsert;
-
-// Schema para inserção de contatos
-export const insertContactSchema = createInsertSchema(contacts).pick({
-  connectionId: true,
-  phoneNumber: true,
-  name: true,
-  email: true,
-  profilePicture: true,
-  etiqueta: true,
-  observacao: true,
   isActive: true,
   lastActivity: true
 });
