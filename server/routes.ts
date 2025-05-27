@@ -406,9 +406,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const search = (req.query.search as string) || '';
 
       console.log(`🔍 GET /api/connections/${connectionId}/conversations?limit=${limit}&skip=${skip}&search="${search}"`);
-      console.log(`🔍 PARÂMETRO SEARCH: "${search}" (length: ${search.length}) (trimmed: "${search.trim()}")`);
-      console.log(`🔍 SEARCH É VÁLIDO? ${!!search.trim()}`);
-      console.log(`🔍 SERÁ APLICADO FILTRO? ${search.trim() ? 'SIM' : 'NÃO'}`);
 
       const connection = await storage.getConnection(connectionId);
 
@@ -417,134 +414,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      try {
-        // Use your real working instance
-        const instanceName = "whatsapp_36_lowfy";
+      // TIMEOUT DE SEGURANÇA para evitar travamento
+      const TIMEOUT = 10000; // 10 segundos máximo
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: Operação muito lenta')), TIMEOUT);
+      });
 
-        console.log(`🎯 Carregando conversas reais da instância: ${instanceName}`);
-        const allChats = await evolutionAPI.getAllChats(instanceName);
+      try {
+        const instanceName = "whatsapp_36_lowfy";
+        console.log(`🎯 Carregando conversas (MODO SEGURO) da instância: ${instanceName}`);
+
+        // Carregar chats com timeout
+        const allChats = await Promise.race([
+          evolutionAPI.getAllChats(instanceName),
+          timeoutPromise
+        ]);
 
         console.log(`📊 Total de conversas encontradas: ${allChats.length}`);
 
-        // Create conversations from ALL real WhatsApp contacts with REAL last messages
-        const allConversations = await Promise.all(
-          allChats.map(async (chat, index) => {
-            const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
-            if (!phoneNumber) return null;
+        // PROCESSAMENTO SIMPLIFICADO para evitar travamento
+        const conversations = allChats.map((chat, index) => {
+          const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
+          if (!phoneNumber) return null;
 
-            // Get REAL last messages for each chat
-            let lastMessage = "Sem mensagens ainda";
-            let realUnreadCount = chat.unreadMessages || 0;
-            let lastMessageTime = new Date(chat.updatedAt || Date.now());
+          return {
+            phoneNumber,
+            contactName: chat.pushName || phoneNumber,
+            lastMessage: "Conversa ativa", // Simplificado para evitar travamento
+            lastMessageTime: new Date(chat.updatedAt || Date.now()),
+            unreadCount: 0,
+            messageCount: 1,
+            profilePicture: chat.profilePicUrl || null
+          };
+        }).filter(Boolean);
 
-            try {
-              // Buscar as últimas mensagens reais do WhatsApp
-              const messagesResponse = await evolutionAPI.getChatMessages(instanceName, chat.remoteJid, 50);
-              
-              if (messagesResponse?.messages?.records && messagesResponse.messages.records.length > 0) {
-                const messages = messagesResponse.messages.records;
-                const lastMsg = messages[0]; // Última mensagem
-                
-                // Formatear a última mensagem real
-                if (lastMsg.message?.conversation) {
-                  lastMessage = lastMsg.message.conversation;
-                } else if (lastMsg.message?.extendedTextMessage?.text) {
-                  lastMessage = lastMsg.message.extendedTextMessage.text;
-                } else if (lastMsg.message?.imageMessage?.caption) {
-                  lastMessage = "📷 " + (lastMsg.message.imageMessage.caption || "Imagem");
-                } else if (lastMsg.message?.imageMessage) {
-                  lastMessage = "📷 Imagem";
-                } else if (lastMsg.message?.audioMessage) {
-                  lastMessage = "🎵 Áudio";
-                } else if (lastMsg.message?.videoMessage) {
-                  lastMessage = "🎥 Vídeo";
-                } else if (lastMsg.message?.documentMessage) {
-                  lastMessage = "📄 Documento";
-                } else if (lastMsg.message?.stickerMessage) {
-                  lastMessage = "🏷️ Sticker";
-                } else {
-                  lastMessage = "Mensagem";
-                }
-
-                // Atualizar timestamp da última mensagem
-                if (lastMsg.messageTimestamp) {
-                  lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
-                }
-
-                // Limitar o tamanho da mensagem para exibição
-                lastMessage = lastMessage.length > 50 ? lastMessage.substring(0, 50) + "..." : lastMessage;
-
-                // Contar mensagens não lidas
-                const unreadMessages = messages.filter(msg => {
-                  const isReceived = !msg.key?.fromMe;
-                  const isRecent = msg.messageTimestamp && (Date.now() - (parseInt(msg.messageTimestamp) * 1000)) < (24 * 60 * 60 * 1000);
-                  return isReceived;
-                });
-                
-                realUnreadCount = Math.min(unreadMessages.length, 5); // Máximo 5 não lidas
-
-                // Usar timestamp real da mensagem
-                if (lastMsg.messageTimestamp) {
-                  lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
-                }
-              }
-
-              // Calcular mensagens não lidas (simulado baseado no status)
-              realUnreadCount = chat.unreadCount || 0;
-              
-            } catch (error) {
-              console.log(`⚠️ Erro ao buscar última mensagem para ${phoneNumber}:`, error);
-              lastMessage = "Erro ao carregar mensagem";
-            }
-
-            const conversation = {
-              phoneNumber,
-              contactName: chat.pushName || phoneNumber,
-              lastMessage,
-              lastMessageTime,
-              unreadCount: realUnreadCount,
-              messageCount: 1,
-              profilePicture: chat.profilePicUrl
-            };
-
-            return conversation;
-          })
-        );
-        
-        const validConversations = allConversations.filter(Boolean);
-
-        // Apply search filter to ALL conversations
-        let filteredConversations = validConversations;
+        // Apply search filter
+        let filteredConversations = conversations;
         
         if (search.trim()) {
           const searchLower = search.toLowerCase().trim();
-          filteredConversations = validConversations.filter(conv => {
+          filteredConversations = conversations.filter(conv => {
             const nameMatch = conv.contactName.toLowerCase().includes(searchLower);
             const phoneMatch = conv.phoneNumber.includes(searchLower);
             return nameMatch || phoneMatch;
           });
-          console.log(`🔍 Filtro aplicado: "${search}" - ${filteredConversations.length} resultados de ${validConversations.length} total`);
+          console.log(`🔍 Filtro aplicado: "${search}" - ${filteredConversations.length} resultados`);
         }
 
-        // Apply pagination AFTER filtering (se limit for muito alto, retorna todos)
-        const totalFiltered = filteredConversations.length;
-        const paginatedConversations = limit >= 1000 ? filteredConversations : filteredConversations.slice(skip, skip + limit);
+        // Apply pagination
+        const paginatedConversations = filteredConversations.slice(skip, skip + limit);
 
-        console.log(`📋 Retornando ${paginatedConversations.length} conversas (${totalFiltered} total após filtro)`);
-
-        // Log some results for debugging
-        paginatedConversations.forEach((conv, index) => {
-          console.log(`✅ ${skip + index + 1}. ${conv.contactName} (${conv.phoneNumber}) ${conv.profilePicture ? '📸' : '👤'}`);
-          if (conv.profilePicture) {
-            console.log(`📸 FOTO REAL: ${conv.profilePicture}`);
-          }
-        });
-
-        console.log(`🎉 Retornando ${paginatedConversations.length} conversas dos seus contatos reais!`);
+        console.log(`📋 Retornando ${paginatedConversations.length} conversas (MODO SEGURO)`);
         res.json(paginatedConversations);
 
       } catch (apiError) {
-        console.log(`❌ Erro na Evolution API:`, apiError);
+        console.log(`❌ Erro na Evolution API ou timeout:`, apiError);
+        // FALLBACK: retornar lista vazia em caso de erro
         res.json([]);
       }
 

@@ -277,46 +277,63 @@ class EvolutionAPI {
     try {
       // Always use the correct instanceName for REST API calls
       const correctInstanceName = "whatsapp_36_lowfy";
-      console.log(`📱 Forçando carregamento COMPLETO da instância ${correctInstanceName} - TODOS OS CONTATOS!`);
+      console.log(`📱 Carregando contatos da instância ${correctInstanceName} (MODO SEGURO)`);
+
+      // LIMITE SEGURO para evitar travamento
+      const SAFE_LIMIT = 50; // Reduzido para evitar travamento
+      const MAX_PAGES = 3;   // Máximo 3 páginas para segurança
 
       let allChats: any[] = [];
       let page = 1;
-      const limit = 75; // Limite máximo que a API aceita
       let hasMore = true;
 
-      // Buscar página por página até esgotar TODOS os contatos
-      while (hasMore && page <= 50) { // Máximo 50 páginas para evitar loop infinito
-        console.log(`🔄 PÁGINA ${page}: Buscando ${limit} contatos (offset: ${(page-1) * limit})`);
+      // Buscar com limite seguro
+      while (hasMore && page <= MAX_PAGES) {
+        console.log(`🔄 PÁGINA ${page}/${MAX_PAGES}: Buscando ${SAFE_LIMIT} contatos`);
 
-        const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
-          where: {},
-          limit: limit,
-          offset: (page - 1) * limit
-        });
+        try {
+          const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
+            where: {},
+            limit: SAFE_LIMIT,
+            offset: (page - 1) * SAFE_LIMIT
+          });
 
-        if (response && Array.isArray(response) && response.length > 0) {
-          // Evitar duplicatas usando remoteJid como chave única
-          const newChats = response.filter(chat => 
-            !allChats.some(existing => existing.remoteJid === chat.remoteJid)
-          );
-          allChats = allChats.concat(newChats);
-          page++;
+          if (response && Array.isArray(response) && response.length > 0) {
+            // Evitar duplicatas usando remoteJid como chave única
+            const newChats = response.filter(chat => 
+              chat.remoteJid && !allChats.some(existing => existing.remoteJid === chat.remoteJid)
+            );
+            
+            allChats = allChats.concat(newChats);
+            console.log(`✅ PÁGINA ${page} OK: +${newChats.length} novos contatos (Total: ${allChats.length})`);
 
-          console.log(`✅ PÁGINA ${page-1} processada: +${newChats.length} novos contatos (Total: ${allChats.length})`);
+            // Parar se retornou menos que o limite
+            if (response.length < SAFE_LIMIT) {
+              hasMore = false;
+              console.log(`🏁 Fim dos contatos detectado na página ${page}`);
+            } else {
+              page++;
+            }
 
-          // Se retornou menos que o limite, chegamos ao fim
-          if (response.length < limit) {
+            // Pequena pausa entre requests para não sobrecarregar
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+          } else {
             hasMore = false;
+            console.log(`🏁 Nenhum contato encontrado na página ${page}`);
           }
-        } else {
-          hasMore = false;
+
+        } catch (pageError) {
+          console.log(`❌ Erro na página ${page}:`, pageError);
+          hasMore = false; // Parar em caso de erro
         }
       }
 
-      console.log(`🎉 CARREGAMENTO COMPLETO! ${allChats.length} contatos únicos carregados (TODOS DISPONÍVEIS)`);
+      console.log(`🎉 CARREGAMENTO SEGURO CONCLUÍDO! ${allChats.length} contatos carregados`);
       return allChats;
+
     } catch (error) {
-      console.log(`⚠️ Erro ao buscar chats:`, error);
+      console.log(`⚠️ Erro geral ao buscar chats:`, error);
       return [];
     }
   }

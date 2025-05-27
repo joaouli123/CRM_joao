@@ -98,9 +98,23 @@ export default function ContactsManagement() {
   const { data: contactsResponse, isLoading } = useQuery({
     queryKey: ['contacts', searchTerm, tagFilter, sortBy, currentPage],
     queryFn: async () => {
-      const response = await fetch('/api/contacts');
+      const controller = new AbortController();
+      
+      // Timeout de 15 segundos para evitar travamento
+      setTimeout(() => controller.abort(), 15000);
+      
+      const response = await fetch('/api/contacts', {
+        signal: controller.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao carregar contatos');
+      }
+      
       return response.json();
-    }
+    },
+    retry: 1, // Tentar apenas uma vez em caso de erro
+    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
   });
 
   const contacts = contactsResponse?.contacts || [];
