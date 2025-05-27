@@ -149,25 +149,5 @@ export function setupSimpleContactsAPI(app: Express) {
     }
   });
 
-  // POST /api/contacts/import - Importa contatos de CSV/Excel
-  app.post('/api/contacts/import', async (req: Request, res: Response) => {
-    try {
-      console.log('📤 Iniciando importação de contatos...');
-      
-      // Por enquanto, vamos simular uma importação bem-sucedida
-      // O usuário poderá configurar multer e xlsx quando necessário
-      
-      res.json({
-        success: true,
-        imported: 0,
-        message: 'Funcionalidade de importação será implementada com as dependências corretas'
-      });
-      
-    } catch (error) {
-      console.error('❌ Erro na importação:', error);
-      res.status(500).json({ error: 'Erro ao processar arquivo' });
-    }
-  });
-
   console.log('📋 API de contatos simples configurada com sucesso!');
 }

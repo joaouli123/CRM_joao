@@ -52,28 +52,19 @@ export default function ModernMessageInterface({ activeConnectionId }: ModernMes
     const fetchConversations = async () => {
       try {
         setLoading(true);
-        
-        // Usar o endpoint correto que já existe no backend
-        const response = await fetch(`/api/connections/${activeConnectionId}/conversations`);
+        const response = await fetch(`/api/conversations/${activeConnectionId}`);
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ Conversas carregadas:', data);
           setConversations(data);
-        } else {
-          console.log('❌ Erro ao carregar conversas:', response.status);
-          setConversations([]);
         }
       } catch (error) {
         console.error('Erro ao carregar conversas:', error);
-        setConversations([]);
       } finally {
         setLoading(false);
       }
     };
 
-    if (activeConnectionId) {
-      fetchConversations();
-    }
+    fetchConversations();
   }, [activeConnectionId]);
 
   // Carregar mensagens da conversa selecionada

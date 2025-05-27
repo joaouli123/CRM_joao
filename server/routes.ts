@@ -406,6 +406,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const search = (req.query.search as string) || '';
 
       console.log(`🔍 GET /api/connections/${connectionId}/conversations?limit=${limit}&skip=${skip}&search="${search}"`);
+      console.log(`🔍 PARÂMETRO SEARCH: "${search}" (length: ${search.length}) (trimmed: "${search.trim()}")`);
+      console.log(`🔍 SEARCH É VÁLIDO? ${!!search.trim()}`);
+      console.log(`🔍 SERÁ APLICADO FILTRO? ${search.trim() ? 'SIM' : 'NÃO'}`);
 
       const connection = await storage.getConnection(connectionId);
 
@@ -413,8 +416,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`⚠️ Conexão ${connectionId} não está conectada`);
         return res.json([]);
       }
-
-      // Sistema otimizado sem timeout
 
       try {
         console.log(`🎯 Carregando conversas do banco de dados local (connectionId: ${connectionId})`);
@@ -426,14 +427,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📊 Total de mensagens encontradas: ${dbMessages.length}`);
         console.log(`📊 Total de contatos encontrados: ${dbContacts.length}`);
 
-        // Se não temos dados locais, criar conversas exemplo para demonstração
+        // Se não temos dados locais, retornar lista vazia
         if (dbMessages.length === 0 && dbContacts.length === 0) {
-          console.log(`📝 Criando conversas de exemplo para conexão ${connectionId}`);
-          
-          // Retornar estrutura vazia mas válida
-          const emptyConversations = [];
-          console.log(`📋 Retornando ${emptyConversations.length} conversas para connectionId ${connectionId}`);
-          return res.json(emptyConversations);
+          console.log(`📝 Nenhuma conversa encontrada para conexão ${connectionId}`);
+          return res.json([]);
         }
 
         // Agrupar mensagens por número de telefone para criar conversas
@@ -441,40 +438,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Processar mensagens para criar conversas
         dbMessages.forEach(msg => {
-          const phoneNumber = msg.from === connection.phoneNumber ? msg.to : msg.from;
+          const phoneNumber = msg.direction === 'sent' ? msg.to : msg.from;
           if (!conversationsMap.has(phoneNumber)) {
-            const contact = dbContacts.find(c => c.phoneNumber === phoneNumber);
             conversationsMap.set(phoneNumber, {
               phoneNumber,
-              contactName: contact?.name || phoneNumber,
-              lastMessage: msg.body,
-              lastMessageTime: msg.timestamp,
-              unreadCount: 0,
-              messages: []
+              messages: [],
+              lastMessage: '',
+              lastMessageTime: new Date(0),
+              unreadCount: 0
             });
           }
-          conversationsMap.get(phoneNumber).messages.push(msg);
+          
+          const conversation = conversationsMap.get(phoneNumber);
+          conversation.messages.push(msg);
+          if (msg.timestamp && new Date(msg.timestamp) > conversation.lastMessageTime) {
+            conversation.lastMessage = msg.body;
+            conversation.lastMessageTime = new Date(msg.timestamp);
+          }
         });
 
-        // Processar contatos sem mensagens
+        // Adicionar contatos sem mensagens
         dbContacts.forEach(contact => {
           if (!conversationsMap.has(contact.phoneNumber)) {
             conversationsMap.set(contact.phoneNumber, {
               phoneNumber: contact.phoneNumber,
-              contactName: contact.name,
-              lastMessage: "Nenhuma mensagem ainda",
-              lastMessageTime: contact.createdAt,
-              unreadCount: 0,
-              messages: []
+              messages: [],
+              lastMessage: 'Nenhuma mensagem ainda',
+              lastMessageTime: contact.createdAt || new Date(),
+              unreadCount: 0
             });
           }
         });
 
-        // Converter para array e processar
-        const conversations = Array.from(conversationsMap.values()).map((conv, index) => {
+        // Converter para array e adicionar informações de contato
+        const conversations = Array.from(conversationsMap.values()).map(conv => {
+          const contact = dbContacts.find(c => c.phoneNumber === conv.phoneNumber);
           return {
             phoneNumber: conv.phoneNumber,
-            contactName: conv.contactName,
+            contactName: contact?.name || conv.phoneNumber,
             lastMessage: conv.lastMessage,
             lastMessageTime: conv.lastMessageTime,
             unreadCount: conv.unreadCount,
@@ -486,25 +487,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Apply search filter
         let filteredConversations = conversations;
         
-        if (search.trim()) {
-          const searchLower = search.toLowerCase().trim();
-          filteredConversations = conversations.filter(conv => {
-            const nameMatch = conv.contactName.toLowerCase().includes(searchLower);
-            const phoneMatch = conv.phoneNumber.includes(searchLower);
-            return nameMatch || phoneMatch;
-          });
-          console.log(`🔍 Filtro aplicado: "${search}" - ${filteredConversations.length} resultados`);
+        if (search) {
+          filteredConversations = conversations.filter(conv => 
+            conv.contactName.toLowerCase().includes(search.toLowerCase()) ||
+            conv.phoneNumber.includes(search) ||
+            conv.lastMessage.toLowerCase().includes(search.toLowerCase())
+          );
         }
+
+        // Sort by last message time (most recent first)
+        filteredConversations.sort((a, b) => 
+          new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+        );
 
         // Apply pagination
         const paginatedConversations = filteredConversations.slice(skip, skip + limit);
 
-        console.log(`📋 Retornando ${paginatedConversations.length} conversas (MODO SEGURO)`);
+        console.log(`📋 Retornando ${paginatedConversations.length} conversas`);
+        res.json(paginatedConversations);
+
+      } catch (error) {
+        console.error("❌ Erro geral:", error);
+        res.status(500).json({ error: "Erro interno do servidor" });
+      }
+
+    } catch (error) {
+      console.error("❌ Erro geral:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Get messages for a specific conversation
+  app.get("/api/connections/:id/conversations/:phoneNumber/messages", async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.id);
+      const phoneNumber = req.params.phoneNumber;
+      const limit = parseInt(req.query.limit as string) || 50;
+
+      console.log(`🔍 Buscando mensagens para ${phoneNumber} na conexão ${connectionId}`);
+
+      // Carregar apenas mensagens do banco de dados local
+      const connection = await storage.getConnection(connectionId);
+      if (connection) {
+        console.log(`📱 Carregando mensagens do banco local para ${phoneNumber}`);
+
+        // Buscar mensagens do banco de dados local
+        const dbMessages = await storage.getMessagesByConnection(connectionId);
+        const filteredMessages = dbMessages.filter(msg => 
+          msg.from === phoneNumber || msg.to === phoneNumber
+        );
+
+        if (filteredMessages && filteredMessages.length > 0) {
+            console.log(`✅ Encontradas ${filteredMessages.length} mensagens para ${phoneNumber}`);
+
+            // Converter mensagens do banco para o formato da interface
+            const formattedMessages = filteredMessages.map((msg: any, index: number) => {
+              return {
+                id: msg.id || `msg_${index}`,
+                connectionId,
+                direction: msg.direction,
+                phoneNumber: phoneNumber,
+                content: msg.body,
+                status: msg.status || "delivered",
+                timestamp: msg.timestamp
+              };
+            });
+
+            console.log(`🚀 Retornando ${formattedMessages.length} mensagens do banco para o frontend`);
+            return res.json(formattedMessages);
+        }
+      }
+
+      // Se não encontrou mensagens, retornar array vazio
+      console.log(`📝 Nenhuma mensagem encontrada para ${phoneNumber} - retornando array vazio`);
+      res.json([]);
+    } catch (error) {
+      console.error("❌ Erro ao buscar mensagens da conversa:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Helper function to sync real WhatsApp conversations (DESABILITADO)
+  async function syncRealWhatsAppConversations(connectionId: number) {
+    // Função desabilitada para evitar problemas com Evolution API
+    console.log(`🔄 Sincronização de conversas desabilitada para conexão ${connectionId}`);
+    return;
+  }
+
+            // Get REAL last messages for each chat
+            let lastMessage = "Sem mensagens ainda";
+            let realUnreadCount = chat.unreadMessages || 0;
+            let lastMessageTime = new Date(chat.updatedAt || Date.now());
+
+            try {
+              // Buscar as últimas mensagens reais do WhatsApp
+              const messagesResponse = await evolutionAPI.getChatMessages(instanceName, chat.remoteJid, 50);
+              
+              if (messagesResponse?.messages?.records && messagesResponse.messages.records.length > 0) {
+                const messages = messagesResponse.messages.records;
+                const lastMsg = messages[0]; // Última mensagem
+                
+                // Formatear a última mensagem real
+                if (lastMsg.message?.conversation) {
+                  lastMessage = lastMsg.message.conversation;
+                } else if (lastMsg.message?.extendedTextMessage?.text) {
+                  lastMessage = lastMsg.message.extendedTextMessage.text;
+                } else if (lastMsg.message?.imageMessage?.caption) {
+                  lastMessage = "📷 " + (lastMsg.message.imageMessage.caption || "Imagem");
+                } else if (lastMsg.message?.imageMessage) {
+                  lastMessage = "📷 Imagem";
+                } else if (lastMsg.message?.audioMessage) {
+                  lastMessage = "🎵 Áudio";
+                } else if (lastMsg.message?.videoMessage) {
+                  lastMessage = "🎥 Vídeo";
+                } else if (lastMsg.message?.documentMessage) {
+                  lastMessage = "📄 Documento";
+                } else if (lastMsg.message?.stickerMessage) {
+                  lastMessage = "🏷️ Sticker";
+                } else {
+                  lastMessage = "Mensagem";
+                }
+
+                // Atualizar timestamp da última mensagem
+                if (lastMsg.messageTimestamp) {
+                  lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
+                }
+
+                // Limitar o tamanho da mensagem para exibição
+                lastMessage = lastMessage.length > 50 ? lastMessage.substring(0, 50) + "..." : lastMessage;
+
+                // Contar mensagens não lidas
+                const unreadMessages = messages.filter(msg => {
+                  const isReceived = !msg.key?.fromMe;
+                  const isRecent = msg.messageTimestamp && (Date.now() - (parseInt(msg.messageTimestamp) * 1000)) < (24 * 60 * 60 * 1000);
+                  return isReceived;
+                });
+                
+                realUnreadCount = Math.min(unreadMessages.length, 5); // Máximo 5 não lidas
+
+                // Usar timestamp real da mensagem
+                if (lastMsg.messageTimestamp) {
+                  lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
+                }
+              }
+
+              // Calcular mensagens não lidas (simulado baseado no status)
+              realUnreadCount = chat.unreadCount || 0;
+              
+            } catch (error) {
+              console.log(`⚠️ Erro ao buscar última mensagem para ${phoneNumber}:`, error);
+              lastMessage = "Erro ao carregar mensagem";
+            }
+
+            const conversation = {
+              phoneNumber,
+              contactName: chat.pushName || phoneNumber,
+              lastMessage,
+              lastMessageTime,
+              unreadCount: realUnreadCount,
+              messageCount: 1,
+              profilePicture: chat.profilePicUrl
+            };
+
+            return conversation;
+          })
+        );
+        
+        const validConversations = allConversations.filter(Boolean);
+
+        // Apply search filter to ALL conversations
+        let filteredConversations = validConversations;
+        
+        if (search.trim()) {
+          const searchLower = search.toLowerCase().trim();
+          filteredConversations = validConversations.filter(conv => {
+            const nameMatch = conv.contactName.toLowerCase().includes(searchLower);
+            const phoneMatch = conv.phoneNumber.includes(searchLower);
+            return nameMatch || phoneMatch;
+          });
+          console.log(`🔍 Filtro aplicado: "${search}" - ${filteredConversations.length} resultados de ${validConversations.length} total`);
+        }
+
+        // Apply pagination AFTER filtering (se limit for muito alto, retorna todos)
+        const totalFiltered = filteredConversations.length;
+        const paginatedConversations = limit >= 1000 ? filteredConversations : filteredConversations.slice(skip, skip + limit);
+
+        console.log(`📋 Retornando ${paginatedConversations.length} conversas (${totalFiltered} total após filtro)`);
+
+        // Log some results for debugging
+        paginatedConversations.forEach((conv, index) => {
+          console.log(`✅ ${skip + index + 1}. ${conv.contactName} (${conv.phoneNumber}) ${conv.profilePicture ? '📸' : '👤'}`);
+          if (conv.profilePicture) {
+            console.log(`📸 FOTO REAL: ${conv.profilePicture}`);
+          }
+        });
+
+        console.log(`🎉 Retornando ${paginatedConversations.length} conversas dos seus contatos reais!`);
         res.json(paginatedConversations);
 
       } catch (apiError) {
-        console.log(`❌ Erro na Evolution API ou timeout:`, apiError);
-        // FALLBACK: retornar lista vazia em caso de erro
+        console.log(`❌ Erro na Evolution API:`, apiError);
         res.json([]);
       }
 
@@ -526,9 +708,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instanceName = `whatsapp_${connectionId}_${connection.name}`;
       console.log(`🔄 Sincronizando conversas reais do WhatsApp para ${instanceName}`);
 
-      // DESABILITADO: Buscar chats reais da conta conectada (API com problemas)
-      // const chats = await evolutionAPI.getAllChats(instanceName);
-      const chats = null; // Temporariamente desabilitado devido a problemas da API
+      // Buscar chats reais da conta conectada
+      const chats = await evolutionAPI.getAllChats(instanceName);
 
       if (chats && chats.length > 0) {
         console.log(`📱 Encontrados ${chats.length} chats reais na conta WhatsApp`);
@@ -619,41 +800,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔍 Buscando mensagens para ${phoneNumber} na conexão ${connectionId}`);
 
-      // Carregar apenas mensagens do banco de dados local (API Evolution desabilitada)
+      // First try to get real messages from Evolution API
       const connection = await storage.getConnection(connectionId);
-      if (connection) {
-        console.log(`📱 Carregando mensagens do banco local para ${phoneNumber}`);
+      if (connection && connection.status === "connected") {
+        try {
+          const sessionName = connection.name;
+          console.log(`📱 Buscando histórico real do WhatsApp para ${phoneNumber}`);
 
-        // Buscar mensagens do banco de dados local
-        const dbMessages = await storage.getMessagesByConnection(connectionId);
-        const filteredMessages = dbMessages.filter(msg => 
-          msg.from === phoneNumber || msg.to === phoneNumber
-        );
+          // Use your Evolution API instance
+          const realInstanceName = process.env.EVOLUTION_INSTANCE_ID || "whatsapp_36_lowfy";
+          console.log(`🎯 Carregando mensagens da instância: ${realInstanceName}`);
 
-        if (filteredMessages && filteredMessages.length > 0) {
-            console.log(`✅ Encontradas ${filteredMessages.length} mensagens para ${phoneNumber}`);
+          const realMessages = await evolutionAPI.getChatMessages(realInstanceName, `${phoneNumber}@s.whatsapp.net`, limit);
 
-            // Converter mensagens do banco para o formato da interface
-            const formattedMessages = filteredMessages.map((msg: any, index: number) => {
+          if (realMessages && realMessages.length > 0) {
+            console.log(`✅ Encontradas ${realMessages.length} mensagens reais para ${phoneNumber}`);
+
+            // Convert Evolution API messages to our format (reverse for correct display order)
+            const formattedMessages = realMessages.reverse().map((msg: any, index: number) => {
+              const messageContent = msg.message?.conversation || 
+                                   msg.message?.extendedTextMessage?.text || 
+                                   msg.message?.imageMessage?.caption ||
+                                   msg.message?.documentMessage?.caption ||
+                                   "Mensagem de mídia";
+
+              console.log(`📝 Mensagem ${index + 1}: "${messageContent}" - ${msg.key?.fromMe ? "Enviada" : "Recebida"}`);
+
               return {
-                id: msg.id || `msg_${index}`,
+                id: msg.key?.id || `msg_${index}`,
                 connectionId,
-                direction: msg.direction,
+                direction: msg.key?.fromMe ? "sent" : "received",
                 phoneNumber: phoneNumber,
-                content: msg.body,
-                status: msg.status || "delivered",
-                timestamp: msg.timestamp
+                content: messageContent,
+                status: "delivered",
+                timestamp: new Date(msg.messageTimestamp * 1000)
               };
             });
 
-            console.log(`🚀 Retornando ${formattedMessages.length} mensagens do banco para o frontend`);
+            console.log(`🚀 Retornando ${formattedMessages.length} mensagens formatadas para o frontend`);
             return res.json(formattedMessages);
+          }
+        } catch (apiError) {
+          console.log(`⚠️ Erro ao buscar mensagens reais, usando mensagens de exemplo:`, apiError);
         }
       }
 
-      // Se não encontrou mensagens, retornar array vazio
-      console.log(`📝 Nenhuma mensagem encontrada para ${phoneNumber} - retornando array vazio`);
-      res.json([]);
+      // Get stored messages or return empty for now
+      const storedMessages = await storage.getMessagesByConversation(connectionId, phoneNumber, limit);
+
+      if (storedMessages.length === 0) {
+        console.log(`📝 Nenhuma mensagem encontrada para ${phoneNumber} - retornando array vazio`);
+        return res.json([]);
+      }
+
+      res.json(storedMessages);
     } catch (error) {
       console.error("❌ Erro ao buscar mensagens da conversa:", error);
       res.status(500).json({ error: "Erro interno do servidor" });
