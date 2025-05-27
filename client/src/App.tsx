@@ -37,11 +37,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/contacts-management">
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      </Route>
+
 
 
     </Switch>
