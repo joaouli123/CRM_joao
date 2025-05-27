@@ -391,7 +391,20 @@ export default function MessageInterface({
                 >
                   <div className="flex items-center space-x-3">
                     <Avatar>
-                      <AvatarFallback>
+                      {conv.profilePicture ? (
+                        <img 
+                          src={conv.profilePicture} 
+                          alt={conv.contactName || conv.phoneNumber}
+                          className="w-full h-full object-cover rounded-full"
+                          onError={(e) => {
+                            // Fallback para ícone caso a imagem falhe
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <AvatarFallback className={`avatar-fallback ${conv.profilePicture ? 'hidden' : ''}`}>
                         <User className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
