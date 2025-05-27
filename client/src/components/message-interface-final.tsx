@@ -532,6 +532,66 @@ export default function MessageInterface({
             {/* Mensagens */}
             <ScrollArea className="flex-1 p-4 min-h-0">
               <div className="space-y-4">
+                {/* Botão Carregar Mais - Estilo WhatsApp Clean e Discreto */}
+                {selectedConversation && (
+                  <div className="flex justify-center py-2">
+                    <button 
+                      onClick={async () => {
+                        setLoadingHistory(true);
+                        try {
+                          const response = await fetch(`/api/connections/${selectedConnectionId}/conversations/${selectedConversation}/messages/history?page=${historyPage + 1}&limit=20`);
+                          const data = await response.json();
+                          
+                          if (data.messages && data.messages.length > 0) {
+                            setHistoryMessages(prev => [...data.messages, ...prev]);
+                            setHistoryPage(data.page);
+                            setHasMoreHistory(data.hasMore);
+                          } else {
+                            setHasMoreHistory(false);
+                          }
+                        } catch (error) {
+                          console.error('Erro ao carregar histórico:', error);
+                        } finally {
+                          setLoadingHistory(false);
+                        }
+                      }}
+                      disabled={loadingHistory}
+                      className="text-sm text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-full border border-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingHistory ? "Carregando..." : "Carregar mais"}
+                    </button>
+                  </div>
+                )}
+
+                {/* Mensagens do histórico carregado */}
+                {historyMessages.map((message) => (
+                  <div
+                    key={`history_${message.id}`}
+                    className={`flex ${
+                      message.direction === "sent" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                        message.direction === "sent"
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-100 text-gray-900"
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      <div className="flex items-center justify-end space-x-1 mt-1">
+                        <Clock className="h-3 w-3 opacity-70" />
+                        <span className="text-xs opacity-70">
+                          {formatTime(new Date(message.timestamp))}
+                        </span>
+                        <span className="text-xs opacity-50 ml-1">
+                          📚
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
                 {allMessages.map((message, index) => (
                   <div
                     key={`${message.id || index}-${message.timestamp}`}
