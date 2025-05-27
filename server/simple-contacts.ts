@@ -111,7 +111,14 @@ export function setupSimpleContactsAPI(app: Express) {
         return res.status(404).json({ error: 'Contato não encontrado' });
       }
       
-      console.log(`✅ Contato atualizado: ${name} (${phoneNumber})`);
+      console.log(`📝 DADOS SALVOS NO BANCO:`);
+      console.log(`   Nome: ${updatedContact[0].name}`);
+      console.log(`   Telefone: ${updatedContact[0].phoneNumber}`);
+      console.log(`   Email: ${updatedContact[0].email}`);
+      console.log(`   Tag: ${updatedContact[0].tag}`);
+      console.log(`   Origem: ${updatedContact[0].origem}`);
+      console.log(`   Observação: ${updatedContact[0].observation}`);
+      console.log(`✅ Contato ${id} atualizado com sucesso!`);
       res.json(updatedContact[0]);
       
     } catch (error) {
