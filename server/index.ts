@@ -26,6 +26,11 @@ async function main() {
   const { setupSendMessageRoute } = await import("./routes");
   setupSendMessageRoute(app);
   
+  // Register simple contacts API for immediate fix
+  const { getContactsAPI, getContactStatsAPI } = await import("./contacts-api");
+  app.get('/api/contacts', getContactsAPI);
+  app.get('/api/contacts/stats', getContactStatsAPI);
+  
   // Register ALL API routes FIRST before any other middleware
   const server = await registerRoutes(app);
   
