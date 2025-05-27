@@ -1,6 +1,4 @@
 import { Connection, Message, InsertConnection, InsertMessage, connections, messages, type Conversation, archivedChats, archivedMessages, type ArchivedChat, type InsertArchivedChat, type ArchivedMessage, type InsertArchivedMessage } from "@shared/schema";
-import { db } from "./db";
-import { eq, gte, sql, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Connection methods
@@ -240,7 +238,9 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Database storage implementation continues here...
+import { db } from "./db";
+import { eq, gte, sql, count, and, or, asc } from "drizzle-orm";
+import { messages as messagesTable } from "@shared/schema";
 
 export class DatabaseStorage implements IStorage {
   async getConversationsByConnection(connectionId: number): Promise<Conversation[]> {
@@ -281,9 +281,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessagesByConversation(connectionId: number, phoneNumber: string, limit: number = 50): Promise<Message[]> {
-    // Retorna array vazio temporariamente para corrigir o erro
-    console.log(`📨 [DatabaseStorage] Buscando mensagens para ${phoneNumber} na conexão ${connectionId}`);
-    return [];
+    const messages = await db.select().from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.connectionId, connectionId),
+          or(
+            and(eq(messagesTable.direction, "sent"), eq(messagesTable.to, phoneNumber)),
+            and(eq(messagesTable.direction, "received"), eq(messagesTable.from, phoneNumber))
+          )
+        )
+      )
+      .orderBy(asc(messagesTable.timestamp))
+      .limit(limit);
+    
+    return messages.map(msg => ({
+      id: msg.id,
+      connectionId: msg.connectionId,
+      direction: msg.direction as "sent" | "received",
+      phoneNumber: msg.direction === "sent" ? msg.to : msg.from,
+      content: msg.body,
+      status: msg.status as "pending" | "sent" | "delivered" | "failed",
+      timestamp: msg.timestamp || new Date()
+    }));
   }
   async getConnection(id: number): Promise<Connection | undefined> {
     const [connection] = await db.select().from(connections).where(eq(connections.id, id));
@@ -381,65 +400,12 @@ export class DatabaseStorage implements IStorage {
     return archivedChat || undefined;
   }
 
-  async createArchivedMessage(insertArchivedMessage: InsertArchivedMessage): Promise<ArchivedMessage> {
-    const [archivedMessage] = await db
-      .insert(archivedMessages)
-      .values(insertArchivedMessage)
-      .returning();
-    return archivedMessage;
-  }
-
-  async getArchivedMessagesByChat(archivedChatId: number, limit: number = 50): Promise<ArchivedMessage[]> {
-    return await db
-      .select()
-      .from(archivedMessages)
-      .where(eq(archivedMessages.archivedChatId, archivedChatId))
-      .orderBy(desc(archivedMessages.timestamp))
-      .limit(limit);
-  }
-
-  async unarchiveChat(chatId: number): Promise<boolean> {
-    try {
-      const [updated] = await db
-        .update(archivedChats)
-        .set({ isArchived: false })
-        .where(eq(archivedChats.id, chatId))
-        .returning();
-      return !!updated;
-    } catch (error) {
-      console.error('❌ Error unarchiving chat:', error);
-      return false;
-    }
-  }
-
-  async deleteArchivedChat(chatId: number): Promise<boolean> {
-    try {
-      // First delete all archived messages
-      await db
-        .delete(archivedMessages)
-        .where(eq(archivedMessages.archivedChatId, chatId));
-      
-      // Then delete the archived chat
-      const [deleted] = await db
-        .delete(archivedChats)
-        .where(eq(archivedChats.id, chatId))
-        .returning();
-      
-      return !!deleted;
-    } catch (error) {
-      console.error('❌ Error deleting archived chat:', error);
-      return false;
-    }
-  }
-
   async createArchivedChat(insertArchivedChat: InsertArchivedChat): Promise<ArchivedChat> {
-    console.log(`💾 Inserindo chat arquivado:`, insertArchivedChat);
     const [archivedChat] = await db
       .insert(archivedChats)
       .values(insertArchivedChat)
       .returning();
-    console.log(`✅ Chat arquivado criado com ID: ${archivedChat.id}`);
-    return archivedChat;vedChat;
+    return archivedChat;
   }
 
   async getArchivedMessagesByChat(archivedChatId: number, limit: number = 50): Promise<ArchivedMessage[]> {
