@@ -395,9 +395,13 @@ export default function Dashboard() {
       />
 
       <QRCodeModal
-        isOpen={showQRModal}
+        open={showQRModal}
         onClose={() => setShowQRModal(false)}
-        connection={selectedConnectionForQR}
+        qrData={selectedConnectionForQR ? {
+          connectionId: selectedConnectionForQR.id,
+          qrCode: selectedConnectionForQR.qrCode || '',
+          expiration: selectedConnectionForQR.qrExpiry || new Date()
+        } : null}
       />
     </div>
   );

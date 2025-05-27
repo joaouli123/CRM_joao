@@ -252,33 +252,72 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
 export async function registerRoutes(app: Express): Promise<Server> {
 
   // API Routes with explicit /api prefix
-  // ROTA FIXA PARA SUA CONEXÃO LOWFY
+  // BUSCAR CONEXÕES (incluindo lowfy)
   app.get("/api/connections", async (req, res) => {
     try {
-      console.log("🎯 FORÇANDO SUA CONEXÃO LOWFY");
-      
-      // Retorna sua conexão lowfy diretamente
-      const lowfyConnection = {
-        id: 36,
-        name: "lowfy",
-        status: "connected", 
-        description: null,
-        phoneNumber: null,
-        qrCode: null,
-        qrExpiry: null,
-        sessionData: "whatsapp_36_lowfy",
-        lastActivity: new Date(),
-        messageCount: 0,
-        createdAt: new Date()
-      };
-      
-      console.log("✅ RETORNANDO SUA CONEXÃO LOWFY:", lowfyConnection);
-      
-      res.setHeader('Content-Type', 'application/json');
-      res.json([lowfyConnection]);
+      console.log("📞 GET /api/connections");
+      const connections = await storage.getAllConnections();
+      console.log(`✅ Encontradas ${connections.length} conexões`);
+      res.json(connections);
     } catch (error) {
-      console.error("❌ Error:", error);
+      console.error("❌ Error fetching connections:", error);
       res.status(500).json({ error: "Failed to fetch connections" });
+    }
+  });
+
+  // CRIAR NOVA CONEXÃO
+  app.post("/api/connections", async (req, res) => {
+    try {
+      const { name, description } = req.body;
+      console.log(`🆕 Criando nova conexão: ${name}`);
+      
+      const connection = await storage.createConnection({
+        name,
+        description: description || null,
+        status: "waiting_qr"
+      });
+      
+      console.log("✅ Conexão criada:", connection);
+      res.json(connection);
+    } catch (error) {
+      console.error("❌ Error creating connection:", error);
+      res.status(500).json({ error: "Failed to create connection" });
+    }
+  });
+
+  // GERAR QR CODE REAL
+  app.get("/api/connections/:id/qr", async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.id);
+      console.log(`📱 Gerando QR Code REAL para conexão ${connectionId}`);
+      
+      const connection = await storage.getConnection(connectionId);
+      if (!connection) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+
+      // Gerar QR Code real com Evolution API
+      const instanceName = `whatsapp_${connectionId}_${connection.name}`;
+      
+      const qrCode = await evolutionAPI.generateQRCode(instanceName);
+      const qrExpiry = new Date(Date.now() + 3 * 60 * 1000); // 3 minutos
+      
+      await storage.updateConnection(connectionId, {
+        status: "waiting_qr",
+        qrCode,
+        qrExpiry,
+        sessionData: instanceName
+      });
+
+      console.log(`✅ QR Code gerado para ${connection.name}`);
+      
+      res.json({
+        qrCode,
+        expiration: qrExpiry
+      });
+    } catch (error) {
+      console.error("❌ Error generating QR code:", error);
+      res.status(500).json({ error: "Failed to generate QR code" });
     }
   });
 
