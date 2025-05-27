@@ -1,5 +1,7 @@
 // Evolution API WhatsApp Integration
 
+import { WebSocket } from 'ws';
+
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "https://evolution.lowfy.com.br";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "011dA95bf60bb215afd8cce1e01f99598A";
 
@@ -38,7 +40,7 @@ class EvolutionAPI {
   constructor() {
     // Use variáveis de ambiente para credenciais
     this.baseUrl = process.env.EVOLUTION_API_URL || "https://evolution.lowfy.com.br";
-    this.apiKey = process.env.EVOLUTION_API_KEY || "";
+    this.apiKey = process.env.EVOLUTION_API_KEY || "011dA95bf60bb215afd8cce1e01f99598A";
 
     if (!this.apiKey) {
       throw new Error('EVOLUTION_API_KEY must be set in environment variables');
