@@ -754,6 +754,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 📱 ROTA PARA CRIAR NOVO CONTATO
+  app.post('/api/connections/:id/contacts', async (req, res) => {
+    const connectionId = parseInt(req.params.id);
+    const { name, phoneNumber, email, observacao, etiqueta } = req.body;
+    
+    console.log(`📱 Criando novo contato na conexão ${connectionId}:`, { name, phoneNumber, email });
+    
+    try {
+      // Verificar se já existe
+      const existingContact = await storage.getContactByPhone(connectionId, phoneNumber);
+      if (existingContact) {
+        return res.status(400).json({ error: "Contato com este telefone já existe" });
+      }
+      
+      const newContact = await storage.createContact({
+        connectionId,
+        phoneNumber,
+        name,
+        email: email || null,
+        observacao: observacao || null,
+        etiqueta: etiqueta || null,
+        isActive: true
+      });
+      
+      console.log(`✅ Contato criado com sucesso:`, newContact);
+      res.status(201).json(newContact);
+    } catch (error) {
+      console.error(`❌ Erro ao criar contato:`, error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   app.get("/api/stats", async (req, res) => {
     try {
       const connections = await storage.getAllConnections();
