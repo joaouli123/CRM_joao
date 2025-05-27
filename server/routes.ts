@@ -390,7 +390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             try {
               // Buscar as últimas mensagens reais do WhatsApp
-              const messagesResponse = await evolutionAPI.getChatMessages(activeInstanceName, chat.remoteJid, 50);
+              const messagesResponse = await evolutionAPI.getChatMessages(instanceName, chat.remoteJid, 50);
               
               if (messagesResponse?.messages?.records && messagesResponse.messages.records.length > 0) {
                 const messages = messagesResponse.messages.records;

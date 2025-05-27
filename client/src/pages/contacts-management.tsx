@@ -41,6 +41,7 @@ interface Contact {
   email?: string;
   profilePictureUrl?: string;
   tag?: string;
+  origem?: string;
   observation?: string;
   createdAt: string;
   connectionId: number;
@@ -218,12 +219,6 @@ export default function ContactsManagement() {
     document.body.removeChild(link);
     
     toast({ title: 'Lista de contatos exportada com sucesso!' });
-  };
-
-  const openWhatsApp = (phoneNumber: string) => {
-    // Redirecionar para a aba de conversas com o contato específico
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanPhone}`, '_blank');
   };
 
   const getTagColor = (tag: string) => {
