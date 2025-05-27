@@ -41,6 +41,7 @@ export interface IStorage {
   getContact(id: number): Promise<Contact | undefined>;
   getContactByPhone(connectionId: number, phoneNumber: string): Promise<Contact | undefined>;
   getContactsByConnection(connectionId: number): Promise<Contact[]>;
+  getAllContacts(): Promise<Contact[]>;
   createContact(contact: InsertContact): Promise<Contact>;
   updateContact(id: number, updates: Partial<Contact>): Promise<Contact | undefined>;
   deleteContact(id: number): Promise<boolean>;
@@ -257,8 +258,7 @@ export class MemStorage implements IStorage {
   }
 }
 
-import { db } from "./db";
-import { eq, gte, sql, count, and, or, asc } from "drizzle-orm";
+
 import { messages as messagesTable } from "@shared/schema";
 
 export class DatabaseStorage implements IStorage {
@@ -308,6 +308,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(contacts)
       .where(eq(contacts.connectionId, connectionId))
       .orderBy(asc(contacts.name));
+  }
+
+  async getAllContacts(): Promise<Contact[]> {
+    return await db.select().from(contacts)
+      .orderBy(desc(contacts.createdAt));
   }
 
   async createContact(insertContact: InsertContact): Promise<Contact> {
