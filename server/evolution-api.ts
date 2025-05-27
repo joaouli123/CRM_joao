@@ -221,12 +221,39 @@ class EvolutionAPI {
     try {
       // Always use the correct instanceName for REST API calls
       const correctInstanceName = "whatsapp_36_lowfy";
-      console.log(`📱 Buscando todos os chats reais da instância ${correctInstanceName}`);
-      const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
-        where: {}
-      });
-      console.log(`✅ Encontrados ${response?.length || 0} chats reais`);
-      return response;
+      console.log(`📱 Buscando TODOS os chats reais da instância ${correctInstanceName} (CARREGAMENTO COMPLETO)`);
+      
+      let allChats: any[] = [];
+      let offset = 0;
+      const batchSize = 100;
+      let hasMore = true;
+      
+      // Buscar em lotes até pegar TODOS os contatos (como o WhatsApp Web faz)
+      while (hasMore) {
+        console.log(`🔄 Buscando lote ${Math.floor(offset/batchSize) + 1}: offset ${offset}, limit ${batchSize}`);
+        
+        const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
+          where: {},
+          limit: batchSize,
+          offset: offset
+        });
+        
+        if (response && response.length > 0) {
+          allChats = allChats.concat(response);
+          offset += batchSize;
+          console.log(`✅ Lote processado: +${response.length} contatos (Total: ${allChats.length})`);
+          
+          // Se retornou menos que o batchSize, chegamos ao fim
+          if (response.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      console.log(`🎉 CARREGAMENTO COMPLETO! ${allChats.length} contatos carregados (como WhatsApp Web)`);
+      return allChats;
     } catch (error) {
       console.log(`⚠️ Erro ao buscar chats:`, error);
       return [];
