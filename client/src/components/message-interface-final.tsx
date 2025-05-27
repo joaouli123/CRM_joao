@@ -187,7 +187,7 @@ export default function MessageInterface({
 
   // Buscar conversas com paginação
   const { data: conversations = [] } = useQuery({
-    queryKey: [`/api/connections/${selectedConnectionId}/conversations`, { limit: conversationsLimit }],
+    queryKey: [`/api/connections/${selectedConnectionId}/conversations?limit=${conversationsLimit}`],
     enabled: !!selectedConnectionId,
   });
 
@@ -435,10 +435,10 @@ export default function MessageInterface({
               
               {/* Botão Carregar Mais */}
               {Array.isArray(conversations) && conversations.length >= conversationsLimit && (
-                <div className="p-4 border-b">
+                <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 border-t">
                   <Button 
-                    variant="outline" 
-                    className="w-full"
+                    variant="default" 
+                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-3 shadow-lg transform transition-all duration-200 hover:scale-105"
                     onClick={async () => {
                       setLoadingMoreConversations(true);
                       setConversationsLimit(prev => prev + 10);
@@ -446,8 +446,21 @@ export default function MessageInterface({
                     }}
                     disabled={loadingMoreConversations}
                   >
-                    {loadingMoreConversations ? "Carregando..." : "Carregar Mais Conversas"}
+                    {loadingMoreConversations ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Carregando mais conversas...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Carregar Mais Conversas</span>
+                      </div>
+                    )}
                   </Button>
+                  <p className="text-xs text-center mt-2 text-gray-600">
+                    Mostrando {conversations.length} de 75+ conversas
+                  </p>
                 </div>
               )}
             </ScrollArea>
