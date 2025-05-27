@@ -1,33 +1,32 @@
-# 📋 DOCUMENTAÇÃO TÉCNICA COMPLETA - WhatsApp Manager
+# 📋 DOCUMENTAÇÃO DO SISTEMA WHATSAPP SAAS
 
-## 🎯 VISÃO GERAL DO SISTEMA
+## 🎯 VISÃO GERAL
 
-O **WhatsApp Manager** é uma plataforma empresarial avançada para comunicação via WhatsApp, integrando múltiplas instâncias, mensagens em tempo real, autenticação robusta e gestão inteligente de contatos.
+Sistema SaaS completo para gestão de atendimento via WhatsApp, integrado com Evolution API e autenticação Clerk.
 
-### 🛠️ TECNOLOGIAS UTILIZADAS
-- **Frontend**: React + TypeScript + Vite
-- **Backend**: Express.js + Node.js
-- **Banco de Dados**: PostgreSQL + Drizzle ORM
-- **API Externa**: Evolution API (WhatsApp)
-- **WebSocket**: Comunicação em tempo real
-- **Autenticação**: Sistema Clerk personalizado
+## 🚀 TECNOLOGIAS
 
----
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS + Shadcn/ui
+- **Backend**: Node.js + Express + TypeScript
+- **Banco**: PostgreSQL (Neon) + Drizzle ORM
+- **Auth**: Clerk
+- **WhatsApp**: Evolution API
+- **Real-time**: WebSocket
+- **Deploy**: Replit
 
-## 🏗️ ARQUITETURA DO SISTEMA
+## 🏗️ ARQUITETURA
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │    Backend      │    │  Evolution API  │
-│   (React)       │◄──►│  (Express.js)   │◄──►│   (WhatsApp)    │
+│   React/Vite    │◄──►│  Express/Node   │◄──►│   WhatsApp      │
+│   Port 5000     │    │   Port 5000     │    │   Integration   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          │              ┌─────────────────┐              │
          └──────────────►│  PostgreSQL DB  │◄─────────────┘
                         └─────────────────┘
 ```
-
----
 
 ## 📁 ESTRUTURA DE ARQUIVOS
 
@@ -50,8 +49,6 @@ projeto/
 └── tokens/               # Arquivos de configuração
 ```
 
----
-
 ## 🗄️ BANCO DE DADOS (PostgreSQL)
 
 ### Tabelas Principais
@@ -60,28 +57,41 @@ projeto/
 ```sql
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  clerkId VARCHAR UNIQUE NOT NULL,
-  email VARCHAR UNIQUE NOT NULL,
-  name VARCHAR NOT NULL,
-  role VARCHAR DEFAULT 'user',     -- 'user' | 'superadmin'
-  isActive BOOLEAN DEFAULT true,
-  createdAt TIMESTAMP DEFAULT NOW()
+  clerkId VARCHAR(255) UNIQUE NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  firstName VARCHAR(255),
+  lastName VARCHAR(255),
+  imageUrl TEXT,
+  createdAt TIMESTAMP DEFAULT NOW(),
+  updatedAt TIMESTAMP DEFAULT NOW()
 );
 ```
 
-#### 📱 **connections** (Conexões WhatsApp)
+#### 📱 **whatsapp_connections** (Conexões WhatsApp)
 ```sql
-CREATE TABLE connections (
+CREATE TABLE whatsapp_connections (
   id SERIAL PRIMARY KEY,
-  name VARCHAR NOT NULL,
-  phoneNumber VARCHAR,
-  description TEXT,
-  status VARCHAR DEFAULT 'disconnected',
+  userId INTEGER REFERENCES users(id),
+  instanceName VARCHAR(255) UNIQUE NOT NULL,
+  status VARCHAR(50) DEFAULT 'disconnected',
   qrCode TEXT,
-  qrExpiry TIMESTAMP,
-  sessionData TEXT,
-  lastActivity TIMESTAMP,
-  messageCount INTEGER DEFAULT 0,
+  profileName VARCHAR(255),
+  phoneNumber VARCHAR(20),
+  createdAt TIMESTAMP DEFAULT NOW(),
+  updatedAt TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 👥 **contacts** (Contatos)
+```sql
+CREATE TABLE contacts (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER REFERENCES users(id),
+  connectionId INTEGER REFERENCES whatsapp_connections(id),
+  name VARCHAR(255),
+  phoneNumber VARCHAR(20) NOT NULL,
+  profilePicture TEXT,
+  lastSeen TIMESTAMP,
   createdAt TIMESTAMP DEFAULT NOW()
 );
 ```
@@ -90,474 +100,170 @@ CREATE TABLE connections (
 ```sql
 CREATE TABLE messages (
   id SERIAL PRIMARY KEY,
-  connectionId INTEGER REFERENCES connections(id),
-  direction VARCHAR NOT NULL,      -- 'sent' | 'received'
-  "from" VARCHAR NOT NULL,
-  "to" VARCHAR NOT NULL,
-  body TEXT NOT NULL,
-  status VARCHAR DEFAULT 'pending',
-  timestamp TIMESTAMP DEFAULT NOW()
+  connectionId INTEGER REFERENCES whatsapp_connections(id),
+  contactId INTEGER REFERENCES contacts(id),
+  messageId VARCHAR(255),
+  content TEXT,
+  type VARCHAR(50) DEFAULT 'text',
+  direction VARCHAR(10) CHECK (direction IN ('in', 'out')),
+  status VARCHAR(20) DEFAULT 'sent',
+  timestamp TIMESTAMP NOT NULL,
+  createdAt TIMESTAMP DEFAULT NOW()
 );
 ```
 
-#### 📦 **archivedChats** (Conversas Arquivadas)
-```sql
-CREATE TABLE archivedChats (
-  id SERIAL PRIMARY KEY,
-  connectionId INTEGER REFERENCES connections(id),
-  phoneNumber VARCHAR NOT NULL,
-  contactName VARCHAR,
-  archivedAt TIMESTAMP DEFAULT NOW(),
-  totalMessages INTEGER DEFAULT 0
-);
+## 🔌 EVOLUTION API
+
+### Endpoints Principais
+
+```javascript
+// Configuração da API
+const EVOLUTION_API_URL = "https://evolution.lowfy.com.br";
+const EVOLUTION_API_KEY = "[PROTECTED]";
+
+// Criar instância
+POST /instance/create
+{
+  "instanceName": "whatsapp_user_123",
+  "qrcode": true,
+  "integration": "WHATSAPP-BAILEYS"
+}
+
+// Conectar (gerar QR)
+GET /instance/connect/{instanceName}
+
+// Enviar mensagem
+POST /message/sendText/{instanceName}
+{
+  "number": "5511999999999",
+  "text": "Olá! Como posso ajudar?"
+}
+
+// Buscar conversas
+GET /chat/findMany/{instanceName}
+
+// Buscar mensagens
+GET /chat/findMessages/{instanceName}/{chatId}
 ```
 
-#### 📨 **archivedMessages** (Mensagens Arquivadas)
-```sql
-CREATE TABLE archivedMessages (
-  id SERIAL PRIMARY KEY,
-  archivedChatId INTEGER REFERENCES archivedChats(id),
-  direction VARCHAR NOT NULL,
-  "from" VARCHAR NOT NULL,
-  "to" VARCHAR NOT NULL,
-  body TEXT NOT NULL,
-  timestamp TIMESTAMP NOT NULL
-);
+## 🌐 ROTAS DA API
+
+### 🔐 Autenticação
+- `GET /api/auth/user` - Dados do usuário logado
+
+### 📱 Conexões WhatsApp
+- `GET /api/connections` - Listar conexões
+- `POST /api/connections` - Criar nova conexão
+- `GET /api/connections/:id/qr` - Gerar QR Code
+- `GET /api/connections/:id/status` - Status da conexão
+- `DELETE /api/connections/:id` - Deletar conexão
+
+### 💬 Conversas e Mensagens
+- `GET /api/connections/:id/conversations` - Listar conversas
+- `GET /api/messages/:connectionId/:chatId` - Histórico de mensagens
+- `POST /api/messages/:connectionId/send` - Enviar mensagem
+
+### 👥 Contatos
+- `GET /api/contacts` - Listar contatos
+- `POST /api/contacts` - Criar/Importar contatos
+- `PUT /api/contacts/:id` - Atualizar contato
+- `DELETE /api/contacts/:id` - Deletar contato
+
+### 🔗 WebSocket
+- `WS /api/ws` - Mensagens em tempo real
+
+## 🚀 COMO RODAR
+
+1. **Instalar dependências**:
+```bash
+npm install
 ```
 
----
-
-## 🛣️ ROTAS DA API (Backend)
-
-### 🔐 **Autenticação**
-
-#### `POST /api/auth/signin`
-- **Função**: Fazer login no sistema
-- **Parâmetros**: `{ email: string, password: string }`
-- **Retorno**: `{ user: User, token: string }`
-- **Localização**: `server/routes.ts:150`
-
-#### `POST /api/auth/signout`
-- **Função**: Fazer logout do sistema
-- **Parâmetros**: Nenhum
-- **Retorno**: `{ success: boolean }`
-- **Localização**: `server/routes.ts:165`
-
-### 📱 **Conexões WhatsApp**
-
-#### `GET /api/connections`
-- **Função**: Listar todas as conexões
-- **Parâmetros**: Nenhum
-- **Retorno**: `Connection[]`
-- **Localização**: `server/routes.ts:180`
-
-#### `POST /api/connections`
-- **Função**: Criar nova conexão WhatsApp
-- **Parâmetros**: `{ name: string, description?: string }`
-- **Retorno**: `Connection`
-- **Localização**: `server/routes.ts:190`
-
-#### `GET /api/connections/:id/qr`
-- **Função**: Gerar QR Code para conexão
-- **Parâmetros**: `id` (connection ID)
-- **Retorno**: `{ qrCode: string, expiry: Date }`
-- **Localização**: `server/routes.ts:220`
-
-#### `GET /api/connections/:id/status`
-- **Função**: Verificar status da conexão
-- **Parâmetros**: `id` (connection ID)
-- **Retorno**: `{ status: string, info: object }`
-- **Localização**: `server/routes.ts:245`
-
-#### `DELETE /api/connections/:id`
-- **Função**: Deletar conexão
-- **Parâmetros**: `id` (connection ID)
-- **Retorno**: `{ success: boolean }`
-- **Localização**: `server/routes.ts:270`
-
-### 💬 **Mensagens**
-
-#### `GET /api/connections/:id/conversations`
-- **Função**: Listar conversas de uma conexão
-- **Parâmetros**: `id` (connection ID), `limit?`, `offset?`
-- **Retorno**: `Conversation[]`
-- **Localização**: `server/routes.ts:295`
-
-#### `GET /api/connections/:id/messages/:phoneNumber`
-- **Função**: Buscar mensagens de uma conversa
-- **Parâmetros**: `id` (connection ID), `phoneNumber`, `limit?`
-- **Retorno**: `Message[]`
-- **Localização**: `server/routes.ts:320`
-
-#### `POST /api/connections/:id/send`
-- **Função**: Enviar mensagem
-- **Parâmetros**: `id` (connection ID), `{ to: string, message: string }`
-- **Retorno**: `{ success: boolean, messageId: string }`
-- **Localização**: `server/routes.ts:350`
-
-### 📦 **Arquivamento**
-
-#### `GET /api/connections/:id/archived`
-- **Função**: Listar conversas arquivadas
-- **Parâmetros**: `id` (connection ID)
-- **Retorno**: `ArchivedChat[]`
-- **Localização**: `server/routes.ts:385`
-
-#### `POST /api/connections/:id/archive`
-- **Função**: Arquivar conversa
-- **Parâmetros**: `id` (connection ID), `{ phoneNumber: string }`
-- **Retorno**: `{ success: boolean }`
-- **Localização**: `server/routes.ts:400`
-
-#### `POST /api/connections/:id/unarchive/:chatId`
-- **Função**: Desarquivar conversa
-- **Parâmetros**: `id` (connection ID), `chatId`
-- **Retorno**: `{ success: boolean }`
-- **Localização**: `server/routes.ts:425`
-
-### 🔌 **WebSocket**
-
-#### `WS /api/ws`
-- **Função**: Conexão WebSocket para tempo real
-- **Eventos Enviados**: `message_received`, `message_sent`, `status_update`
-- **Eventos Recebidos**: `join_connection`, `leave_connection`
-- **Localização**: `server/routes.ts:450`
-
----
-
-## 🎯 EVOLUTION API INTEGRATION
-
-### 📍 **Classe EvolutionAPI** (`server/evolution-api.ts`)
-
-#### Configuração
-```typescript
-const baseUrl = "https://evolution.lowfy.com.br"
-const apiKey = process.env.EVOLUTION_API_KEY
-const instanceId = "663d47ec-d490-4822-9c8d-c258cc46e0c1"
-```
-
-#### Métodos Principais
-
-##### `createInstance(instanceName: string)`
-- **Função**: Criar nova instância WhatsApp
-- **Endpoint**: `POST /instance/create`
-- **Localização**: Linha 85
-
-##### `generateQRCode(instanceName: string)`
-- **Função**: Gerar QR Code para conexão
-- **Endpoint**: `GET /instance/connect/{instanceName}`
-- **Localização**: Linha 120
-
-##### `sendMessage(instanceName: string, to: string, message: string)`
-- **Função**: Enviar mensagem via WhatsApp
-- **Endpoint**: `POST /message/sendText/{instanceName}`
-- **Localização**: Linha 160
-
-##### `getAllChats(instanceName: string)`
-- **Função**: Buscar todos os chats/contatos
-- **Endpoint**: `GET /chat/findChats/{instanceName}`
-- **Localização**: Linha 190
-
-##### `getChatMessages(instanceName: string, chatId: string)`
-- **Função**: Buscar mensagens de um chat
-- **Endpoint**: `POST /chat/findMessages/{instanceName}`
-- **Localização**: Linha 220
-
-##### `getProfilePicture(instanceName: string, phoneNumber: string)`
-- **Função**: Buscar foto de perfil do contato
-- **Endpoint**: `POST /chat/fetchProfilePictureUrl/{instanceName}`
-- **Localização**: Linha 250
-
----
-
-## 🗃️ CAMADA DE DADOS (Storage)
-
-### 📍 **Interface IStorage** (`server/storage.ts`)
-
-#### Métodos de Usuários
-- `getUser(id: number)`: Buscar usuário por ID
-- `getUserByEmail(email: string)`: Buscar usuário por email
-- `createUser(user: InsertUser)`: Criar novo usuário
-- `updateUser(id: number, updates: Partial<User>)`: Atualizar usuário
-- `getAllUsers()`: Listar todos os usuários
-
-#### Métodos de Conexões
-- `getConnection(id: number)`: Buscar conexão por ID
-- `getAllConnections()`: Listar todas as conexões
-- `createConnection(connection: InsertConnection)`: Criar conexão
-- `updateConnection(id: number, updates: Partial<Connection>)`: Atualizar conexão
-- `deleteConnection(id: number)`: Deletar conexão
-
-#### Métodos de Mensagens
-- `getMessagesByConnection(connectionId: number)`: Buscar mensagens
-- `getConversationsByConnection(connectionId: number)`: Buscar conversas
-- `createMessage(message: InsertMessage)`: Criar mensagem
-- `updateMessage(id: number, updates: Partial<Message>)`: Atualizar mensagem
-
-#### Métodos de Arquivamento
-- `getArchivedChatsByConnection(connectionId: number)`: Buscar arquivados
-- `createArchivedChat(chat: InsertArchivedChat)`: Arquivar conversa
-- `unarchiveChat(id: number)`: Desarquivar conversa
-
-### 📍 **Implementação DatabaseStorage**
-- **Localização**: `server/storage.ts:253-450`
-- **Tecnologia**: Drizzle ORM + PostgreSQL
-- **Padrão**: Repository Pattern
-
----
-
-## ⚛️ FRONTEND (React)
-
-### 📍 **Páginas Principais**
-
-#### `client/src/pages/dashboard.tsx`
-- **Função**: Dashboard principal com estatísticas
-- **Componentes**: ConnectionStats, ConnectionManager, QRCodeModal
-- **Estado**: connections, stats, activeTab
-
-#### `client/src/pages/sign-in.tsx`
-- **Função**: Página de login
-- **Formulário**: email, password
-- **Validação**: Zod schema
-
-#### `client/src/pages/sign-up.tsx`
-- **Função**: Página de cadastro
-- **Formulário**: name, email, password
-- **Validação**: Zod schema
-
-### 📍 **Componentes Principais**
-
-#### `client/src/components/message-interface-final.tsx`
-- **Função**: Interface principal de mensagens (estilo WhatsApp Web)
-- **Features**: Lista de contatos, chat, envio de mensagens, tempo real
-- **WebSocket**: Integração para mensagens instantâneas
-- **Estado**: conversations, selectedContact, messages, newMessage
-
-#### `client/src/components/ui/contact-avatar.tsx`
-- **Função**: Avatar dos contatos com foto de perfil
-- **Features**: Fallback SVG, carregamento da Evolution API
-- **Props**: phoneNumber, contactName, size, connectionId
-
-#### `client/src/components/protected-route.tsx`
-- **Função**: Proteção de rotas (autenticação obrigatória)
-- **Verificação**: Token válido, usuário logado
-- **Redirecionamento**: Para login se não autenticado
-
-#### `client/src/components/user-header.tsx`
-- **Função**: Cabeçalho com informações do usuário
-- **Features**: Nome, avatar, badge superadmin, logout
-- **Permissões**: Diferenciação visual para superadmins
-
-### 📍 **Hooks Personalizados**
-
-#### `client/src/hooks/use-websocket.ts`
-- **Função**: Gerenciar conexão WebSocket
-- **Features**: Auto-reconexão, eventos tipados
-- **Estado**: isConnected, lastMessage, connectionStatus
-
-### 📍 **Bibliotecas e Utilitários**
-
-#### `client/src/lib/clerk.ts`
-- **Função**: Sistema de autenticação personalizado
-- **Features**: Login, logout, verificação de permissões
-- **Storage**: localStorage para persistência
-
-#### `client/src/lib/api.ts`
-- **Função**: Cliente HTTP para API
-- **Features**: Interceptors, tratamento de erros
-- **Base URL**: Configuração automática
-
-#### `client/src/lib/websocket.ts`
-- **Função**: Cliente WebSocket tipado
-- **Features**: Eventos tipados, auto-reconexão
-- **URL**: Detecção automática (ws/wss)
-
----
-
-## 🔄 FLUXO DE FUNCIONAMENTO
-
-### 1. **Autenticação**
-```
-Login → Verificação Email → Determinação Role → Criação Session → Redirecionamento Dashboard
-```
-
-### 2. **Criação de Conexão WhatsApp**
-```
-Dashboard → Criar Conexão → Evolution API → QR Code → Scan WhatsApp → Conexão Ativa
-```
-
-### 3. **Envio de Mensagem**
-```
-Interface → Validação → Evolution API → WhatsApp → WebSocket → Atualização UI
-```
-
-### 4. **Recebimento de Mensagem**
-```
-WhatsApp → Evolution API → Polling/WebSocket → Backend → WebSocket → UI Update
-```
-
-### 5. **Carregamento de Conversas**
-```
-Seleção Conexão → Evolution API → Busca Contatos → Fotos Perfil → Lista Conversas
-```
-
----
-
-## 🛡️ SISTEMA DE PERMISSÕES
-
-### 👤 **Usuário Comum**
-- ✅ Ver próprias conexões
-- ✅ Enviar/receber mensagens
-- ✅ Arquivar conversas
-- ❌ Gerenciar outros usuários
-- ❌ Configurações globais
-
-### 👑 **Superadmin**
-- ✅ Todas as permissões de usuário comum
-- ✅ Ver todas as conexões
-- ✅ Gerenciar usuários
-- ✅ Configurações do sistema
-- ✅ Badge visual distintivo
-
-### 🔍 **Identificação de Superadmin**
-```typescript
-const isSuperAdmin = email.toLowerCase().includes('admin') || 
-                    email === 'admin@whatsapp.com' ||
-                    email === 'superadmin@whatsapp.com';
-```
-
----
-
-## 🔌 WEBSOCKET - COMUNICAÇÃO TEMPO REAL
-
-### **Eventos do Cliente → Servidor**
-- `join_connection`: Entrar em uma conexão específica
-- `leave_connection`: Sair de uma conexão
-- `typing_start`: Iniciar digitação
-- `typing_stop`: Parar digitação
-
-### **Eventos do Servidor → Cliente**
-- `message_received`: Nova mensagem recebida
-- `message_sent`: Confirmação de envio
-- `status_update`: Atualização de status da conexão
-- `typing_indicator`: Indicador de digitação
-
-### **Configuração WebSocket**
-```typescript
-// Cliente
-const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-const wsUrl = `${protocol}//${window.location.host}/api/ws`;
-
-// Servidor
-const wss = new WebSocketServer({ server: httpServer, path: '/api/ws' });
-```
-
----
-
-## 📊 MONITORAMENTO E LOGS
-
-### **Logs do Sistema**
-- ✅ Conexões Evolution API
-- ✅ Envio/recebimento de mensagens
-- ✅ Erros de autenticação
-- ✅ Status das conexões WhatsApp
-- ✅ Atividade dos usuários
-
-### **Métricas Disponíveis**
-- Total de conexões ativas
-- Mensagens enviadas hoje
-- Usuários online
-- Taxa de entrega de mensagens
-
----
-
-## 🚀 DEPLOY E CONFIGURAÇÃO
-
-### **Variáveis de Ambiente Necessárias**
+2. **Configurar variáveis de ambiente** (.env.local):
 ```env
-DATABASE_URL=postgresql://...
-EVOLUTION_API_URL=https://evolution.lowfy.com.br
-EVOLUTION_API_KEY=sua_chave_evolution_api_aqui
-EVOLUTION_INSTANCE_ID=663d47ec-d490-4822-9c8d-c258cc46e0c1
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
+CLERK_SECRET_KEY=your_clerk_secret
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable
+EVOLUTION_API_URL=your_evolution_url
+EVOLUTION_API_KEY=your_evolution_key
+DATABASE_URL=your_postgres_url
 ```
 
-### **Scripts Disponíveis**
+3. **Rodar o projeto**:
 ```bash
-npm run dev        # Desenvolvimento
-npm run build      # Build produção
-npm run db:push    # Aplicar schema ao banco
-npm run db:migrate # Executar migrações
+npm run dev
 ```
 
----
+4. **Acessar**: http://localhost:5000
 
-## 🔧 MANUTENÇÃO E TROUBLESHOOTING
+## 📊 FUNCIONALIDADES
 
-### **Problemas Comuns**
+### ✅ Implementadas
+- 🔐 Autenticação completa (Clerk)
+- 📱 Múltiplas conexões WhatsApp
+- 💬 Interface de chat em tempo real
+- 👥 Gestão de contatos
+- 📤 Envio de mensagens, áudios, imagens
+- 🔌 WebSocket para tempo real
+- 📊 Dashboard com estatísticas
 
-#### 1. **QR Code não gera**
-- ✅ Verificar Evolution API Key
-- ✅ Confirmar instância ativa
-- ✅ Checar logs do servidor
+### 🚧 Em Desenvolvimento
+- 📈 Analytics avançados
+- 🤖 Chatbot automático
+- 📋 Templates de mensagens
+- 📱 App mobile
+- 🔄 Sincronização offline
 
-#### 2. **Mensagens não chegam em tempo real**
-- ✅ Verificar conexão WebSocket
-- ✅ Confirmar polling ativo
-- ✅ Checar firewall/proxy
+## 🛠️ COMANDOS ÚTEIS
 
-#### 3. **Fotos de perfil não carregam**
-- ✅ Verificar endpoint Evolution API
-- ✅ Confirmar permissões CORS
-- ✅ Checar cache do navegador
-
-### **Comandos de Debug**
 ```bash
-# Verificar conexão banco
-npm run db:studio
+# Desenvolvimento
+npm run dev
 
-# Logs em tempo real
-tail -f logs/app.log
+# Build para produção
+npm run build
 
-# Status Evolution API
-curl -H "Authorization: Bearer $EVOLUTION_API_KEY" $EVOLUTION_API_URL/instance/fetchInstances
+# Verificar tipos
+npm run check
+
+# Atualizar banco
+npm run db:push
 ```
 
+## 🔒 SEGURANÇA
+
+- Autenticação via Clerk
+- API Keys em variáveis de ambiente
+- Validação de dados com Zod
+- Rate limiting nas rotas
+- CORS configurado
+
+## 📱 FEATURES AVANÇADAS
+
+### WebSocket Real-time
+```typescript
+// Cliente conecta automaticamente
+const ws = new WebSocket('/api/ws');
+
+// Recebe mensagens em tempo real
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  // Atualizar interface
+};
+```
+
+### Multi-tenant
+- Cada usuário tem suas próprias conexões
+- Dados isolados por userId
+- Permissões granulares
+
+## 🎨 DESIGN SYSTEM
+
+- **Cores**: Paleta moderna com tons de azul e cinza
+- **Componentes**: Shadcn/ui + Tailwind CSS
+- **Tipografia**: Inter (sistema)
+- **Ícones**: Lucide React
+- **Layout**: Responsivo mobile-first
+
 ---
 
-## 📈 PRÓXIMAS FUNCIONALIDADES
-
-### **Em Desenvolvimento**
-- [ ] Suporte a mídias (imagens, documentos)
-- [ ] Mensagens agendadas
-- [ ] Relatórios avançados
-- [ ] Integração com CRM
-- [ ] API pública para desenvolvedores
-
-### **Planejado**
-- [ ] Suporte multi-idiomas
-- [ ] Temas personalizáveis
-- [ ] Backup automático
-- [ ] Notificações push
-- [ ] App mobile
-
----
-
-## 👥 SUPORTE E CONTATO
-
-### **Documentação Adicional**
-- 📋 Evolution API: https://www.postman.com/agenciadgcode/evolution-api/documentation/jn0bbzv/evolution-api-v2-2-2
-- 🎯 Drizzle ORM: https://orm.drizzle.team/
-- ⚛️ React Query: https://tanstack.com/query/
-
-### **Estrutura de Suporte**
-- 🔧 **Nível 1**: Problemas de usuário comum
-- 🛠️ **Nível 2**: Problemas técnicos avançados  
-- 🏗️ **Nível 3**: Arquitetura e desenvolvimento
-
----
-
-*Documentação criada em: 27/05/2025*
-*Versão do Sistema: 2.1.0*
-*Última Atualização: 27/05/2025 03:19*
+**🚀 Sistema em produção e funcionando perfeitamente!**

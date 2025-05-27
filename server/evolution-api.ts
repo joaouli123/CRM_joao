@@ -3,7 +3,7 @@
 import { WebSocket } from 'ws';
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "https://evolution.lowfy.com.br";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "011dA95bf60bb215afd8cce1e01f99598A";
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 
 if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
   throw new Error('EVOLUTION_API_URL and EVOLUTION_API_KEY must be set');
@@ -38,22 +38,14 @@ class EvolutionAPI {
   private apiKey: string;
 
   constructor() {
-    // Use variáveis de ambiente para credenciais
-    this.baseUrl = process.env.EVOLUTION_API_URL?.replace('/manager', '') || "https://evolution.lowfy.com.br";
-    this.apiKey = process.env.EVOLUTION_API_KEY || "011dA95bf60bb215afd8cce1e01f99598A";
-
-    if (!this.apiKey) {
-      throw new Error('EVOLUTION_API_KEY must be set in environment variables');
-    }
+    this.baseUrl = EVOLUTION_API_URL;
+    this.apiKey = EVOLUTION_API_KEY;
 
     console.log("✅ Evolution API configurada com URL:", this.baseUrl);
   }
 
   private async makeRequest(endpoint: string, method: string = 'GET', data?: any) {
-    // Remove barras duplas da URL
-    const cleanBaseUrl = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${cleanBaseUrl}${cleanEndpoint}`;
+    const url = `${this.baseUrl}${endpoint}`;
 
     const options: any = {
       method,
@@ -71,8 +63,7 @@ class EvolutionAPI {
 
     try {
       const response = await fetch(url, options);
-      
-      // Verificar se a resposta é JSON válido
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const textResponse = await response.text();
@@ -108,43 +99,6 @@ class EvolutionAPI {
     };
 
     const result = await this.makeRequest('/instance/create', 'POST', data);
-
-    // CONFIGURAR WEBHOOK SUPER AGRESSIVO IMEDIATAMENTE
-    try {
-      // Aguardar um pouco para a instância estar pronta
-      setTimeout(async () => {
-        try {
-          await this.configureWebhook(instanceName);
-          console.log(`✅ Webhook SUPER AGRESSIVO configurado para ${instanceName}`);
-
-          // VERIFICAR se funcionou
-          setTimeout(async () => {
-            try {
-              const checkResponse = await this.makeRequest(`/webhook/find/${instanceName}`, 'GET');
-              console.log(`🔍 Verificação final do webhook:`, checkResponse);
-            } catch (checkError) {
-              console.log(`⚠️ Erro na verificação:`, checkError);
-            }
-          }, 2000);
-
-        } catch (webhookError) {
-          console.log(`❌ ERRO CRÍTICO ao configurar webhook:`, webhookError);
-
-          // TENTAR NOVAMENTE
-          setTimeout(async () => {
-            try {
-              await this.configureWebhook(instanceName);
-              console.log(`🔄 SEGUNDA TENTATIVA de webhook configurada`);
-            } catch (retryError) {
-              console.log(`❌ FALHA na segunda tentativa:`, retryError);
-            }
-          }, 5000);
-        }
-      }, 3000);
-    } catch (error) {
-      console.log(`⚠️ Erro ao agendar configuração de webhook:`, error);
-    }
-
     return result;
   }
 
@@ -156,9 +110,8 @@ class EvolutionAPI {
     console.log(`📱 Gerando QR Code para instância: ${instanceName}`);
 
     try {
-      const response = await this.makeRequest(`instance/connect/${instanceName}`, 'GET');
+      const response = await this.makeRequest(`/instance/connect/${instanceName}`, 'GET');
 
-      // Handle different possible response formats from Evolution API
       let qrBase64 = null;
 
       if (response.qrcode?.base64) {
@@ -170,7 +123,6 @@ class EvolutionAPI {
       }
 
       if (qrBase64) {
-        // Clean any existing data URL prefix to avoid duplication
         const cleanBase64 = qrBase64.replace(/^data:image\/png;base64,/, '');
         console.log(`✅ QR Code gerado com sucesso para ${instanceName}`);
         return `data:image/png;base64,${cleanBase64}`;
@@ -187,7 +139,6 @@ class EvolutionAPI {
   async getConnectionStatus(instanceName: string): Promise<string> {
     try {
       const info = await this.getInstanceInfo(instanceName);
-      // Evolution API returns 'state' field, not 'status'
       return info.instance.state || info.instance.status || 'disconnected';
     } catch (error) {
       console.error(`❌ Erro ao verificar status da instância ${instanceName}:`, error);
@@ -196,22 +147,18 @@ class EvolutionAPI {
   }
 
   async sendMessage(instanceName: string, to: string, message: string): Promise<any> {
-    // Always use the correct instanceName for REST API calls
-    const correctInstanceName = "whatsapp_36_lowfy";
-    console.log(`📤 Enviando mensagem via ${correctInstanceName} para ${to}: ${message}`);
+    console.log(`📤 Enviando mensagem via ${instanceName} para ${to}: ${message}`);
 
     const data = {
-      number: to.replace(/\D/g, ''), // Remove non-digits
+      number: to.replace(/\D/g, ''),
       text: message
     };
 
-    return await this.makeRequest(`/message/sendText/${correctInstanceName}`, 'POST', data);
+    return await this.makeRequest(`/message/sendText/${instanceName}`, 'POST', data);
   }
 
-  // 🎵 ENVIAR ÁUDIO
   async sendAudio(instanceName: string, to: string, audioData: string): Promise<any> {
-    const correctInstanceName = "whatsapp_36_lowfy";
-    console.log(`🎵 Enviando áudio via ${correctInstanceName} para ${to}`);
+    console.log(`🎵 Enviando áudio via ${instanceName} para ${to}`);
 
     const data = {
       number: to.replace(/\D/g, ''),
@@ -220,13 +167,11 @@ class EvolutionAPI {
       }
     };
 
-    return await this.makeRequest(`/message/sendWhatsAppAudio/${correctInstanceName}`, 'POST', data);
+    return await this.makeRequest(`/message/sendWhatsAppAudio/${instanceName}`, 'POST', data);
   }
 
-  // 📸 ENVIAR IMAGEM
   async sendImage(instanceName: string, to: string, imageData: string, caption?: string): Promise<any> {
-    const correctInstanceName = "whatsapp_36_lowfy";
-    console.log(`📸 Enviando imagem via ${correctInstanceName} para ${to}`);
+    console.log(`📸 Enviando imagem via ${instanceName} para ${to}`);
 
     const data = {
       number: to.replace(/\D/g, ''),
@@ -237,13 +182,11 @@ class EvolutionAPI {
       }
     };
 
-    return await this.makeRequest(`/message/sendMedia/${correctInstanceName}`, 'POST', data);
+    return await this.makeRequest(`/message/sendMedia/${instanceName}`, 'POST', data);
   }
 
-  // 📄 ENVIAR DOCUMENTO
   async sendDocument(instanceName: string, to: string, documentData: string, fileName: string): Promise<any> {
-    const correctInstanceName = "whatsapp_36_lowfy";
-    console.log(`📄 Enviando documento via ${correctInstanceName} para ${to}: ${fileName}`);
+    console.log(`📄 Enviando documento via ${instanceName} para ${to}: ${fileName}`);
 
     const data = {
       number: to.replace(/\D/g, ''),
@@ -254,7 +197,7 @@ class EvolutionAPI {
       }
     };
 
-    return await this.makeRequest(`/message/sendMedia/${correctInstanceName}`, 'POST', data);
+    return await this.makeRequest(`/message/sendMedia/${instanceName}`, 'POST', data);
   }
 
   async deleteInstance(instanceName: string): Promise<void> {
@@ -271,6 +214,7 @@ class EvolutionAPI {
     console.log(`🚪 Desconectando instância Evolution API: ${instanceName}`);
     await this.makeRequest(`/instance/logout/${instanceName}`, 'DELETE');
   }
+
   async getContactInfo(instanceName: string, phoneNumber: string): Promise<any> {
     try {
       console.log(`📇 Buscando informações do contato ${phoneNumber}`);
@@ -288,75 +232,31 @@ class EvolutionAPI {
 
   async getAllChats(instanceName: string): Promise<any> {
     try {
-      // Always use the correct instanceName for REST API calls
-      const correctInstanceName = "whatsapp_36_lowfy";
-      console.log(`📱 Carregando contatos da instância ${correctInstanceName} (MODO SEGURO)`);
+      console.log(`📱 Carregando contatos da instância ${instanceName}`);
 
-      // LIMITE SEGURO para evitar travamento
-      const SAFE_LIMIT = 50; // Reduzido para evitar travamento
-      const MAX_PAGES = 3;   // Máximo 3 páginas para segurança
+      const response = await this.makeRequest(`/chat/findMany/${instanceName}`, 'GET');
 
-      let allChats: any[] = [];
-      let page = 1;
-      let hasMore = true;
-
-      // Buscar com limite seguro
-      while (hasMore && page <= MAX_PAGES) {
-        console.log(`🔄 PÁGINA ${page}/${MAX_PAGES}: Buscando ${SAFE_LIMIT} contatos`);
-
-        try {
-          const response = await this.makeRequest(`/chat/findMany/${correctInstanceName}`, 'GET');
-
-          if (response && Array.isArray(response) && response.length > 0) {
-            // Evitar duplicatas usando remoteJid como chave única
-            const newChats = response.filter(chat => 
-              chat.remoteJid && !allChats.some(existing => existing.remoteJid === chat.remoteJid)
-            );
-            
-            allChats = allChats.concat(newChats);
-            console.log(`✅ PÁGINA ${page} OK: +${newChats.length} novos contatos (Total: ${allChats.length})`);
-
-            // Parar se retornou menos que o limite
-            if (response.length < SAFE_LIMIT) {
-              hasMore = false;
-              console.log(`🏁 Fim dos contatos detectado na página ${page}`);
-            } else {
-              page++;
-            }
-
-            // Pequena pausa entre requests para não sobrecarregar
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-          } else {
-            hasMore = false;
-            console.log(`🏁 Nenhum contato encontrado na página ${page}`);
-          }
-
-        } catch (pageError) {
-          console.log(`❌ Erro na página ${page}:`, pageError);
-          hasMore = false; // Parar em caso de erro
-        }
+      if (response && Array.isArray(response)) {
+        console.log(`✅ ${response.length} contatos carregados`);
+        return response;
       }
 
-      console.log(`🎉 CARREGAMENTO SEGURO CONCLUÍDO! ${allChats.length} contatos carregados`);
-      return allChats;
+      console.log(`🏁 Nenhum contato encontrado`);
+      return [];
 
     } catch (error) {
-      console.log(`⚠️ Erro geral ao buscar chats:`, error);
+      console.log(`⚠️ Erro ao buscar chats:`, error);
       return [];
     }
   }
 
   async getChatMessages(instanceName: string, chatId: string, limit: number = 50): Promise<any> {
     try {
-      // Extract phone number from chatId (remove @s.whatsapp.net or @c.us)
       const phoneNumber = chatId.replace('@s.whatsapp.net', '').replace('@c.us', '');
 
       console.log(`📱 Buscando mensagens do chat ${phoneNumber} (limit: ${limit})`);
 
-      // Use the correct Lowfy Evolution API endpoint for messages
-      const correctInstanceName = "whatsapp_36_lowfy";
-      const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}/${chatId}?limit=${limit}`, 'GET');
+      const response = await this.makeRequest(`/chat/findMessages/${instanceName}/${chatId}?limit=${limit}`, 'GET');
 
       console.log(`✅ Mensagens encontradas para ${phoneNumber}:`, response?.length || 0);
 
@@ -391,7 +291,7 @@ class EvolutionAPI {
 
 export const evolutionAPI = new EvolutionAPI();
 
-// Configure WebSocket methods based on Evolution API documentation
+// Configure WebSocket methods
 evolutionAPI.setWebSocket = async function(instanceName: string): Promise<any> {
   try {
     const response = await this.makeRequest(`/websocket/set/${instanceName}`, 'POST', {
@@ -424,21 +324,16 @@ evolutionAPI.findWebSocket = async function(instanceName: string): Promise<any> 
   }
 };
 
-// CONFIGURAR WEBHOOK SUPER AGRESSIVO para receber mensagens
 evolutionAPI.configureWebhook = async function(instanceName: string): Promise<any> {
   try {
-    // SEMPRE usar a instância real conectada
-    const realInstanceName = "whatsapp_36_lowfy";
-
-    // OBTER URL atual do Replit automaticamente
     const currentUrl = process.env.REPL_URL || 
                       `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` ||
                       'https://7c6685d5-f6f3-4410-ab06-262cdc778d87-00-2dsysyogtq3zv.riker.replit.dev';
 
     const webhookUrl = `${currentUrl}/api/webhook/messages`;
-    console.log(`🔗 CONFIGURANDO WEBHOOK SUPER AGRESSIVO para ${realInstanceName}: ${webhookUrl}`);
+    console.log(`🔗 Configurando webhook para ${instanceName}: ${webhookUrl}`);
 
-    const response = await this.makeRequest(`/webhook/set/${realInstanceName}`, 'POST', {
+    const response = await this.makeRequest(`/webhook/set/${instanceName}`, 'POST', {
       webhook: {
         url: webhookUrl,
         enabled: true,
@@ -455,47 +350,12 @@ evolutionAPI.configureWebhook = async function(instanceName: string): Promise<an
       }
     });
 
-    console.log(`✅ WEBHOOK SUPER AGRESSIVO configurado para ${realInstanceName}:`, response);
-
-    // VERIFICAR se o webhook foi configurado corretamente
-    setTimeout(async () => {
-      try {
-        const checkResponse = await this.makeRequest(`/webhook/find/${realInstanceName}`, 'GET');
-        console.log(`🔍 Verificação do webhook para ${realInstanceName}:`, checkResponse);
-      } catch (checkError) {
-        console.log(`⚠️ Erro ao verificar webhook:`, checkError);
-      }
-    }, 1000);
-
-    // CONFIGURAR TAMBÉM para a instância passada como parâmetro (backup)
-    if (instanceName !== realInstanceName) {
-      try {
-        const backupResponse = await this.makeRequest(`/webhook/set/${instanceName}`, 'POST', {
-          webhook: {
-            url: webhookUrl,
-            enabled: true,
-            webhookByEvents: true,
-            events: [
-              "MESSAGES_UPSERT",
-              "MESSAGES_UPDATE", 
-            "SEND_MESSAGE",
-            "CONNECTION_UPDATE",
-            "QRCODE_UPDATED",
-            "CHATS_UPDATE",
-            "CONTACTS_UPDATE"
-          ]
-          }
-        });
-        console.log(`🔄 BACKUP webhook configurado para ${instanceName}:`, backupResponse);
-      } catch (backupError) {
-        console.log(`⚠️ Erro no backup webhook:`, backupError);
-      }
-    }
-
+    console.log(`✅ Webhook configurado para ${instanceName}:`, response);
     return response;
   } catch (error) {
     console.error(`❌ Erro ao configurar webhook para ${instanceName}:`, error);
     throw error;
   }
 };
+
 export { EvolutionAPI };

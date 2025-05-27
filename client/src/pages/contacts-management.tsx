@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,6 @@ interface Contact {
 
 export default function ContactsManagement() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Buscar contatos
@@ -52,26 +51,6 @@ export default function ContactsManagement() {
             <UserPlus className="mr-2 h-4 w-4" />
             Adicionar Contato
           </Button>
-          
-          <label htmlFor="import-file-input" className="cursor-pointer">
-            <Button variant="outline" asChild>
-              <span className="bg-blue-500 text-white hover:bg-blue-600">
-                📁 Importar CSV/Excel
-              </span>
-            </Button>
-            <input
-              id="import-file-input"
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  alert(`✅ Arquivo selecionado: ${file.name}\n\n📋 Pronto para importar contatos!`);
-                }
-              }}
-            />
-          </label>
         </div>
       </div>
 

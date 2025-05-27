@@ -1,3 +1,4 @@
+
 import express from "express";
 import { registerRoutes } from "./routes";
 import { setupVite } from "./vite";
@@ -15,11 +16,6 @@ app.use((req, res, next) => {
   } else {
     next();
   }
-});
-
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
 });
 
 app.use(express.json({ limit: '10mb' }));
