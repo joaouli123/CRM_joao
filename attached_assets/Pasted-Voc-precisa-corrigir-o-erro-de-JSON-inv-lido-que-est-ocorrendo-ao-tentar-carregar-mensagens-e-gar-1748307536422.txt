@@ -1,0 +1,96 @@
+Você precisa corrigir o erro de JSON inválido que está ocorrendo ao tentar carregar mensagens, e garantir que a API retorne a resposta correta (JSON válido). Abaixo estão as instruções detalhadas para diagnosticar e corrigir esse problema.
+🛠️ Correções Solicitadas:
+1. Verificar a Resposta da API
+
+    A API está retornando uma resposta em formato HTML (ex: <!DOCTYPE html>), mas a aplicação espera JSON.
+
+    Passos a seguir:
+
+        Verifique o endpoint que está sendo chamado para garantir que o servidor está respondendo corretamente com JSON.
+
+        Se o servidor está retornando uma página de erro, verifique o status HTTP da resposta (provavelmente 404 ou 500).
+
+        Se a resposta da API é HTML (página de erro), deve-se corrigir o backend para retornar o JSON esperado ou tratar o erro no frontend de maneira adequada.
+
+2. Revisar o Código do Backend
+
+    O erro parece ocorrer no momento em que o frontend tenta interpretar a resposta da API como JSON, mas a resposta contém HTML (erro de redirecionamento ou de página de erro).
+
+    Solução no backend:
+
+        Verifique se a API está tratando corretamente os erros do servidor e retornando o código de status correto (ex: 500 para erro interno, 404 para não encontrado).
+
+        Se a API não puder encontrar as conversas para uma conexão, ela deve retornar uma mensagem de erro JSON, não uma página HTML.
+
+3. Corrigir a Lógica de Chamada de API no Frontend
+
+    Verifique se a chamada da API está sendo feita para o endpoint correto e se os parâmetros passados são válidos (por exemplo, connectionId correto).
+
+    Certifique-se de que o código frontend esteja tratando a resposta corretamente e verificando primeiro o tipo de resposta (se for JSON ou HTML) antes de tentar processá-la como JSON.
+
+✅ Passos de Diagnóstico Detalhados
+
+    Verificar a Resposta da API:
+
+        Acesse a API diretamente no navegador ou com ferramentas como Postman ou Insomnia.
+
+        Verifique se a resposta está retornando o JSON correto ou uma página HTML de erro.
+
+    Checar o Backend:
+
+        Verifique o código do servidor/backend para garantir que a resposta de erro seja formatada corretamente em JSON.
+
+        Se o servidor estiver retornando HTML para erros, ajuste para que ele sempre retorne um JSON de erro com código 400 ou 500.
+
+    Verificação no Frontend:
+
+        Garanta que a chamada de API no React Query ou no código de chamada de fetch esteja lidando corretamente com a resposta de erro.
+
+        Adicione tratamento de erro no frontend para verificar se a resposta não é HTML e se o erro de rede é tratado de maneira adequada.
+
+🔄 Implementação Esperada:
+
+    Frontend:
+
+        Verificar se a resposta da API é JSON válido antes de processá-la.
+
+        Se houver erro 500 ou 404, mostrar uma mensagem amigável para o usuário, como "Erro ao carregar mensagens" ou "Conversa não encontrada".
+
+    Backend:
+
+        Se um erro ocorrer, retornar JSON ao invés de HTML, como:
+
+    {
+      "error": "Erro interno do servidor",
+      "message": "Não foi possível carregar as mensagens"
+    }
+
+        Garantir que a resposta da API esteja configurada para retornar Content-Type: application/json.
+
+📋 Exemplo de Código de Tratamento de Erro no Frontend (React)
+
+Aqui está um exemplo de como você pode tratar a resposta de erro no frontend, verificando o tipo de resposta antes de tentar processá-la como JSON:
+
+const fetchArchivedChats = async (connectionId) => {
+  try {
+    const response = await fetch(`/api/connections/${connectionId}/archived-chats`);
+
+    // Verifique se a resposta não é HTML (se o tipo não for JSON)
+    const contentType = response.headers.get("Content-Type");
+    if (contentType && contentType.includes("application/json")) {
+      const data = await response.json();
+      return data;
+    } else {
+      throw new Error("Resposta inesperada do servidor");
+    }
+  } catch (error) {
+    console.error("Erro ao carregar mensagens:", error);
+    return { error: "Erro ao carregar mensagens" }; // Mensagem de erro amigável
+  }
+};
+
+🎯 Conclusão
+
+Esses ajustes irão corrigir o erro de JSON inválido que está impedindo o carregamento correto das conversas, e melhorar a resposta da API para ser consistente com as expectativas do frontend. Isso deve restaurar o funcionamento do sistema de mensagens corretamente.
+
+Se precisar de mais alguma ajuda com a implementação de código ou mais detalhes sobre o backend, estou à disposição!

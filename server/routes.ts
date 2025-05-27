@@ -999,7 +999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get messages for a specific conversation - ROTA CRIADA
+  // Get messages for a specific conversation - ROTA CORRIGIDA DEFINITIVAMENTE
   app.get('/api/connections/:connectionId/messages/:phoneNumber', async (req, res) => {
     try {
       const connectionId = parseInt(req.params.connectionId);
@@ -1008,14 +1008,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📨 [SUCCESS] Buscando mensagens para ${phoneNumber} na conexão ${connectionId}`);
 
+      // FORÇA Content-Type JSON
+      res.setHeader('Content-Type', 'application/json');
+      
       // Get stored messages from our database
       const messages = await storage.getMessagesByConversation(connectionId, phoneNumber, limit);
       
-      console.log(`📨 [SUCCESS] Encontradas ${messages.length} mensagens`);
-      res.status(200).json(messages);
+      console.log(`📨 [SUCCESS] Encontradas ${messages.length} mensagens - retornando JSON válido`);
+      return res.status(200).json(messages);
     } catch (error) {
       console.error(`❌ [ERROR] Erro ao buscar mensagens:`, error);
-      res.status(200).json([]); // Retorna array vazio em caso de erro
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json([]); // Retorna array vazio em caso de erro
     }
   });
 

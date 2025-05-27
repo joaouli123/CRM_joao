@@ -133,9 +133,18 @@ export default function CompleteMessageInterface({
           return [];
         }
         
-        const messages = await response.json();
-        console.log(`✅ Mensagens carregadas: ${messages.length} mensagens`);
-        return messages as Message[];
+        // Verificar se a resposta é JSON válido
+        const contentType = response.headers.get("Content-Type");
+        console.log(`📨 Content-Type: ${contentType}`);
+        
+        if (contentType && contentType.includes("application/json")) {
+          const messages = await response.json();
+          console.log(`✅ Mensagens carregadas: ${messages.length} mensagens`);
+          return messages as Message[];
+        } else {
+          console.error(`❌ Resposta não é JSON válido - Content-Type: ${contentType}`);
+          return [];
+        }
       } catch (error) {
         console.error(`❌ Erro ao carregar mensagens:`, error);
         return [];
