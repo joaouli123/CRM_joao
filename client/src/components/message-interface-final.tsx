@@ -30,15 +30,12 @@ export default function MessageInterface({
   const [typing, setTyping] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [chatMuted, setChatMuted] = useState(false);
-  const [chatTags, setChatTags] = useState<string[]>(([]);
+  const [chatTags, setChatTags] = useState<string[]>([]);
   const [showTagModal, setShowTagModal] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  const connectionId = selectedConnectionId;
-  const currentConversation = (conversations as any[]).find((c: any) => c.phoneNumber === selectedConversation);
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
 
   // SET para controlar IDs únicos e evitar duplicação
   const processedMessageIds = useRef(new Set<string>());
@@ -305,9 +302,8 @@ export default function MessageInterface({
 
         setShowArchiveModal(false);
         // Refresh conversations list
-        queryClient.invalidateQueries({ queryKey: ['conversations', connectionId] });
-        // Clear current conversation
-        setCurrentConversation(null);
+        queryClient.invalidateQueries({ queryKey: ['conversations', selectedConnectionId] });
+        setSelectedConversation("");
         alert('✅ Conversa arquivada com sucesso!');
       } else {
         const errorData = await response.text();
