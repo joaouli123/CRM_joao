@@ -421,30 +421,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       try {
-        const instanceName = "whatsapp_36_lowfy";
-        console.log(`🎯 Carregando conversas (MODO SEGURO) da instância: ${instanceName}`);
+        console.log(`🎯 Carregando conversas do banco de dados local (connectionId: ${connectionId})`);
 
-        // Carregar chats com timeout
-        const allChats = await Promise.race([
-          evolutionAPI.getAllChats(instanceName),
-          timeoutPromise
-        ]);
+        // Carregar conversas do banco de dados local
+        const dbMessages = await storage.getMessagesByConnection(connectionId);
+        const dbContacts = await storage.getContactsByConnection(connectionId);
+        
+        console.log(`📊 Total de mensagens encontradas: ${dbMessages.length}`);
+        console.log(`📊 Total de contatos encontrados: ${dbContacts.length}`);
 
-        console.log(`📊 Total de conversas encontradas: ${allChats.length}`);
+        // Agrupar mensagens por número de telefone para criar conversas
+        const conversationsMap = new Map();
 
-        // PROCESSAMENTO SIMPLIFICADO para evitar travamento
-        const conversations = allChats.map((chat, index) => {
-          const phoneNumber = chat.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '');
-          if (!phoneNumber) return null;
+        // Processar mensagens para criar conversas
+        dbMessages.forEach(msg => {
+          const phoneNumber = msg.from === connection.phoneNumber ? msg.to : msg.from;
+          if (!conversationsMap.has(phoneNumber)) {
+            const contact = dbContacts.find(c => c.phoneNumber === phoneNumber);
+            conversationsMap.set(phoneNumber, {
+              phoneNumber,
+              contactName: contact?.name || phoneNumber,
+              lastMessage: msg.body,
+              lastMessageTime: msg.timestamp,
+              unreadCount: 0,
+              messages: []
+            });
+          }
+          conversationsMap.get(phoneNumber).messages.push(msg);
+        });
 
+        // Processar contatos sem mensagens
+        dbContacts.forEach(contact => {
+          if (!conversationsMap.has(contact.phoneNumber)) {
+            conversationsMap.set(contact.phoneNumber, {
+              phoneNumber: contact.phoneNumber,
+              contactName: contact.name,
+              lastMessage: "Nenhuma mensagem ainda",
+              lastMessageTime: contact.createdAt,
+              unreadCount: 0,
+              messages: []
+            });
+          }
+        });
+
+        // Converter para array e processar
+        const conversations = Array.from(conversationsMap.values()).map((conv, index) => {
           return {
-            phoneNumber,
-            contactName: chat.pushName || phoneNumber,
-            lastMessage: "Conversa ativa", // Simplificado para evitar travamento
-            lastMessageTime: new Date(chat.updatedAt || Date.now()),
-            unreadCount: 0,
-            messageCount: 1,
-            profilePicture: chat.profilePicUrl || null
+            phoneNumber: conv.phoneNumber,
+            contactName: conv.contactName,
+            lastMessage: conv.lastMessage,
+            lastMessageTime: conv.lastMessageTime,
+            unreadCount: conv.unreadCount,
+            messageCount: conv.messages.length,
+            profilePicture: null
           };
         }).filter(Boolean);
 

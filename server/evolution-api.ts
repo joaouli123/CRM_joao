@@ -39,7 +39,7 @@ class EvolutionAPI {
 
   constructor() {
     // Use variáveis de ambiente para credenciais
-    this.baseUrl = process.env.EVOLUTION_API_URL || "https://evolution.lowfy.com.br";
+    this.baseUrl = process.env.EVOLUTION_API_URL?.replace('/manager', '') || "https://evolution.lowfy.com.br";
     this.apiKey = process.env.EVOLUTION_API_KEY || "011dA95bf60bb215afd8cce1e01f99598A";
 
     if (!this.apiKey) {
