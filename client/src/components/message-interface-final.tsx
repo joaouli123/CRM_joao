@@ -447,13 +447,13 @@ export default function MessageInterface({
   }
 
   return (
-    <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden max-h-[calc(100vh-8rem)]">
+    <div className="h-full w-full flex bg-white rounded-lg shadow-sm border overflow-hidden">
       {/* Lista de Conversas */}
       <div className="w-80 border-r border-gray-200 flex flex-col h-full bg-gray-50">
         {/* Header das Conversas */}
-        <div className="p-3 bg-white border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-gray-900">Conversas</h3>
+        <div className="p-2 bg-white border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-semibold text-gray-900">Conversas</h3>
             {isConnected && (
               <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                 Online
@@ -466,7 +466,7 @@ export default function MessageInterface({
               placeholder="Buscar conversas..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="pl-10 h-9 bg-gray-50 border-gray-200 focus:bg-white"
+              className="pl-10 h-8 bg-gray-50 border-gray-200 focus:bg-white"
             />
           </div>
         </div>
@@ -493,7 +493,7 @@ export default function MessageInterface({
                 {filteredConversations.map((conv: any) => (
                   <div
                     key={conv.phoneNumber}
-                    className={`p-4 cursor-pointer hover:bg-white transition-colors duration-150 ${
+                    className={`p-3 cursor-pointer hover:bg-white transition-colors duration-150 ${
                       selectedConversation === conv.phoneNumber 
                         ? 'bg-blue-50 border-r-3 border-r-blue-500' 
                         : ''

@@ -299,25 +299,25 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-gray-50">
+    <div className="h-screen w-screen flex overflow-hidden bg-gray-50 fixed inset-0">
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab}
         onNewConnection={() => setShowNewConnectionModal(true)}
       />
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0">
-          <div className="flex items-center justify-between">
+        <header className="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0 min-h-[60px]">
+          <div className="flex items-center justify-between h-full">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-base font-semibold text-gray-900 leading-tight">
                 {activeTab === 'dashboard' && 'Dashboard'}
                 {activeTab === 'connections' && 'Conexões'}
                 {activeTab === 'messages' && 'Mensagens'}
                 {activeTab === 'settings' && 'Configurações'}
               </h2>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 leading-tight">
                 {activeTab === 'dashboard' && 'Visão geral do sistema'}
                 {activeTab === 'connections' && 'Gerenciar conexões WhatsApp'}
                 {activeTab === 'messages' && 'Enviar e receber mensagens'}
@@ -334,7 +334,7 @@ export default function Dashboard() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden p-3">
+        <main className="flex-1 overflow-hidden p-2">
           {renderContent()}
         </main>
       </div>
