@@ -221,30 +221,35 @@ class EvolutionAPI {
     try {
       // Always use the correct instanceName for REST API calls
       const correctInstanceName = "whatsapp_36_lowfy";
-      console.log(`📱 Buscando TODOS os chats reais da instância ${correctInstanceName} (CARREGAMENTO COMPLETO)`);
+      console.log(`📱 Forçando carregamento COMPLETO da instância ${correctInstanceName} - TODOS OS CONTATOS!`);
       
       let allChats: any[] = [];
-      let offset = 0;
-      const batchSize = 100;
+      let page = 1;
+      const limit = 75; // Limite máximo que a API aceita
       let hasMore = true;
       
-      // Buscar em lotes até pegar TODOS os contatos (como o WhatsApp Web faz)
-      while (hasMore) {
-        console.log(`🔄 Buscando lote ${Math.floor(offset/batchSize) + 1}: offset ${offset}, limit ${batchSize}`);
+      // Buscar página por página até esgotar TODOS os contatos
+      while (hasMore && page <= 50) { // Máximo 50 páginas para evitar loop infinito
+        console.log(`🔄 PÁGINA ${page}: Buscando ${limit} contatos (offset: ${(page-1) * limit})`);
         
         const response = await this.makeRequest(`/chat/findChats/${correctInstanceName}`, 'POST', {
           where: {},
-          limit: batchSize,
-          offset: offset
+          limit: limit,
+          offset: (page - 1) * limit
         });
         
-        if (response && response.length > 0) {
-          allChats = allChats.concat(response);
-          offset += batchSize;
-          console.log(`✅ Lote processado: +${response.length} contatos (Total: ${allChats.length})`);
+        if (response && Array.isArray(response) && response.length > 0) {
+          // Evitar duplicatas usando remoteJid como chave única
+          const newChats = response.filter(chat => 
+            !allChats.some(existing => existing.remoteJid === chat.remoteJid)
+          );
+          allChats = allChats.concat(newChats);
+          page++;
           
-          // Se retornou menos que o batchSize, chegamos ao fim
-          if (response.length < batchSize) {
+          console.log(`✅ PÁGINA ${page-1} processada: +${newChats.length} novos contatos (Total: ${allChats.length})`);
+          
+          // Se retornou menos que o limite, chegamos ao fim
+          if (response.length < limit) {
             hasMore = false;
           }
         } else {
@@ -252,7 +257,7 @@ class EvolutionAPI {
         }
       }
       
-      console.log(`🎉 CARREGAMENTO COMPLETO! ${allChats.length} contatos carregados (como WhatsApp Web)`);
+      console.log(`🎉 CARREGAMENTO COMPLETO! ${allChats.length} contatos únicos carregados (TODOS DISPONÍVEIS)`);
       return allChats;
     } catch (error) {
       console.log(`⚠️ Erro ao buscar chats:`, error);
