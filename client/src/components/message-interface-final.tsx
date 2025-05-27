@@ -29,6 +29,10 @@ export default function MessageInterface({
   const [typing, setTyping] = useState(false);
   const [conversationsLimit, setConversationsLimit] = useState(10);
   const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [historyMessages, setHistoryMessages] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // SET para controlar IDs únicos e evitar duplicação

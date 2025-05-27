@@ -676,6 +676,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nova rota para carregar histórico antigo com paginação
+  app.get("/api/connections/:id/conversations/:phoneNumber/messages/history", async (req, res) => {
+    try {
+      const connectionId = parseInt(req.params.id);
+      const phoneNumber = req.params.phoneNumber;
+      const page = req.query.page ? parseInt(req.query.page as string) : 2;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+
+      console.log(`📚 Buscando histórico antigo - Página ${page} para ${phoneNumber} na conexão ${connectionId}`);
+
+      const connection = await storage.getConnection(connectionId);
+      if (!connection) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+
+      if (connection.status === "connected" && connection.name) {
+        try {
+          // Usar a Evolution API existente para buscar mais mensagens
+          const messages = await evolutionAPI.getChatMessages(connection.name, phoneNumber, limit * page);
+          
+          if (messages && messages.length > 0) {
+            // Pegar apenas as mensagens da página solicitada (ignorar as já carregadas)
+            const startIndex = (page - 1) * limit;
+            const paginatedMessages = messages.slice(startIndex, startIndex + limit);
+            
+            console.log(`📖 Encontradas ${paginatedMessages.length} mensagens antigas (página ${page}) para ${phoneNumber}`);
+
+            return res.json({
+              messages: paginatedMessages,
+              page,
+              hasMore: messages.length > (page * limit),
+              total: messages.length
+            });
+          } else {
+            console.log(`📝 Nenhuma mensagem antiga encontrada para página ${page}`);
+            return res.json({ messages: [], page, hasMore: false, total: 0 });
+          }
+        } catch (apiError) {
+          console.log(`❌ Erro ao buscar histórico antigo:`, apiError);
+          return res.json({ messages: [], page, hasMore: false, total: 0 });
+        }
+      } else {
+        console.log(`⚠️ Conexão não conectada, sem histórico disponível`);
+        return res.json({ messages: [], page, hasMore: false, total: 0 });
+      }
+    } catch (error) {
+      console.error("❌ Erro ao buscar histórico antigo:", error);
+      res.status(500).json({ error: "Failed to fetch message history" });
+    }
+  });
+
   app.delete("/api/connections/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
