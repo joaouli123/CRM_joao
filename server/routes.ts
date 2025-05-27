@@ -364,11 +364,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        // Force use the actual connected instance name
-        const activeInstanceName = "whatsapp_36_lowfy";
+        // Use the connection's session data or fallback to your current instance
+        const instanceName = connection.sessionData || "whatsapp_36_lowfy";
 
-        console.log(`🎯 Usando instância real conectada: ${activeInstanceName} - Buscando TODAS as conversas para filtrar`);
-        const allChats = await evolutionAPI.getAllChats(activeInstanceName);
+        console.log(`🎯 Carregando conversas da instância: ${instanceName}`);
+        const allChats = await evolutionAPI.getAllChats(instanceName);
 
         console.log(`📊 Total de conversas encontradas: ${allChats.length}`);
 
