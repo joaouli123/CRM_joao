@@ -190,13 +190,13 @@ export default function Contacts({ activeConnectionId }: ContactsProps) {
                           {contact.name}
                         </h3>
                         <div className="flex items-center space-x-2">
-                          {contact.unreadCount > 0 && (
+                          {(contact.unreadCount || 0) > 0 && (
                             <Badge className="bg-orange-500 text-white">
                               {contact.unreadCount}
                             </Badge>
                           )}
                           <span className="text-xs text-gray-500">
-                            {formatLastMessageTime(contact.lastMessageTime)}
+                            {formatLastMessageTime(contact.lastMessageTime || "")}
                           </span>
                         </div>
                       </div>
