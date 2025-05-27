@@ -60,8 +60,8 @@ export default function ContactsManager({ activeConnectionId }: ContactsManagerP
       const whatsappResponse = await fetch(`/api/connections/${activeConnectionId}/conversations`);
       const whatsappContacts = await whatsappResponse.json();
 
-      // Depois, buscar contatos salvos no banco
-      const dbResponse = await fetch(`/api/contacts?connectionId=${activeConnectionId}&page=${currentPage}&limit=${contactsPerPage}`);
+      // Depois, buscar contatos salvos no banco usando a rota correta
+      const dbResponse = await fetch(`/api/connections/${activeConnectionId}/contacts?page=${currentPage}&limit=${contactsPerPage}`);
       const dbData = await dbResponse.json();
 
       // Combinar e sincronizar contatos
