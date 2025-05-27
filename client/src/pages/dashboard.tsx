@@ -286,7 +286,7 @@ export default function Dashboard() {
       case "contacts":
         return (
           <div className="h-full">
-            <ContactsPage activeConnectionId={selectedConnectionId || 36} />
+            <Contacts activeConnectionId={selectedConnectionId || 36} />
           </div>
         );
 

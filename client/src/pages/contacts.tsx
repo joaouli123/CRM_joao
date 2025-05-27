@@ -35,10 +35,11 @@ export default function Contacts({ activeConnectionId }: ContactsProps) {
 
     try {
       setLoading(true);
-      const response = await api.get(`/api/connections/${activeConnectionId}/conversations`);
+      const response = await fetch(`/api/connections/${activeConnectionId}/conversations`);
+      const data = await response.json();
 
-      if (response.data && Array.isArray(response.data)) {
-        const contactsData = response.data.map((conv: any) => ({
+      if (data && Array.isArray(data)) {
+        const contactsData = data.map((conv: any) => ({
           id: conv.phoneNumber || conv.id,
           name: conv.contactName || conv.pushName || conv.phoneNumber || 'Contato sem nome',
           phoneNumber: conv.phoneNumber || conv.id,
