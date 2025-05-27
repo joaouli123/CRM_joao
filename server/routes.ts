@@ -300,16 +300,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!phoneNumber) return null;
 
             // Get REAL last messages for each chat
-            let lastMessage = `Conversa com ${chat.pushName || phoneNumber}`;
+            let lastMessage = "Nenhuma mensagem";
             let realUnreadCount = 0;
             let lastMessageTime = new Date(chat.updatedAt || Date.now());
 
             try {
               // Buscar as últimas mensagens reais do WhatsApp
-              const messagesResponse = await evolutionAPI.getChatMessages(activeInstanceName, chat.remoteJid, 1);
+              const messagesResponse = await evolutionAPI.getChatMessages(activeInstanceName, chat.remoteJid, 50);
               
               if (messagesResponse?.messages?.records && messagesResponse.messages.records.length > 0) {
-                const lastMsg = messagesResponse.messages.records[0];
+                const messages = messagesResponse.messages.records;
+                const lastMsg = messages[0]; // Última mensagem
                 
                 // Formatear a última mensagem real
                 if (lastMsg.message?.conversation) {
@@ -317,7 +318,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 } else if (lastMsg.message?.extendedTextMessage?.text) {
                   lastMessage = lastMsg.message.extendedTextMessage.text;
                 } else if (lastMsg.message?.imageMessage?.caption) {
-                  lastMessage = "📷 " + lastMsg.message.imageMessage.caption;
+                  lastMessage = "📷 " + (lastMsg.message.imageMessage.caption || "Imagem");
+                } else if (lastMsg.message?.imageMessage) {
+                  lastMessage = "📷 Imagem";
+                } else if (lastMsg.message?.audioMessage) {
+                  lastMessage = "🎵 Áudio";
+                } else if (lastMsg.message?.videoMessage) {
+                  lastMessage = "🎥 Vídeo";
+                } else if (lastMsg.message?.documentMessage) {
+                  lastMessage = "📄 Documento";
+                } else if (lastMsg.message?.stickerMessage) {
+                  lastMessage = "🏷️ Sticker";
+                } else {
+                  lastMessage = "Mensagem";
+                }
+
+                // Atualizar timestamp da última mensagem
+                if (lastMsg.messageTimestamp) {
+                  lastMessageTime = new Date(parseInt(lastMsg.messageTimestamp) * 1000);
+                }
+
+                // Contar mensagens não lidas (mensagens recebidas - fromMe: false)
+                const unreadMessages = messages.filter(msg => {
+                  // Verificar se é mensagem recebida (não enviada por mim)
+                  const isReceived = !msg.key?.fromMe;
+                  
+                  // Verificar se não foi lida (status não é 'read' ou similar)
+                  const isUnread = !msg.status || msg.status !== 'read';
+                  
+                  return isReceived && isUnread;
+                });
+                
+                realUnreadCount = unreadMessages.length;
                 } else if (lastMsg.message?.imageMessage) {
                   lastMessage = "📷 Imagem";
                 } else if (lastMsg.message?.audioMessage) {
