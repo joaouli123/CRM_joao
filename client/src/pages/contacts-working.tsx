@@ -130,17 +130,23 @@ export default function ContactsWorking() {
     if (!selectedContact) return;
 
     try {
+      // Mapear os campos para os nomes que o backend espera
+      const mappedData = {
+        ...editForm,
+        email: editForm.email || null,
+        observacao: editForm.observation || null, // Backend espera 'observacao'
+        etiqueta: editForm.tag || null, // Backend espera 'etiqueta'
+        origem: editForm.origem // Backend já espera 'origem'
+      };
+      
+      console.log('🔧 DADOS MAPEADOS SENDO ENVIADOS:', mappedData);
+      
       const response = await fetch(`/api/contacts/${selectedContact.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...editForm,
-          email: editForm.email || null,
-          tag: editForm.tag || null,
-          observation: editForm.observation || null
-        }),
+        body: JSON.stringify(mappedData),
       });
 
       if (response.ok) {
