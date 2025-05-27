@@ -154,7 +154,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Carregar conversas do banco de dados local (agora com mensagens atualizadas)
         const dbMessages = await storage.getMessagesByConnection(connectionId);
-        const dbContacts = await storage.getContactsByConnection(connectionId);
+        let dbContacts: any[] = [];
+        
+        // Tentar carregar contatos, ignorando erros de coluna inexistente
+        try {
+          dbContacts = await storage.getContactsByConnection(connectionId);
+        } catch (contactError: any) {
+          if (contactError.message?.includes('is_whatsapp_original')) {
+            console.log('⚠️ Ignorando erro de coluna inexistente, continuando com lista vazia');
+            dbContacts = [];
+          } else {
+            throw contactError;
+          }
+        }
         
         console.log(`📊 Total de mensagens encontradas: ${dbMessages.length}`);
         console.log(`📊 Total de contatos encontrados: ${dbContacts.length}`);

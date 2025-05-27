@@ -188,10 +188,31 @@ class EvolutionAPI {
     return await this.makeRequest(`/message/sendText/${correctInstanceName}`, 'POST', data);
   }
 
-  // 🎵 ENVIAR ÁUDIO
+  // 📝 ENVIAR TEMPLATE
+  async sendTemplate(instanceName: string, to: string, templateData: any): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📝 Enviando template via ${correctInstanceName} para ${to}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      template: templateData
+    };
+
+    return await this.makeRequest(`/message/sendTemplate/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 📊 ENVIAR STATUS/STORY
+  async sendStatus(instanceName: string, statusData: any): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📊 Enviando status via ${correctInstanceName}`);
+    
+    return await this.makeRequest(`/message/sendStatus/${correctInstanceName}`, 'POST', statusData);
+  }
+
+  // 🎵 ENVIAR ÁUDIO WHATSAPP
   async sendAudio(instanceName: string, to: string, audioData: string): Promise<any> {
     const correctInstanceName = "whatsapp_36_lowfy";
-    console.log(`🎵 Enviando áudio via ${correctInstanceName} para ${to}`);
+    console.log(`🎵 Enviando áudio WhatsApp via ${correctInstanceName} para ${to}`);
     
     const data = {
       number: to.replace(/\D/g, ''),
@@ -203,38 +224,123 @@ class EvolutionAPI {
     return await this.makeRequest(`/message/sendWhatsAppAudio/${correctInstanceName}`, 'POST', data);
   }
 
-  // 📸 ENVIAR IMAGEM
-  async sendImage(instanceName: string, to: string, imageData: string, caption?: string): Promise<any> {
+  // 📸 ENVIAR MÍDIA (IMAGEM/VÍDEO/DOCUMENTO)
+  async sendMedia(instanceName: string, to: string, mediaData: string, mediaType: string, caption?: string, fileName?: string): Promise<any> {
     const correctInstanceName = "whatsapp_36_lowfy";
-    console.log(`📸 Enviando imagem via ${correctInstanceName} para ${to}`);
+    console.log(`📸 Enviando mídia ${mediaType} via ${correctInstanceName} para ${to}`);
     
     const data = {
       number: to.replace(/\D/g, ''),
       mediaMessage: {
-        media: imageData,
+        media: mediaData,
+        mediaType: mediaType, // image, video, document
         caption: caption || '',
-        mediaType: 'image'
+        fileName: fileName || undefined
       }
     };
 
     return await this.makeRequest(`/message/sendMedia/${correctInstanceName}`, 'POST', data);
   }
 
-  // 📄 ENVIAR DOCUMENTO
-  async sendDocument(instanceName: string, to: string, documentData: string, fileName: string): Promise<any> {
+  // 🎭 ENVIAR STICKER
+  async sendSticker(instanceName: string, to: string, stickerData: string): Promise<any> {
     const correctInstanceName = "whatsapp_36_lowfy";
-    console.log(`📄 Enviando documento via ${correctInstanceName} para ${to}: ${fileName}`);
+    console.log(`🎭 Enviando sticker via ${correctInstanceName} para ${to}`);
     
     const data = {
       number: to.replace(/\D/g, ''),
-      mediaMessage: {
-        media: documentData,
-        fileName: fileName,
-        mediaType: 'document'
+      stickerMessage: {
+        sticker: stickerData
       }
     };
 
-    return await this.makeRequest(`/message/sendMedia/${correctInstanceName}`, 'POST', data);
+    return await this.makeRequest(`/message/sendSticker/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 📍 ENVIAR LOCALIZAÇÃO
+  async sendLocation(instanceName: string, to: string, latitude: number, longitude: number, name?: string, address?: string): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📍 Enviando localização via ${correctInstanceName} para ${to}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      locationMessage: {
+        latitude: latitude,
+        longitude: longitude,
+        name: name || '',
+        address: address || ''
+      }
+    };
+
+    return await this.makeRequest(`/message/sendLocation/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 👤 ENVIAR CONTATO
+  async sendContact(instanceName: string, to: string, contactData: any): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`👤 Enviando contato via ${correctInstanceName} para ${to}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      contactMessage: contactData
+    };
+
+    return await this.makeRequest(`/message/sendContact/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 😀 ENVIAR REAÇÃO
+  async sendReaction(instanceName: string, messageId: string, emoji: string): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`😀 Enviando reação ${emoji} via ${correctInstanceName}`);
+    
+    const data = {
+      reactionMessage: {
+        key: { id: messageId },
+        reaction: emoji
+      }
+    };
+
+    return await this.makeRequest(`/message/sendReaction/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 📊 ENVIAR ENQUETE
+  async sendPoll(instanceName: string, to: string, question: string, options: string[], multipleAnswers: boolean = false): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📊 Enviando enquete via ${correctInstanceName} para ${to}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      pollMessage: {
+        name: question,
+        selectableOptionsCount: multipleAnswers ? options.length : 1,
+        values: options
+      }
+    };
+
+    return await this.makeRequest(`/message/sendPoll/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 📋 ENVIAR LISTA
+  async sendList(instanceName: string, to: string, listData: any): Promise<any> {
+    const correctInstanceName = "whatsapp_36_lowfy";
+    console.log(`📋 Enviando lista via ${correctInstanceName} para ${to}`);
+    
+    const data = {
+      number: to.replace(/\D/g, ''),
+      listMessage: listData
+    };
+
+    return await this.makeRequest(`/message/sendList/${correctInstanceName}`, 'POST', data);
+  }
+
+  // 📸 ENVIAR IMAGEM (compatibilidade)
+  async sendImage(instanceName: string, to: string, imageData: string, caption?: string): Promise<any> {
+    return await this.sendMedia(instanceName, to, imageData, 'image', caption);
+  }
+
+  // 📄 ENVIAR DOCUMENTO (compatibilidade)
+  async sendDocument(instanceName: string, to: string, documentData: string, fileName: string): Promise<any> {
+    return await this.sendMedia(instanceName, to, documentData, 'document', '', fileName);
   }
 
   async deleteInstance(instanceName: string): Promise<void> {
@@ -321,9 +427,14 @@ class EvolutionAPI {
       
       console.log(`📱 Buscando mensagens do chat ${phoneNumber} (limit: ${limit})`);
       
-      // Use the correct Lowfy Evolution API endpoint for messages
+      // Use the correct Evolution API endpoint for finding messages
       const correctInstanceName = "whatsapp_36_lowfy";
-      const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}/${chatId}?limit=${limit}`, 'GET');
+      const response = await this.makeRequest(`/chat/findMessages/${correctInstanceName}`, 'POST', {
+        where: {
+          remoteJid: chatId
+        },
+        limit: limit
+      });
       
       console.log(`✅ Mensagens encontradas para ${phoneNumber}:`, response?.length || 0);
       
