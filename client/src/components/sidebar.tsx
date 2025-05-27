@@ -13,7 +13,6 @@ export default function Sidebar({ activeTab, onTabChange, onNewConnection }: Sid
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "connections", label: "Conexões", icon: Plug },
     { id: "messages", label: "Mensagens", icon: MessageSquare },
-    { id: "contacts", label: "Contatos", icon: Contact },
     { id: "contacts-management", label: "Gerenciar Contatos", icon: Users },
     { id: "settings", label: "Configurações", icon: Settings },
   ];

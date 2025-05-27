@@ -28,12 +28,7 @@ function Router() {
           <Dashboard />
         </ProtectedRoute>
       </Route>
-      <Route path="/contacts">
-        <ProtectedRoute>
-          <UserHeader />
-          <ContactsPage />
-        </ProtectedRoute>
-      </Route>
+
       <Route path="/contacts-table">
         <ProtectedRoute>
           <UserHeader />
