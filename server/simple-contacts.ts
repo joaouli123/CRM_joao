@@ -2,8 +2,6 @@ import { Express, Request, Response } from "express";
 import { db } from "./db";
 import { contacts } from "../shared/schema";
 import { desc, asc, like, and, gte, lte, eq } from "drizzle-orm";
-import multer from 'multer';
-import * as XLSX from 'xlsx';
 
 export function setupSimpleContactsAPI(app: Express) {
   // GET /api/contacts - Lista todos os contatos
