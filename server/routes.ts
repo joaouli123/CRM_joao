@@ -252,63 +252,35 @@ async function initializeWhatsAppSession(connectionId: number, sessionName: stri
 export async function registerRoutes(app: Express): Promise<Server> {
 
   // API Routes with explicit /api prefix
-  // BUSCAR CONEXÕES - SIMPLES E DIRETO
+  // API WHATSAPP - BUSCAR CONEXÕES
   app.get("/api/connections", async (req, res) => {
     try {
-      console.log("📞 Buscando conexões...");
-      
-      // Retorna conexões básicas para evitar erros
-      const basicConnections = [
-        {
-          id: 36,
-          name: "lowfy", 
-          status: "connected",
-          description: null,
-          phoneNumber: null,
-          qrCode: null,
-          qrExpiry: null,
-          sessionData: "whatsapp_36_lowfy",
-          lastActivity: new Date(),
-          messageCount: 0,
-          createdAt: new Date()
-        }
-      ];
-      
-      console.log("✅ Retornando conexões");
-      res.setHeader('Content-Type', 'application/json');
-      res.json(basicConnections);
+      console.log("📞 Buscando conexões WhatsApp...");
+      const connections = await storage.getAllConnections();
+      console.log(`✅ Encontradas ${connections.length} conexões WhatsApp`);
+      res.json(connections);
     } catch (error) {
-      console.error("❌ Erro:", error);
+      console.error("❌ Erro conexões WhatsApp:", error);
       res.status(500).json({ error: "Failed to fetch connections" });
     }
   });
 
-  // CRIAR NOVA CONEXÃO - SIMPLES
+  // API WHATSAPP - CRIAR NOVA CONEXÃO
   app.post("/api/connections", async (req, res) => {
     try {
       const { name, description } = req.body;
-      console.log(`🆕 Criando nova conexão: ${name}`);
+      console.log(`🆕 Criando nova conexão WhatsApp: ${name}`);
       
-      // Criar conexão simples para evitar erros
-      const newId = Math.floor(Math.random() * 1000) + 100;
-      const connection = {
-        id: newId,
+      const connection = await storage.createConnection({
         name,
         description: description || null,
-        status: "waiting_qr",
-        phoneNumber: null,
-        qrCode: null,
-        qrExpiry: null,
-        sessionData: null,
-        lastActivity: new Date(),
-        messageCount: 0,
-        createdAt: new Date()
-      };
+        status: "waiting_qr"
+      });
       
-      console.log("✅ Conexão criada:", connection);
+      console.log("✅ Conexão WhatsApp criada:", connection);
       res.json(connection);
     } catch (error) {
-      console.error("❌ Error creating connection:", error);
+      console.error("❌ Error creating WhatsApp connection:", error);
       res.status(500).json({ error: "Failed to create connection" });
     }
   });
@@ -1716,6 +1688,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('❌ Error deleting archived chat:', error);
       res.status(500).json({ error: 'Failed to delete archived chat' });
+    }
+  });
+
+  // ==========================================
+  // API DE CONTATOS - SEPARADA DO WHATSAPP
+  // ==========================================
+  
+  // BUSCAR TODOS OS CONTATOS (todas as origens)
+  app.get("/api/contacts-management", async (req, res) => {
+    try {
+      console.log("📋 Buscando contatos de todas as origens...");
+      const { page = 1, limit = 50, search = "", tag = "" } = req.query;
+      
+      const contacts = await storage.getAllContacts({
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        search: search as string,
+        tag: tag as string
+      });
+      
+      console.log(`✅ Encontrados ${contacts.length} contatos`);
+      res.json(contacts);
+    } catch (error) {
+      console.error("❌ Erro ao buscar contatos:", error);
+      res.status(500).json({ error: "Failed to fetch contacts" });
+    }
+  });
+
+  // CRIAR NOVO CONTATO
+  app.post("/api/contacts-management", async (req, res) => {
+    try {
+      console.log("📝 Criando novo contato...");
+      const contactData = req.body;
+      
+      const contact = await storage.createContact({
+        ...contactData,
+        connectionId: 0, // Contatos gerais não precisam de conexão
+        origem: contactData.origem || "manual"
+      });
+      
+      console.log("✅ Contato criado:", contact);
+      res.json(contact);
+    } catch (error) {
+      console.error("❌ Erro ao criar contato:", error);
+      res.status(500).json({ error: "Failed to create contact" });
+    }
+  });
+
+  // EDITAR CONTATO
+  app.put("/api/contacts-management/:id", async (req, res) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      console.log(`✏️ Editando contato ${contactId}...`);
+      
+      const updatedContact = await storage.updateContact(contactId, req.body);
+      
+      console.log("✅ Contato atualizado:", updatedContact);
+      res.json(updatedContact);
+    } catch (error) {
+      console.error("❌ Erro ao editar contato:", error);
+      res.status(500).json({ error: "Failed to update contact" });
+    }
+  });
+
+  // EXCLUIR CONTATO
+  app.delete("/api/contacts-management/:id", async (req, res) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      console.log(`🗑️ Excluindo contato ${contactId}...`);
+      
+      await storage.deleteContact(contactId);
+      
+      console.log("✅ Contato excluído");
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ Erro ao excluir contato:", error);
+      res.status(500).json({ error: "Failed to delete contact" });
+    }
+  });
+
+  // ESTATÍSTICAS DOS CONTATOS
+  app.get("/api/contacts-management/stats", async (req, res) => {
+    try {
+      console.log("📊 Buscando estatísticas dos contatos...");
+      
+      const stats = {
+        total: 0,
+        whatsapp: 0,
+        email: 0,
+        organic: 0,
+        website: 0,
+        recent: 0
+      };
+      
+      // Buscar todas as origens de contatos
+      const allContacts = await storage.getAllContacts({ page: 1, limit: 1000 });
+      
+      stats.total = allContacts.length;
+      stats.whatsapp = allContacts.filter(c => c.origem === "whatsapp").length;
+      stats.email = allContacts.filter(c => c.origem === "email").length;
+      stats.organic = allContacts.filter(c => c.origem === "organic").length;
+      stats.website = allContacts.filter(c => c.origem === "website").length;
+      
+      // Contatos recentes (últimos 7 dias)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      stats.recent = allContacts.filter(c => 
+        c.createdAt && new Date(c.createdAt) > sevenDaysAgo
+      ).length;
+      
+      console.log("✅ Estatísticas calculadas:", stats);
+      res.json(stats);
+    } catch (error) {
+      console.error("❌ Erro ao calcular estatísticas:", error);
+      res.status(500).json({ error: "Failed to get stats" });
     }
   });
 
