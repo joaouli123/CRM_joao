@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { UserHeader } from "@/components/user-header";
 import Dashboard from "@/pages/dashboard";
 import ContactsPage from "@/pages/contacts";
+import ContactsTable from "@/pages/contacts-table";
 import SignIn from "@/pages/sign-in";
 import SignUp from "@/pages/sign-up";
 
@@ -31,6 +32,12 @@ function Router() {
         <ProtectedRoute>
           <UserHeader />
           <ContactsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/contacts-table">
+        <ProtectedRoute>
+          <UserHeader />
+          <ContactsTable activeConnectionId={36} />
         </ProtectedRoute>
       </Route>
     </Switch>
